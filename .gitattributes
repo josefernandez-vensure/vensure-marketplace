@@ -1,0 +1,13 @@
+# Normalize to LF in the repository.
+* text=auto
+
+# Scripts must stay LF in the working tree on every platform. Git Bash tolerates
+# CRLF, but bash on Linux and macOS does not: a CRLF shebang fails with
+# "bad interpreter: No such file or directory". This plugin is installed by
+# git clone, so it has to be correct on machines that are not this one.
+*.sh   text eol=lf
+*.awk  text eol=lf
+
+# Config read by tools rather than shells.
+*.json text eol=lf
+*.md   text

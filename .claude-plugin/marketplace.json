@@ -1,0 +1,27 @@
+{
+  "name": "vensure-marketplace",
+  "owner": {
+    "name": "Vensure Engineering"
+  },
+  "description": "Vensure's internal Claude Code plugins: coding assistants, engineering governance, and development tooling.",
+  "version": "1.0.0",
+  "metadata": {
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "rancho",
+      "displayName": "Rancho — Vensure Dev Assistant",
+      "source": "./plugins/rancho",
+      "description": "Vensure's coding assistant: VACA (Vensure Agentic Code Assistant) plus the engineering law that governs .NET and React service work.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Vensure Engineering"
+      },
+      "repository": "https://github.com/josefernandez-vensure/vensure-marketplace",
+      "category": "development",
+      "keywords": ["assistant", "architecture", "ddd", "dotnet", "react", "governance", "code-review"],
+      "tags": ["assistant", "governance", "dotnet", "react"]
+    }
+  ]
+}

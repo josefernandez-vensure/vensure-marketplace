@@ -1,0 +1,15 @@
+{
+  "description": "Puts the prime directive in context at session start and points at the full law.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/context/prime-directive.md\""
+          }
+        ]
+      }
+    ]
+  }
+}
