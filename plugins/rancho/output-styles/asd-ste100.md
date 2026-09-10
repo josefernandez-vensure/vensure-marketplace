@@ -1,6 +1,7 @@
 ---
 name: ASD-STE100
-description: Lead every explanation with a diagram
+description: Report in ASD-STE100 Simplified Technical English - plain words, active voice, one idea per sentence, only what is necessary
+when: on-skill-invoke:vaca
 keep-coding-instructions: true
 ---
 
