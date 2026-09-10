@@ -25,6 +25,24 @@ REPO=$(echo "$remote_url" | sed 's|.*github.com[:/]||' | sed 's|\.git$||')
 
 ### Process
 
+**Step 0 — Ensure the labels exist:**
+
+`gh issue create --label X` fails outright if `X` does not exist on the
+repository, so create them first. `--force` makes this idempotent, so it is
+safe to run on every sync:
+
+```bash
+gh label create "epic"        --repo "$REPO" --color "0E8A16" --description "Epic containing multiple related tasks" --force
+gh label create "task"        --repo "$REPO" --color "1D76DB" --description "Individual task within an epic" --force
+gh label create "feature"     --repo "$REPO" --color "A2EEEF" --description "New capability" --force
+gh label create "bug"         --repo "$REPO" --color "D73A4A" --description "Something is broken" --force
+gh label create "epic:<name>" --repo "$REPO" --color "5319E7" --description "Belongs to epic <name>" --force
+```
+
+If label creation fails the account lacks permission on the repository. Report
+that and stop — do not proceed to create issues, because every one of them will
+fail on the label.
+
 **Step 1 — Create epic issue:**
 
 Strip frontmatter from epic.md, then:

@@ -153,7 +153,4 @@ Checks: frontmatter consistency, orphaned files, missing GitHub links, dependenc
 
 If a script fails or the output needs interpretation (e.g., an error in the output, or the user asks "what does this mean"), then step in to explain. But always run the script first — don't guess at what status/standup output would look like.
 
-If `.claude/` directory doesn't exist at all, the project hasn't been initialized. Direct the user to run:
-```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/init.sh"
-```
+If `.claude/` does not exist, the project has no VACA state yet. Nothing needs installing — the Plan phase creates `.claude/prds/` on the first PRD, and the later phases create the rest as they go. Point the user at `"create a PRD for <feature>"`.

@@ -9,7 +9,7 @@ echo "================================"
 echo ""
 
 if [ ! -d ".claude" ]; then
-  echo "Not initialized. Run: bash \"\$CLAUDE_SKILL_DIR/scripts/init.sh\""
+  echo "No VACA project here yet. Ask: 'create a PRD for <feature>'"
   exit 0
 fi
 

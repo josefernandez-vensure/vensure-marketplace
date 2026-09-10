@@ -44,7 +44,7 @@ echo ""
 echo "Tracking runs as scripts, not reasoning. Available directly:"
 echo "  status.sh  standup.sh  next.sh  blocked.sh  in-progress.sh  validate.sh"
 echo "  epic-list.sh  epic-show.sh <name>  epic-status.sh <name>"
-echo "  prd-list.sh  prd-status.sh  search.sh <query>  init.sh  help.sh"
+echo "  prd-list.sh  prd-status.sh  search.sh <query>  help.sh"
 echo ""
 
 echo "Layout — all state lives in files, under the project root:"
@@ -56,8 +56,7 @@ echo "  .claude/epics/archived/<feature>/      completed epics"
 echo ""
 
 if [ ! -d ".claude" ]; then
-  echo "⚠️  No .claude directory here. This project is not initialized."
-  echo "    Run: bash \"\$CLAUDE_SKILL_DIR/scripts/init.sh\""
+  echo "⚠️  No VACA project here yet. The first PRD creates one."
   echo ""
 fi
 

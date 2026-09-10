@@ -64,7 +64,6 @@ Scripts read `.claude/` relative to the **project root**, so run them from there
 | What's next | `bash "${CLAUDE_SKILL_DIR}/scripts/next.sh"` |
 | What's blocked | `bash "${CLAUDE_SKILL_DIR}/scripts/blocked.sh"` |
 | Validate project state | `bash "${CLAUDE_SKILL_DIR}/scripts/validate.sh"` |
-| Initialize a project | `bash "${CLAUDE_SKILL_DIR}/scripts/init.sh"` |
 | Reference card | `bash "${CLAUDE_SKILL_DIR}/scripts/help.sh"` |
 
 Use the LLM for work that requires reasoning: writing PRDs, analyzing parallelism, launching agents, synthesizing updates.

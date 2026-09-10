@@ -23,7 +23,7 @@ fi
 
 if [ $errors -gt 0 ]; then
   echo ""
-  echo "Not initialized. Run: bash \"\$CLAUDE_SKILL_DIR/scripts/init.sh\""
+  echo "No VACA project here yet. Ask: 'create a PRD for <feature>'"
   exit 1
 fi
 
