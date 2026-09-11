@@ -38,12 +38,13 @@ Then run `/reload-plugins` if the install summary asks you to.
 
 ### rancho — Dev Assistant
 
-Two skills, installed together but usable independently.
+Two skills and one command, installed together. The skills are usable independently.
 
-| Skill | Invoke | What it does |
+| | Invoke | What it does |
 |---|---|---|
-| `law` | `/rancho:law` | The engineering law: module boundaries, API and error contracts, validation placement, data classification and egress, AI-agent permissions, observability. Backend (.NET/DDD), frontend (React), and the enforcement inventory load on demand. |
-| `vaca` | `/rancho:vaca` | Vensure Agentic Code Assistant. Spec-driven delivery: PRD → epic → GitHub issues → parallel agents → shipped code. |
+| skill `law` | `/rancho:law` | The engineering law: module boundaries, API and error contracts, validation placement, data classification and egress, AI-agent permissions, observability. Backend (.NET/DDD), frontend (React), and the enforcement inventory load on demand. |
+| skill `vaca` | `/rancho:vaca` | Vensure Agentic Code Assistant. Spec-driven delivery: PRD → epic → GitHub issues → parallel agents → shipped code. |
+| command | `/rancho:help` | The VACA reference card: the five phases, the phrases that drive each, and where VACA keeps its state. |
 
 The two are meant to work together. VACA decides *what* gets built and in what
 order; the law decides what the finished code must look like. Agents that VACA
@@ -54,8 +55,7 @@ deliberately restates no rules, so there is exactly one copy of each to keep
 current.
 
 `vaca` is driven in natural language — "create a PRD for X", "what's next",
-"standup", "start working on issue 42". Run `/rancho:vaca` and ask for help for
-the full card.
+"standup", "start working on issue 42". `/rancho:help` prints the full card.
 
 ## Layout
 
@@ -68,10 +68,11 @@ vensure-marketplace/
 │       ├── .claude-plugin/plugin.json
 │       ├── skills/law/       SKILL.md + references/
 │       ├── skills/vaca/      SKILL.md + references/ + scripts/
-│       ├── hooks/hooks.json
+│       ├── commands/help.md  the /rancho:help command
+│       ├── hooks/hooks.json  SessionStart: the prime directive
 │       ├── output-styles/
-│       └── ...               agents/, commands/, workflows/ etc. are
-│                             scaffolded but empty
+│       └── ...               agents/, workflows/, monitors/, themes/, bin/
+│                             are scaffolded but empty
 └── README.md
 ```
 

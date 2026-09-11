@@ -1,4 +1,5 @@
 ---
+name: law
 description: The binding engineering law for this codebase - module boundaries, API and error contracts, validation placement, data classification and egress, AI-agent permissions, and observability. Read before writing, reviewing, or placing any backend (.NET/DDD) or frontend (React) code; before designing an endpoint, integration event, or agent tool; and whenever deciding whether a change is compliant.
 ---
 
