@@ -2,6 +2,8 @@
 
 This phase covers analyzing GitHub issues for parallel work streams and launching agents to execute them.
 
+Read `conventions.md` first — it defines the task and progress frontmatter schemas, the git and worktree conventions, and the `.claude/` paths this phase reads and writes.
+
 ---
 
 ## Issue Analysis

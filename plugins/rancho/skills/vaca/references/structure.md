@@ -2,6 +2,8 @@
 
 This phase converts a technical epic into concrete, numbered task files with dependency and parallelization metadata.
 
+Read `conventions.md` first — it defines the task frontmatter schema, the numbering rules, and the `.claude/` paths this phase writes against.
+
 ---
 
 ## Epic Decomposition

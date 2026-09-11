@@ -2,6 +2,8 @@
 
 Tracking operations use bash scripts directly for speed and consistency. The LLM is not needed for these — just run the script and present the output.
 
+The scripts parse frontmatter themselves, so this phase does not require `conventions.md`. Read it only if you need to interpret a field by hand or explain what a report means.
+
 ---
 
 ## Script-First Rule

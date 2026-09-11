@@ -2,6 +2,8 @@
 
 This phase turns an idea into a structured PRD, then converts the PRD into a technical epic ready for decomposition.
 
+Read `conventions.md` first — it defines the PRD and epic frontmatter schemas, the `.claude/` paths, and the datetime rule this phase writes against.
+
 ---
 
 ## Writing a PRD

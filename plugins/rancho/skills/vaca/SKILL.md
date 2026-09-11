@@ -30,7 +30,8 @@ Before doing anything, read `${CLAUDE_SKILL_DIR}/references/conventions.md` for 
 ### 3. Sync — Push to GitHub
 **When**: Local epic/tasks need to become GitHub issues, progress needs to be posted as comments, or a bug is found and needs a linked issue created.
 **Read**: `${CLAUDE_SKILL_DIR}/references/sync.md`
-**Covers**: Epic sync (epic + tasks → GitHub issues), issue sync (progress comments), closing issues/epics, bug reporting against completed issues.
+**Covers**: Epic sync (epic + tasks → GitHub issues), issue sync (progress comments), closing issues, merging an epic, bug reporting against completed issues.
+`sync.md` is a router: it carries the repository safety check and points at one of `sync-epic.md`, `sync-issue.md`, `sync-close.md`, `sync-merge.md`, `sync-bug.md`. Read the router plus the one operation, not all of them.
 
 ### 4. Execute — Start building
 **When**: User wants to start working on one or more GitHub issues with parallel agents.
