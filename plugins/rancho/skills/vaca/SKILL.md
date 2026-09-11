@@ -34,9 +34,15 @@ Before doing anything, read `${CLAUDE_SKILL_DIR}/references/conventions.md` for 
 `sync.md` is a router: it carries the repository safety check and points at one of `sync-epic.md`, `sync-issue.md`, `sync-close.md`, `sync-merge.md`, `sync-bug.md`. Read the router plus the one operation, not all of them.
 
 ### 4. Execute — Start building
-**When**: User wants to start working on one or more GitHub issues with parallel agents.
+**When**: User wants to start working on a GitHub issue with parallel agents, or to continue an epic already under way.
 **Read**: `${CLAUDE_SKILL_DIR}/references/execute.md`
-**Covers**: Issue analysis (parallel work stream identification), launching parallel agents, coordinating worktrees.
+**Covers**: Issue analysis (parallel work stream identification), launching work streams, closing a session out, resuming after a `/clear`.
+
+**One session carries one issue.** Streams launch as the `vaca-stream` agent;
+when the last of them finishes, a hook locks the session and refuses every
+further prompt until the user runs `/clear`. Close the issue out in the same
+turn the streams end — that is the last turn you get. `execute.md` has the
+full discipline, and nothing else in this skill may work around it.
 
 ### 5. Track — Know where things stand
 **When**: User asks for status, standup report, what's blocked, what's next, or needs to validate state.
@@ -91,6 +97,7 @@ Parse to epic:      "turn the X PRD into an epic"
 Decompose:          "break down the X epic into tasks"
 Sync to GitHub:     "push the X epic to GitHub"
 Start an issue:     "start working on issue 42"
+After a /clear:     "continue the X epic"
 Check status:       "what's our status" / "standup"
 What's next:        "what should I work on next"
 Merge epic:         "merge the X epic"

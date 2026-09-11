@@ -2,7 +2,35 @@
 
 This phase covers analyzing GitHub issues for parallel work streams and launching agents to execute them.
 
-Read `conventions.md` first — it defines the task and progress frontmatter schemas, the git and worktree conventions, and the `.claude/` paths this phase reads and writes.
+Read `conventions.md` first — it defines the task, progress, and work stream frontmatter schemas, the git and worktree conventions, and the `.claude/` paths this phase reads and writes.
+
+---
+
+## Session Discipline
+
+**One session carries one issue.** A session analyses that issue, launches its
+streams, sees them finish, closes the work out, and ends. It does not go on to
+a second issue.
+
+This is enforced, not encouraged. A `PreToolUse` hook counts every `vaca-stream`
+launch and a `SubagentStop` hook counts every finish; when the counts balance,
+the session is locked and every further user prompt is refused with an
+instruction to `/clear`. Nothing you do in this phase can unlock it, and nothing
+needs to: the lock arms *after* the streams end, so the close-out below still
+runs in the session that has the context for it.
+
+What this requires of you:
+
+- **Never launch streams for a second issue in a session that has already run
+  one.** The hook will not stop you at launch time, and the result is an issue
+  whose work happened in a session with no room left to close it out.
+- **Close out in the same turn the last stream finishes** — see *Closing Out a
+  Session* below. The user cannot send you another message after that point.
+- **End by telling the user to `/clear`**, and what to say next.
+
+Cross-issue parallelism is still available; it is just one session per issue
+rather than one session for several. Two issues at once means two sessions
+against the same epic worktree.
 
 ---
 
@@ -98,47 +126,52 @@ mkdir -p .claude/epics/<epic>/updates/<N>
 current_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 ```
 
-Create `.claude/epics/<epic>/updates/<N>/stream-<X>.md` for each stream:
-```markdown
----
-issue: <N>
-stream: <stream_name>
-started: <datetime>
-status: in_progress
----
-## Scope
-## Progress
-- Starting implementation
-```
+Create `.claude/epics/<epic>/updates/<N>/stream-<X>.md` for each stream, to the
+work stream schema in `conventions.md` — `status: in_progress`, `completion: 0%`,
+`checkpoint: 0/0`, `last_commit: (none yet)`, and an empty `## Checkpoints`
+section.
+
+The agent fills the checkpoint list in before it writes any code, and ticks it
+off one commit at a time. Do not write the checkpoints for it: the agent is the
+one that can see the shape of the work, and a list written here would be a guess
+it then has to argue with.
+
+These files live at the **project root**, not in the worktree — `conventions.md`
+says why.
 
 **Step 3 — Launch parallel agents** for each stream that can start immediately:
 
 ```yaml
 Task:
   description: "Issue #<N> Stream <X>"
-  subagent_type: "general-purpose"
+  subagent_type: "vaca-stream"
   prompt: |
-    You are working on Issue #<N> in the epic worktree at: ../epic-<name>/
-    
-    Your stream: <stream_name>
-    Your scope — files to modify: <file_patterns>
-    Work to complete: <stream_description>
-    
-    Instructions:
-    1. Read the engineering law via the /rancho:law skill, and its backend or
-       frontend reference for the tree you are touching. It is binding: it
-       decides what the code must look like. Where the task and the law
-       disagree, stop and report it rather than shipping the violation.
-    2. Read full task from: .claude/epics/<epic>/<N>.md
-    3. Read analysis from: .claude/epics/<epic>/<N>-analysis.md
-    4. Work ONLY in your assigned files
-    5. Commit frequently: "Issue #<N>: <specific change>"
-    6. Update progress in: .claude/epics/<epic>/updates/<N>/stream-<X>.md
-    7. If you need to touch files outside your scope, note it in your progress file and wait
-    8. Never use --force on git operations
-    
-    Complete your stream's work and mark status: completed when done.
+    Issue #<N>, Stream <X>: <stream_name>
+
+    Worktree (code):  ../epic-<name>/
+    Project root (state): <absolute path>
+    Epic: <epic>
+
+    Your scope — the only files you may modify:
+      <file_patterns>
+
+    Work to complete:
+      <stream_description>
+
+    Your stream file: .claude/epics/<epic>/updates/<N>/stream-<X>.md
+
+    Siblings running now: <other streams, or "none">
+    Shared files owned by another stream: <files, or "none">
 ```
+
+The `vaca-stream` agent carries the standing rules — read the law first, stay in
+scope, checkpoint list before code, commit then update the stream file, never
+`--force`. Do not restate them in the prompt. One copy, or they drift, and the
+copy that drifts is the one the agent actually reads.
+
+`subagent_type` must be exactly `vaca-stream`. The session hooks identify a work
+stream by agent type; launched as `general-purpose` a stream is invisible to
+them, and the session will never lock.
 
 Streams with unmet dependencies are queued — launch them as their dependencies complete.
 
@@ -162,22 +195,65 @@ gh issue edit <N> --add-assignee @me --add-label "in-progress"
 
 **Output:**
 ```
-✅ Started work on issue #<N>
+✅ Started issue #<N> — <title>
 
-Launched N agents:
-  Stream A: <name> ✓ Started
-  Stream B: <name> ✓ Started
-  Stream C: <name> ⏸ Waiting (depends on A)
+Launched N streams:
+  Stream A: <name> ✓ running
+  Stream B: <name> ✓ running
+  Stream C: <name> ⏸ queued (waits on A)
 
-Monitor: check progress in .claude/epics/<epic>/updates/<N>/
-Sync updates: "sync issue <N>"
+State: .claude/epics/<epic>/updates/<N>/
+This session carries issue #<N>, and ends when its streams do.
 ```
 
 ---
 
-## Starting a Full Epic
+## Closing Out a Session
 
-**Trigger**: User wants to launch parallel agents across all ready issues in an epic at once.
+**Trigger**: every stream launched in this session has finished.
+
+The session locks the moment the last stream ends — the user cannot send another
+message until they `/clear`. Everything below therefore happens in that same
+turn, unprompted.
+
+**Step 1 — Reconcile the stream files against git.** For each stream, check its
+`last_commit` against `git -C ../epic-<name> log --oneline`. A file that lags
+behind its commits belongs to a stream that died between committing and
+recording; repair it from the log before reporting anything out of it.
+
+**Step 2 — Update** `progress.md` and `execution.md` for the issue: every stream
+moved to Completed or Blocked, nothing left in Active.
+
+**Step 3 — Post the progress comment** — Sync phase, `sync-issue.md`.
+
+**Step 4 — Close the issue if its acceptance criteria are met** —
+`sync-close.md`. If they are not, name the ones outstanding and leave it open.
+
+**Step 5 — Report, then stop:**
+
+```
+✅ Issue #<N> complete — <what shipped>
+   Streams:  A ✓   B ✓   C ✓
+   Commits:  <n> on epic/<name>
+   Issue:    closed          (or: open — <criterion> outstanding)
+
+This session is finished. Run /clear, then say:
+  "continue the <feature> epic"
+```
+
+Do not offer to carry on, and do not start the next issue. The next issue
+belongs to the next session, and implying otherwise sets the user up to hit a
+refusal they did not expect.
+
+---
+
+## Starting or Continuing an Epic
+
+**Trigger**: "start the <feature> epic", "continue the <feature> epic", "what should I pick up".
+
+One session carries one issue, so this resolves to exactly one: the next issue
+that is ready. Start and continue are the same operation — which is why the
+phrasing does not have to be exact.
 
 ### Preflight
 - Verify `.claude/epics/<name>/epic.md` exists and has a `github:` field (i.e., it's been synced).
@@ -191,28 +267,53 @@ Sync updates: "sync issue <N>"
 **Step 2 — Categorize tasks:**
 - Ready: status=open, no unmet depends_on
 - Blocked: has unmet depends_on
-- In Progress: already has an execution file
+- In Progress: has an execution file — **reconcile before believing it** (Step 3)
 - Complete: status=closed
 
-**Step 3 — Analyze any ready tasks** that don't have an analysis file yet (run issue analysis inline).
+**Step 3 — Reconcile anything in progress.** No agent survives a `/clear`, so an
+in-progress stream in a fresh session is not running. It either finished without
+recording the fact, or it stopped partway. For each one:
 
-**Step 4 — Launch agents** for all ready tasks following the same per-issue agent launch pattern above.
+- Compare the stream file's `last_commit` with `git -C ../epic-<name> log`.
+- **Commits after `last_commit`** — the file is behind. Bring it up to date from
+  the log, then judge the stream on what is committed rather than on what it
+  claimed.
+- **No later commits, checkpoints outstanding** — the stream stopped partway.
+  Relaunch it with the unticked checkpoints as its scope.
+- **Every checkpoint ticked** — mark it `completed` and move on.
 
-**Step 5 — Create/update** `.claude/epics/<name>/execution-status.md` with all active agents and queued issues.
+Say what you reconciled and why. A silently corrected record is how a record
+stops being worth reading.
 
-**Step 6 — As agents complete**, check if blocked issues are now unblocked and launch those agents.
+**Step 4 — Take one issue.** If anything survived reconciliation as unfinished,
+that is the issue. Otherwise take the first ready one, in `next.sh` order. Name
+what else is waiting so the user can see the queue — but do not launch it.
+
+**Step 5 — Analyze it** if it has no analysis file, then follow *Starting an
+Issue* above.
+
+**Step 6 — Update** `.claude/epics/<name>/execution-status.md` with the issue
+this session took and the issues still queued.
+
+Running two issues at once is two sessions, in two terminals, against the same
+epic worktree. It is not two issues in this one.
 
 ---
 
 ## Agent Coordination Rules
 
-When multiple agents work in the same worktree simultaneously:
+The rules an agent follows — read the law first, stay in scope, checkpoints
+before code, commit then record, never `--force`, never auto-resolve a conflict
+— are in the `vaca-stream` agent definition, which is what the agents actually
+read. They are not restated here, so that there is one copy to keep current.
 
-- Each agent works only on files in its assigned stream scope.
-- Agents commit frequently with `Issue #<N>: <description>` format.
-- Before modifying a shared file, check `git status <file>` — if another agent has it modified, wait and pull first.
-- Agents sync via commits: `git pull --rebase origin epic/<name>` before starting new file work.
-- Conflicts are never auto-resolved — agents report them and pause.
-- No `--force` flags ever.
+What stays with the main session:
 
-Shared files that commonly need coordination (types, config, package.json) should be handled by one designated stream; others pull after that commit.
+- **Shared files belong to exactly one stream.** Types, config, `package.json`
+  and their like are a scope decision, and scope is decided at launch. Streams
+  cannot negotiate it between themselves at runtime.
+- **Launch queued streams** as the streams they depend on finish.
+- **Never relaunch a stream that is already running** — check `execution.md`
+  first.
+- **A blocked stream is yours to resolve.** It stopped precisely because the fix
+  was outside the scope you gave it.

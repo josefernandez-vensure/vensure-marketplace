@@ -78,6 +78,33 @@ completion: 0%
 ---
 ```
 
+### Work stream (.claude/epics/<name>/updates/<N>/stream-<X>.md)
+```yaml
+---
+issue: <N>
+stream: <X>                 # A, B, C ...
+name: <stream name>
+agent: vaca-stream
+status: in_progress | blocked | completed
+started: <ISO 8601>
+updated: <ISO 8601>         # moves with every checkpoint, never behind one
+completion: 0%
+checkpoint: <done>/<total>  # checkpoints ticked / planned
+last_commit: <sha>          # newest commit this state reflects
+---
+```
+
+The body carries `## Scope`, `## Checkpoints`, `## Notes`, and `## Blockers`.
+Checkpoints are a written-up-front list of independently committable units,
+ticked as `- [x] 1. <unit> — <sha> — <ISO 8601>`.
+
+**The stream file is updated immediately after each checkpoint commits, not at
+the end of the stream.** Reports, standups, and the session that picks the work
+up after a `/clear` all read these files and nothing else, so a file that runs
+ahead of the commits is a lie and a file that lags behind them is a stranded
+stream nobody can tell from an abandoned one. `last_commit` is what makes the
+claim checkable against `git log` instead of merely believed.
+
 ---
 
 ## Datetime Rule
@@ -127,6 +154,14 @@ grep 'github:' <file> | grep -oE '[0-9]+$'
 ---
 
 ## Git / Worktree Conventions
+
+**Code is written in the worktree. State is written at the project root.**
+Every `.claude/` path in these references resolves against the project root,
+including the progress and stream files that agents working inside a worktree
+write. The tracking scripts, the status reports, and the next session after a
+`/clear` all read `.claude/` from the project root; state written into the
+worktree copy stays invisible to all of them until the epic merges, which is
+after the point where anyone needed it.
 
 - One branch per epic: `epic/<name>`
 - Worktrees live at `../epic-<name>/` (sibling to project root)

@@ -13,16 +13,18 @@ rancho/
 │   │   ├── SKILL.md             the root law
 │   │   └── references/          backend.md, frontend.md, enforcement.md
 │   └── vaca/
-│       └── SKILL.md             Vensure Agentic Code Assistant  [placeholder]
-├── agents/                      subagent definitions, flat .md      [empty]
-├── commands/                    skills as flat .md files           [empty]
-├── output-styles/               output style definitions, .md      [empty]
+│       ├── SKILL.md             Vensure Agentic Code Assistant
+│       ├── references/          one file per phase, plus conventions.md
+│       └── scripts/             tracking reports, lib/ holds the awk readers
+├── agents/                      subagent definitions, flat .md [vaca-stream]
+├── commands/                    skills as flat .md files            [help]
+├── output-styles/               output style definitions, .md [asd-ste100]
 ├── workflows/                   workflow scripts, .js              [empty]
 ├── monitors/                    background monitors, monitors.json [empty]
 ├── themes/                      color themes, .json                [empty]
-├── scripts/                     hook + utility scripts             [empty]
+├── scripts/                     hook scripts, lib/ holds their shared state
 ├── bin/                         executables added to PATH          [empty]
-├── hooks/hooks.json             event handlers            [SessionStart]
+├── hooks/hooks.json             event handlers             [four events]
 ├── context/prime-directive.md   payload the SessionStart hook prints
 ├── .mcp.json                    MCP servers                        [empty]
 ├── .lsp.json                    LSP servers                        [empty]
@@ -188,6 +190,45 @@ claude plugin validate ./plugins/rancho  # check structure
 individually: skills via `/rancho:<name>`, agents in `/context`, hooks
 by triggering their event and reading the debug log, MCP and LSP servers in
 `/plugin` under Errors.
+
+## The session gate
+
+VACA runs one issue per session. Four hooks enforce that, and `scripts/` holds
+them plus the state they share:
+
+| Event | Matcher | Script | What it does |
+|---|---|---|---|
+| `PreToolUse` | `Task` | `stream-open.sh` | Records a launch, if the payload names `vaca-stream` |
+| `SubagentStop` | `.*vaca-stream.*` | `stream-close.sh` | Records the finish, and arms the lock once the counts balance |
+| `UserPromptSubmit` | — | `session-gate.sh` | Exits 2 while the lock is armed: the prompt is blocked and erased, and stderr is shown to the user |
+| `SessionStart` | — | `session-reset.sh` | Releases the lock, then injects the project's current VACA state |
+
+Why those four:
+
+- **`UserPromptSubmit` is the only event that can stop a session continuing.**
+  `Stop` does the opposite — blocking it makes Claude carry on rather than stop.
+- **No hook can run `/clear`.** Slash commands are client-side. The gate can
+  refuse to work until the user clears; it cannot clear for them.
+- **Counting launches and finishes** — rather than asking the model to report
+  them — is what makes "this issue is done" a fact the harness knows. It is also
+  why streams must launch as `subagent_type: "vaca-stream"`: the matcher is how
+  a work stream is told apart from a bookkeeping subagent.
+- **Arming only when the counts balance** is what keeps parallel streams
+  working. The first of three to finish must not lock the session the other two
+  are still running in.
+
+State lives in `${CLAUDE_PLUGIN_DATA}/vaca-sessions/<session-id>.streams` and
+`.lock`, falls back to the temp directory when that variable is unset, and ages
+out after seven days. Nothing is written into the project tree.
+
+Two escape hatches, both deliberate: any prompt beginning with `/` passes, or
+`/clear` itself could be swallowed by the gate; and a prompt containing
+`VACA OVERRIDE` lifts the lock outright.
+
+These scripts read their JSON input with `grep`, not `jq`. `jq` is not a
+dependency of this plugin and is not present on every machine that installs it,
+and every field they need is a flat string. A requirement more structured than
+that is a reason to take the dependency, not to write a longer regex.
 
 ## The law
 
