@@ -1,5 +1,63 @@
 # Changelog
 
+## 1.3.0
+
+- `backend.md` §2 admits the two shared platform projects. A modular monolith
+  needs its dispatch pipeline somewhere, and the per-module table had no row for
+  it: `SharedKernel` is BCL-only because `Domain` references it, and a module
+  MUST NOT reference `Api`, so `Platform.Application` and
+  `Platform.Infrastructure` are what is left. Both have rows now, and the two
+  module rows admit the matching half of the pair.
+- The reference table is two columns, projects and packages. It was one column
+  mixing both, which is how the `Domain` row's "BCL, `SharedKernel`" reads as a
+  statement about packages. Written the same way, `Platform.Application` would
+  have been banned from the Mediator and FluentValidation it exists to hold.
+  `BE-01` also now has an unambiguous thing to parse.
+- `SharedKernel` has a row. It never did, so a check asserting that it declares
+  no package was enforcing a rule the law did not state.
+- `Result`, the solution-wide page shape and the cursor type live in
+  `Platform.Application`. `Domain` does not reference that project, so "the
+  domain MUST NOT reference `Result`" is carried by the compiler instead of by an
+  analyzer telling two types apart behind one shared reference. `Contracts`
+  references `Platform.Application` in turn, because a published query message
+  names both its `Result` response and the abstraction it is dispatched by — and
+  that abstraction is a package every project defining message types must
+  reference, so the published surface could not have been kept package-free by
+  any arrangement.
+- The `Api` row admits `SharedKernel` and `Platform.Application`. It did not, so
+  the `Result`-to-`ProblemDetails` translator the law itself assigns to `Api`
+  (`SKILL.md` §6) could not name the type it translates. That defect predates
+  everything else here.
+- Four facts sit above the table and the table is its consequence: a shared
+  project never names a module or `Api`; a module reaches another module only
+  through its `Contracts`; inside a module dependencies point inward, with
+  `Domain` and `Contracts` as peers that do not name each other; `Api` composes
+  and nothing references `Api`. Adding a project is deriving a row from four
+  sentences rather than amending the law.
+- Every project declares its kind as an MSBuild property. Inferring it from the
+  assembly name cannot separate `Platform.Application` from
+  `<Module>.Application`, and has no answer at all for a project it has not seen,
+  which is how a check acquires a silent escape hatch. A kind that is missing,
+  misspelled or absent from the table may reference nothing and be referenced by
+  nothing.
+- Test projects have a row, and no other kind may reference one.
+- A module's projects exist **at most** once per module rather than once. A
+  module with no model of its own omits `Domain`; one that publishes nothing to
+  its siblings omits `Contracts`. The previous wording made such a module a
+  defect by existing.
+- `enforcement.md` `BE-41` stops riding on `BE-01`. It was recorded as covered
+  because `Application` cannot reference EF; with the unit-of-work port in
+  `Platform.Application` a command handler can reach a commit path without ever
+  naming EF, so it needs its own assertion.
+- Data classification defines each class by a test rather than by a list of
+  field names, and the examples are stated to illustrate rather than enumerate.
+  A list reads as exhaustive, which is the wrong reading under "unclassified is
+  `Restricted`". The law also no longer assumes an HR domain: two assertions
+  about one and the field examples drawn from one are gone, and nothing the law
+  requires changed with them.
+
+No rule gained or lost a ⚙, so `enforcement.md`'s inventory counts are unchanged.
+
 ## 1.2.0
 
 - One issue per session, enforced rather than encouraged. Four hooks:

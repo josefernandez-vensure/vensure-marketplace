@@ -73,7 +73,7 @@ Eleven root rules are **duplicated** by a subordinate file, and four backend rul
 
 | Id | Rule | Mechanism | Status | Effort | Check |
 |---|---|---|---|---|---|
-| BE-01 | Reference table: each project references only what the table allows | `proj` | build | S | `ProjectReference` allowlist per project kind, asserted in CI and by `arch` |
+| BE-01 | Reference table: each project references only what the table allows | `proj` | build | S | Allowlist keyed on the kind each project declares - an undeclared or unrecognised kind fails. Asserted in CI and by `arch` |
 | BE-02 | Domain references no EF Core, Mediator, ASP.NET, `IHttpContextAccessor`, application types | `proj` + `arch` | build | S | Banned assembly references on the Domain project |
 | BE-03 | No grouping by pattern: no `Application/Handlers/`, `Domain/Entities/`, etc. | `ci` | build | S | Forbidden directory-name check (denylist only - the positive form is not checkable) |
 
@@ -133,7 +133,7 @@ Eleven root rules are **duplicated** by a subordinate file, and four backend rul
 | BE-38 | Mapping in `IEntityTypeConfiguration<T>`; no mapping attributes on domain types | `arch` | build | S | No EF attributes present on any Domain type |
 | BE-39 | EF InMemory provider MUST NOT be used | `proj` | build | S | Banned package reference; `BannedApiAnalyzers` on `UseInMemoryDatabase` |
 | BE-40 | Repositories MUST NOT expose `IQueryable`, `DbSet`, or EF types | `arch` | build | S | Signature assertion on repository ports |
-| BE-41 | Command handlers write only through the repository | `arch` | build | S | Covered by BE-01 and BE-13 |
+| BE-41 | Command handlers write only through the repository | `arch` | build | S | No longer covered by BE-01: `Application` now references `Platform.Application`, where the unit-of-work port is declared. Assert directly - no type in a module `Application` references it |
 | BE-42 | No navigation properties between aggregate roots | `contract` | build | M | Unblocked by P-02. EF model navigation targets, resolved through the root marker |
 | BE-43 | Domain types acquire no public parameterless ctors, public setters, or EF attributes | `arch` | build | S | Extends BE-04 and BE-38 |
 | BE-44 | Cache decorators registered explicitly per query, never auto-applied | `contract` | build | M | Container inspection: no open-generic decorator registration over `IQueryHandler<,>` |

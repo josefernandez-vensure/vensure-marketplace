@@ -121,12 +121,14 @@ Three translation boundaries. Each is owned by exactly one layer. No layer may s
 
 Classification is a property of the **data**, not of the endpoint that happens to return it. A field's class travels with it through every layer, DTO, log line, cache entry, and model prompt.
 
-| Class | Examples | Rule |
+| Class | The test | Rule |
 |---|---|---|
-| `Public` | Published job listings, marketing copy | No restriction. |
-| `Internal` | Org structure, worksite locations, operational data | Stays inside the authenticated boundary. |
-| `Confidential` | Compensation, performance, benefits elections, hours, personal contact details | Crosses a boundary only where the operation's policy grants that field. |
-| `Restricted` | SSN and TIN, date of birth, bank and payment details, government and immigration documents, health and medical, protected-class attributes | MUST NOT cross any egress boundary below without a named, reviewed exception declared at that boundary. |
+| `Public` | Already published outside the authenticated boundary, deliberately | No restriction. |
+| `Internal` | Not secret, but not for publication: how the organization is arranged and how it operates | Stays inside the authenticated boundary. |
+| `Confidential` | Attributable to a person or a counterparty, and disclosing something they would expect to control | Crosses a boundary only where the operation's policy grants that field. |
+| `Restricted` | Regulated by statute or contract, or sufficient on its own to impersonate, defraud, or discriminate against its subject | MUST NOT cross any egress boundary below without a named, reviewed exception declared at that boundary. |
+
+The test decides the class. The following illustrate it and do not enumerate it: `Public` - a published listing, marketing copy. `Internal` - org structure, site locations, operational metrics. `Confidential` - contact details, pay, performance, hours worked. `Restricted` - government identifiers, date of birth, bank and payment details, health and medical, protected-class attributes. A field this codebase holds that no example names is still classified, by the test.
 
 - **Unclassified is `Restricted`.** Deny by default applies to data, not only to operations. ⚙
 - A class MUST be declared once, on the type that carries the value - never repeated per DTO, per log call, or per endpoint. Two declarations of the same fact will drift. Mechanism in `references/backend.md` §7.
@@ -147,7 +149,7 @@ Each boundary has exactly one owner. There is no other path across it.
 
 - A model's context is egress in **both** directions: tool arguments, tool output, system and user prompts, retrieved documents, and retained conversation history. All of it leaves the boundary.
 - Egress to a model is not reversible. Once a value is sent it is disclosed; the response is notification and rotation, not deletion.
-- Agents reference sensitive records **by id**. The id is resolved to values by an authorized read in the user's own session, not by widening what the model may see. This is what makes agents usable over an HR domain at all.
+- Agents reference sensitive records **by id**. The id is resolved to values by an authorized read in the user's own session, not by widening what the model may see. This is what makes agents usable over regulated personal data at all.
 - Integration events MUST NOT carry `Restricted` payloads. They are persisted in the outbox, replayed, and read by operators - reference by id. ⚙
 
 ## 9. Observability

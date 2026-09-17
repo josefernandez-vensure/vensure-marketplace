@@ -12,17 +12,42 @@ Verify third-party licenses before pinning. MediatR and FluentAssertions moved t
 
 ## 2. Project Reference Law ⚙
 
-| Project | May reference |
-|---|---|
-| `<Module>.Domain` | BCL, `SharedKernel` |
-| `<Module>.Contracts` | BCL, `SharedKernel` |
-| `<Module>.Application` | own Domain + Contracts, other modules' Contracts |
-| `<Module>.Infrastructure` | own Application, Domain, Contracts |
-| `Api` | Contracts + Infrastructure, for composition only |
+Four facts decide every reference. The table below is their consequence, not a second set of rules:
 
-The Domain project MUST NOT reference EF Core, Mediator, ASP.NET, `IHttpContextAccessor`, or any application type. Enforced by `.csproj` and by an architecture test.
+1. A **shared** project - `SharedKernel`, `Platform.*` - MUST NOT reference a module or `Api`.
+2. A module reaches another module only through that module's `Contracts`.
+3. Inside a module, dependencies point inward: `Infrastructure` to `Application` to `Domain` and `Contracts`. `Domain` and `Contracts` are peers and MUST NOT reference each other.
+4. `Api` composes; nothing references `Api`.
 
-A module is a Bounded Context. The four projects above exist **once per module**, never per feature. A module has one Domain, shared by all of its features - features are use cases over that model, not copies of it. Vertical slicing applies to the **Application project only**.
+| Project | Projects it may reference | Packages it may declare |
+|---|---|---|
+| `SharedKernel` | none | none - BCL only |
+| `<Module>.Domain` | `SharedKernel` | none - BCL only |
+| `Platform.Application` | `SharedKernel` | dispatch, validation, authorization and logging abstractions |
+| `<Module>.Contracts` | `SharedKernel`, `Platform.Application` | none of its own |
+| `<Module>.Application` | own Domain + Contracts, other modules' Contracts, `Platform.Application` | validation |
+| `Platform.Infrastructure` | `SharedKernel`, `Platform.Application` | EF Core, messaging, telemetry |
+| `<Module>.Infrastructure` | own Application, Domain, Contracts, `Platform.Infrastructure` | EF Core, messaging, external clients |
+| `Api` | any `*.Contracts`, any `*.Infrastructure`, `Platform.Infrastructure`, `SharedKernel`, `Platform.Application` | ASP.NET Core, hosting, the source generator |
+| `<Anything>.Tests` | any project | test packages |
+
+Every project MUST declare its kind as an MSBuild property whose value is one of the rows above. A project whose kind is missing, misspelled, or absent from the table may reference nothing and be referenced by nothing: adding a kind of project means adding a row, derived from the four facts. Kind is declared rather than inferred from the assembly name because `Platform.Application` and `<Module>.Application` are different rows that no name-suffix rule separates, and because a rule that guesses has no answer for a project it has never seen.
+
+A test project MUST NOT be referenced by a project of any other kind. A fixture built to prove a check fails MUST NOT appear in the solution file or under the production source root.
+
+The table is an allowlist over **direct** `ProjectReference` entries, not over the transitive closure. A project MAY declare a reference it could also reach transitively; it MUST NOT declare one its row omits. Read as the closure, every row would become the union of its dependencies' rows and the table would check nothing.
+
+The Domain project MUST NOT reference EF Core, Mediator, ASP.NET, `IHttpContextAccessor`, or any application type. Enforced by `.csproj` and by an architecture test. `SharedKernel` is BCL-only for the same reason one step removed: `Domain` references it, so a package added there reaches every aggregate in the solution.
+
+**`SharedKernel` and the two `Platform.*` projects are shared, not modules.** `Platform.*` carries the dispatch pipeline - `Result`, the message abstractions, the solution-wide page shape and cursor type, and the behaviors. A platform project that names a module has stopped being platform, by fact 1.
+
+`Result` lives in `Platform.Application`, not in `SharedKernel`. `Domain` does not reference `Platform.Application`, so "the domain MUST NOT reference `Result`" (`../SKILL.md` §6) is carried by the compiler rather than by an analyzer.
+
+`Contracts` references `Platform.Application` because a published query message MUST name both its `Result` response and the abstraction it is dispatched by. That is the only reason for the reference: nothing else from `Platform.Application` may appear in a contract's public surface, so the committed contract snapshot (§4) is coupled to the message abstraction and to nothing else.
+
+"For composition only" governs the reference, not the contents of `Api`: `Api` registers Infrastructure in the container and MUST NOT call into it. `SharedKernel` and `Platform.Application` are exempt from that qualifier, because `Api` uses them directly at the two boundaries the law assigns it - `Result` to `ProblemDetails` (`../SKILL.md` §6) and the correlation id (§10).
+
+A module is a Bounded Context. Its projects exist **at most once per module**, never per feature: a module with no model of its own omits `Domain`, one that publishes nothing to its siblings omits `Contracts`, and `Application` is what makes a module dispatchable at all. A module has one Domain, shared by all of its features - features are use cases over that model, not copies of it. Vertical slicing applies to the **Application project only**.
 
 | Project | Organized by | Contains |
 |---|---|---|
@@ -30,6 +55,8 @@ A module is a Bounded Context. The four projects above exist **once per module**
 | `Application` | Feature (use case) | `<Feature>/` - command or query, handler, validator, response DTO, operation declaration |
 | `Infrastructure` | Technical concern | `Persistence/`, `Messaging/`, `External/` |
 | `Contracts` | Published surface | `IntegrationEvents/`, `Queries/` |
+| `Platform.Application` | Technical concern | `Abstractions/`, `Behaviors/` |
+| `Platform.Infrastructure` | Technical concern | `Persistence/`, `Messaging/` |
 
 Grouping by pattern is forbidden: no `Application/Handlers/`, no `Application/Commands/`, no `Domain/Entities/`, no `Domain/ValueObjects/`. ⚙
 
@@ -288,7 +315,7 @@ public static readonly AgentOperation <Operation> = new(
 - A class is declared **once**, on the type that carries the value: the Value Object or the strongly-typed id. The attribute lives in `SharedKernel`, so `Domain` can carry it without acquiring a framework dependency. ⚙
 - An architecture test MUST assert that every property reachable from an egress boundary resolves to a class. A property whose type carries no declaration is `Restricted`, and fails at the boundary. ⚙
 - The class MUST be emitted into the OpenAPI document as a vendor extension on every property of every Response DTO, so it reaches the frontend with the contract. The emitter MUST fail rather than emit a property whose class it cannot resolve. ⚙
-- This is what §3's Value Object rule buys. A `string Ssn` cannot be classified and fails the test; an `Ssn` value object carries its class into every DTO, log line, and cache key it ever reaches.
+- This is what §3's Value Object rule buys. A `string` holding a government identifier cannot be classified and fails the test; a `NationalId` value object carries its class into every DTO, log line, and cache key it ever reaches.
 
 ```csharp
 // Illustrative.
@@ -305,16 +332,16 @@ public sealed record NationalId
 
 - Structured logging only. A message template MUST NOT interpolate a classified value - a destructuring policy cannot redact what interpolation has already flattened into a string. ⚙
 - The destructuring policy redacts by class and MUST fail closed: a type it cannot resolve is redacted, not written.
-- Log the identifier of a record, never its sensitive contents. `EmployeeId` is loggable; `NationalId` is not.
-- Exception messages, `ProblemDetails`, and validation errors MUST NOT echo a classified value. `../SKILL.md` §6 forbids leaking internals; this extends it to the data. A validator reporting that `123-45-6789` is not a valid SSN has just written that value to a log, a browser, and an error tracker in one step.
+- Log the identifier of a record, never its sensitive contents. `PersonId` is loggable; `NationalId` is not.
+- Exception messages, `ProblemDetails`, and validation errors MUST NOT echo a classified value. `../SKILL.md` §6 forbids leaking internals; this extends it to the data. A validator reporting that `123-45-6789` is not a valid national id has just written that value to a log, a browser, and an error tracker in one step.
 
 ### The model-visible surface
 
 - Every model-visible DTO MUST be explicitly marked as such. ⚙
 - Reusing a UI Response DTO for a tool because the shape happens to fit is how a `Confidential` field reaches a vendor. Where the two audiences differ in class, they are two types.
 - An architecture test MUST assert that no model-visible DTO contains a `Confidential` or `Restricted` property, transitively through every nested type and collection. ⚙
-- Free text a user can write into - notes, comments, descriptions, reasons - MUST be treated as `Confidential` when it is model-visible. Its contents cannot be classified in advance, and in an HR domain they routinely contain exactly what this section exists to hold back.
-- A tool that needs a sensitive value in order to work is the wrong design. Move the work behind an operation and give the model the outcome, not the input: a model that must "check the SSN" instead invokes an operation that checks it.
+- Free text a user can write into - notes, comments, descriptions, reasons - MUST be treated as `Confidential` when it is model-visible. Its contents cannot be classified in advance, and in practice they routinely contain exactly what this section exists to hold back.
+- A tool that needs a sensitive value in order to work is the wrong design. Move the work behind an operation and give the model the outcome, not the input: a model that must "check the national id" instead invokes an operation that checks it.
 - Redaction MUST happen in the projection to the tool DTO, never in a prompt instruction. Prompt text is not a control (§8).
 
 ### Cache, events, and storage
