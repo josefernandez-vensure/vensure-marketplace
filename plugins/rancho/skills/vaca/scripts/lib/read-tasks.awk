@@ -9,7 +9,9 @@
 #
 # Call as: awk -f lib/read-tasks.awk .claude/epics/*/[0-9]*.md
 # The glob excludes .claude/epics/archived/<name>/<n>.md by depth, so archived
-# epics never reach a live report.
+# epics never reach a live report. It also matches non-task files that start
+# with a digit, such as 12-analysis.md; a file whose name is not all digits is
+# skipped whole, so it emits no record and its frontmatter never reaches a task.
 
 BEGIN { US = sprintf("%c", 31) }
 
@@ -26,12 +28,15 @@ function flush(   d) {
 
 FNR == 1 {
   flush()
-  file = FILENAME
   n = split(FILENAME, parts, "/")
   num = parts[n]; sub(/\.md$/, "", num)
+  skip = (num !~ /^[0-9]+$/)
+  file = skip ? "" : FILENAME
   epic = (n >= 2) ? parts[n-1] : ""
   infm = 0; seen = 0
 }
+
+skip { next }
 
 # Track the frontmatter block: it is the first --- ... --- pair.
 /^---[ 	]*$/ {
