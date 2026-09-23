@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.5
+
+- `vaca`'s task reader skips non-task files. The `[0-9]*.md` glob also matches
+  files such as `12-analysis.md`, which `read-tasks.awk` reported as a task
+  numbered `12-analysis`. A file whose name is not all digits is now skipped
+  whole: it emits no record, and none of its frontmatter lines reach the
+  next task.
+
 ## 1.4.0
 
 - The law stops naming an identity provider. `backend.md` §6 and `frontend.md`
