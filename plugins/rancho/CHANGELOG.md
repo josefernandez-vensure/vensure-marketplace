@@ -8,6 +8,26 @@
   whole: it emits no record, and none of its frontmatter lines reach the
   next task.
 
+## 1.4.1
+
+- VACA's frontmatter strip no longer empties the file it is stripping.
+  `conventions.md` and `sync-epic.md` both prescribed
+  `sed '1,/^---$/d; 1,/^---$/d'`, which deletes to end of file whenever the body
+  carries no second `---` - the normal case for an epic or a task. It appeared to
+  work only on documents that happened to contain a horizontal rule. Syncing the
+  `identity-and-roles` epic posted its epic issue with an empty body before this
+  was caught; every one of that epic's seven files strips to zero lines under the
+  old idiom and correctly under the new one. Both files now use an `awk` form
+  keyed on the first two delimiters, which also tolerates CRLF.
+- Both call sites check the body is non-empty before posting. An empty body is not
+  visibly wrong until the issue exists, and a posted issue cannot be un-posted.
+- `sync-epic.md`'s GitHub snippets match the tools. `gh issue create` has no
+  `--json` flag - it prints the URL, so the number comes from the URL.
+  `gh sub-issue add` takes positional arguments rather than `--parent`, and
+  `gh sub-issue create` accepts `--body` but not `--body-file`, so a task body of
+  any size is created with `gh issue create` and linked afterwards. All three
+  failed during the same sync.
+
 ## 1.4.0
 
 - The law stops naming an identity provider. `backend.md` §6 and `frontend.md`

@@ -126,8 +126,19 @@ rm <file>.bak
 
 When stripping frontmatter to get body content for GitHub:
 ```bash
-sed '1,/^---$/d; 1,/^---$/d' <file> > /tmp/body.md
+awk 'BEGIN{n=0} /^---\r?$/{n++; if(n<=2) next} n>=2' <file> > /tmp/body.md
+[ -s /tmp/body.md ] || { echo "❌ Body is empty - refusing to post"; exit 1; }
 ```
+
+**Use this, not `sed '1,/^---$/d; 1,/^---$/d'`.** That idiom silently empties the
+file whenever the body carries no further `---` line, which is the normal case for
+an epic or a task. The second range opens at line 1, finds that the first range has
+already consumed the closing delimiter, and deletes to end of file; it appears to
+work only on documents that happen to contain a horizontal rule. The `awk` form
+keys on the first two delimiters, tolerates CRLF, and cannot run past them.
+
+The emptiness check is not optional. An empty body is not visibly wrong until the
+issue is already posted, and a posted issue is a write nobody can take back.
 
 ---
 
