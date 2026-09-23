@@ -36,14 +36,25 @@ fail on the label.
 
 Strip frontmatter from epic.md, then:
 ```bash
-sed '1,/^---$/d; 1,/^---$/d' .claude/epics/<name>/epic.md > /tmp/epic-body.md
-epic_number=$(gh issue create \
+awk 'BEGIN{n=0} /^---\r?$/{n++; if(n<=2) next} n>=2' .claude/epics/<name>/epic.md > /tmp/epic-body.md
+[ -s /tmp/epic-body.md ] || { echo "❌ Epic body is empty - refusing to post"; exit 1; }
+epic_url=$(gh issue create \
   --repo "$REPO" \
   --title "Epic: <name>" \
   --body-file /tmp/epic-body.md \
-  --label "epic,epic:<name>,feature" \
-  --json number -q .number)
+  --label "epic,epic:<name>,feature")
+epic_number=$(echo "$epic_url" | grep -oE '[0-9]+$')
 ```
+
+Two things here are easy to get wrong and both post a broken issue before anything
+looks wrong:
+
+- **Strip with `awk`, never `sed '1,/^---$/d; 1,/^---$/d'`.** See `conventions.md`
+  — that idiom empties any file whose body carries no second `---`, which is the
+  normal case for an epic. Keep the emptiness check; a posted issue cannot be
+  un-posted.
+- **`gh issue create` has no `--json` flag.** It prints the issue URL, so take the
+  number from the URL.
 
 **Step 2 — Create task sub-issues:**
 
@@ -59,16 +70,29 @@ For ≥5 tasks: use parallel Task agents (3-4 tasks per batch).
 
 Per task:
 ```bash
-sed '1,/^---$/d; 1,/^---$/d' <task_file> > /tmp/task-body.md
-task_number=$(gh issue create \
+awk 'BEGIN{n=0} /^---\r?$/{n++; if(n<=2) next} n>=2' <task_file> > /tmp/task-body.md
+[ -s /tmp/task-body.md ] || { echo "❌ Task body is empty - refusing to post"; exit 1; }
+task_url=$(gh issue create \
   --repo "$REPO" \
   --title "<task_name>" \
   --body-file /tmp/task-body.md \
-  --label "task,epic:<name>" \
-  --json number -q .number)
-# or with sub-issues:
-# gh sub-issue create --parent $epic_number ...
+  --label "task,epic:<name>")
+task_number=$(echo "$task_url" | grep -oE '[0-9]+$')
+
+# Then, if the extension is available, link it under the epic:
+gh sub-issue add "$epic_number" "$task_number" --repo "$REPO"
 ```
+
+**`gh sub-issue` does not take the flags you would expect.** Create the issue with
+`gh issue create` and link it afterwards:
+
+- `add` takes **positional** arguments — `gh sub-issue add <parent> <child>`. There
+  is no `--parent` flag on `add`.
+- `gh sub-issue create` accepts `--body` but **not** `--body-file`, which is why a
+  task body of any real size goes through `gh issue create` first.
+
+Link failures are silent if you discard stderr. Verify with
+`gh sub-issue list "$epic_number" --repo "$REPO"` before moving on.
 
 **Step 3 — Rename task files and update references:**
 
