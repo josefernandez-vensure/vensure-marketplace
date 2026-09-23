@@ -225,6 +225,35 @@ Two escape hatches, both deliberate: any prompt beginning with `/` passes, or
 `/clear` itself could be swallowed by the gate; and a prompt containing
 `VACA OVERRIDE` lifts the lock outright.
 
+## The plugin guard
+
+The plugin is installed globally. An edit under `~/.claude/plugins/cache/` or
+`~/.claude/plugins/marketplaces/` changes every project on the machine that
+loads it, and the next update silently discards the edit. Claude has tried to
+make such an edit when asked to change the law, so one more hook refuses it:
+
+| Event | Matcher | Script | What it does |
+|---|---|---|---|
+| `PreToolUse` | `Edit\|Write\|MultiEdit\|NotebookEdit\|Bash\|PowerShell` | `plugin-guard.sh` | Exits 2 on a write into a protected root: the tool call is blocked and stderr tells Claude why |
+
+- **File tools are checked exactly.** Only the target path is read, never the
+  content, so documenting the protected roots — this section — is not a write
+  into them.
+- **Shell commands are checked on a best-effort basis.** A command is refused
+  when it names a protected root and also carries a write verb (`rm`, `sed -i`,
+  `Set-Content`, `git checkout`, …) or an output redirect. Redirects to
+  `/dev/null` and `$null` do not count, so reading the installed plugin stays
+  allowed. A shell command cannot be parsed with `grep`, so a determined
+  enough command gets through; the prime directive states the rule for that
+  case.
+- **`CLAUDE_CONFIG_DIR` is honoured.** A relocated config directory is protected
+  as well as the default one.
+- **Plugin data is not protected.** `~/.claude/plugins/data/` is where
+  `${CLAUDE_PLUGIN_DATA}` points, and the session gate writes there.
+
+`claude --plugin-dir` loads the plugin from this repository, not from the
+cache, so the guard never gets in the way of developing it.
+
 These scripts read their JSON input with `grep`, not `jq`. `jq` is not a
 dependency of this plugin and is not present on every machine that installs it,
 and every field they need is a flat string. A requirement more structured than

@@ -303,8 +303,20 @@ public static readonly AgentOperation <Operation> = new(
 - Every Command and Query MUST declare a named policy. Bare `[Authorize]` and unattributed endpoints are defects. ⚙
 - `AuthorizationOptions.FallbackPolicy` MUST deny, so a forgotten attribute fails closed. ⚙
 - Policies are evaluated by the authorization behavior via `IAuthorizationService`, against the explicit principal from the dispatch context.
+- A transport-level authorization filter - `[Authorize(<policy>)]`, middleware, or a vendor package's equivalent - MAY enforce in addition, but MUST NOT be the only enforcement point. Every operation's decision MUST be reachable from the authorization behavior, so a caller that bypasses HTTP receives the identical answer (`../SKILL.md` §7).
 - The acting principal MUST travel in the dispatch context. `IHttpContextAccessor` MUST NOT be referenced outside the composition root. ⚙ Violating this silently replaces an agent's narrowed principal with the full user token and voids every agent restriction below.
-- Entra ID claims are mapped to policies at the composition root. Application and domain code MUST NOT read raw claims. ⚙
+- Identity-provider claims and externally-sourced permissions are mapped to policies at the composition root. Application and domain code MUST NOT read raw claims. ⚙
+- Where permissions come from - a token claim, a directory, a remote authorization service - is a composition-root concern. Application and domain code name a policy, never a permission source or a role literal.
+- An external authority's permission codes MUST be translated to the application's policy vocabulary at the composition root. The external authority's types and codes MUST NOT be referenced outside `Api`. ⚙ This is what keeps the authority replaceable.
+
+### External permission authorities
+
+A token claim cannot be unavailable. A remote authorization service can be unreachable, its answers can outlive a revocation, and it answers for the user when the caller is an agent. The rules below cover those three cases. Which provider and which authority the organization runs is recorded in `DECISIONS.md`, not here.
+
+- When permissions are resolved from a source outside the process, that source's unavailability MUST deny. An unreachable, timing-out, or erroring authority MUST NOT grant and MUST NOT fall back to a default permission set.
+- An externally-resolved permission decision MAY be cached, keyed by the acting principal. Its lifetime MUST be bounded and declared in an options class, and that value is the revocation window: a permission withdrawn at the authority continues to grant for that long. ⚙ The lifetime SHOULD be configurable. Where the authority's client caches for a fixed period it does not expose, the declared value states that period and MUST NOT differ from it. A lifetime nobody can state is a defect.
+- An unexpired entry MAY be served while the authority is unreachable. An expired entry MUST NOT be served, and its lifetime MUST NOT be extended because the authority cannot be reached. An outage never lengthens the revocation window.
+- Externally-resolved permissions are the user's permissions, not the caller's. For an agent-actor principal they MUST be intersected with the agent's manifest exactly as §8 requires. The lookup MUST be keyed on the acting principal from the dispatch context, never on the HTTP request.
 
 ## 7. Data Classification
 
@@ -473,6 +485,7 @@ A rule no build check can reach is carried by a named required test below rather
 - **Application**: handler tests with substituted infrastructure. Every declared policy MUST have a test proving *denial*, not only one proving success.
 - **Integration**: real SQL Server via Testcontainers, real pipeline behaviors.
 - **Architecture**: ArchUnitNET tests are first-class and MUST NOT be skipped or marked inconclusive to unblock a change.
+- **Authorization**: every external permission authority MUST have a test proving that an unreachable, a timing-out, and an erroring authority each deny, and that an expired cache entry is not served while the authority is unreachable. Every policy MUST have a test proving an in-process dispatch with no HTTP context receives the same decision as the HTTP path. An agent-actor principal MUST have a test proving an operation the user holds but the manifest omits is denied when permissions come from the external authority.
 - **Agents**: every manifest MUST have a test asserting an operation outside it is rejected, a test proving the acting principal carries the agent's actor claim, and a test proving an agent-actor principal cannot start another agent run.
 - **Budgets**: every budget MUST have a test proving a run that exceeds it aborts rather than truncates.
 - **Pagination**: every paginated query MUST have a test proving a request above its maximum is rejected, and a test proving no row is skipped or repeated across a page boundary.
