@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.4.0
+
+- The law stops naming an identity provider. `backend.md` §6 and `frontend.md`
+  §9 said "Entra ID"; they now state obligations that hold whichever provider and
+  permission source an application runs, and the choice is recorded in that
+  application's `DECISIONS.md`. Amendment A-03 in `enforcement.md` records why.
+- `backend.md` §6 covers a remote permission authority. An unreachable,
+  timing-out, or erroring authority denies (`BE-99`). A cached decision has a
+  bounded, declared lifetime that is the revocation window, and an outage never
+  extends it (`BE-100`). The authority answers for the user, so for an agent its
+  answer is still intersected with the manifest (`BE-103`). Its codes stay in
+  `Api` (`BE-102`).
+- A transport filter, including a vendor package's, is never the only
+  enforcement point: the decision is reachable from the authorization behavior,
+  so in-process and agent callers get the same answer (`BE-101`).
+- `frontend.md` §9: sign-out ends the identity-provider session, including an
+  upstream federated one, so the next person at a shared workstation is prompted
+  (`FE-29`). A credential nested inside a token is never extracted, stored,
+  forwarded, or logged (`FE-30`).
+- The runtime rules are required tests, named in `backend.md` §14
+  **Authorization** and `frontend.md` §13 **Authentication**.
+- The installed plugin is read-only, and a hook now says so. Claude had tried to
+  change the law by editing the plugin cache, which changes every project on the
+  machine and is discarded by the next update. `scripts/plugin-guard.sh` runs on
+  `PreToolUse` and refuses a write under `~/.claude/plugins/cache/` or
+  `~/.claude/plugins/marketplaces/`: exactly for the file tools, on a
+  best-effort basis for shell commands. The prime directive states the rule and
+  where changes go instead.
+
 ## 1.3.0
 
 - `backend.md` §2 admits the two shared platform projects. A modular monolith

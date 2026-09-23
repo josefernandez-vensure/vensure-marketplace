@@ -111,15 +111,18 @@ Client state is UI state the server does not own: selections, wizard step, panel
 
 ## 9. Authentication
 
-Entra ID through MSAL. The browser proves who the user is. It decides nothing about what they may do - that is the server's answer, every time (`../SKILL.md` §7).
+The organization's identity provider through MSAL. The browser proves who the user is. It decides nothing about what they may do - that is the server's answer, every time (`../SKILL.md` §7).
 
 - Token acquisition MUST live in exactly one place in `shared/lib/`. No component, hook, or query calls MSAL directly. ⚙
 - Access tokens MUST be acquired silently from MSAL's cache per request and MUST NOT be stored by the application. Writing a token to `localStorage`, `sessionStorage`, a cookie, or a store is forbidden. ⚙
+- A token is opaque to the application. Its claims MAY be read for display within the user's own session and MUST NOT be used for any other purpose.
+- A credential nested inside a token - an embedded access or refresh token - MUST NOT be extracted, stored, forwarded, or logged. ⚙ A refresh token is a long-lived credential; reusing one found inside another token creates a credential-handling path nothing else in this section governs. The claim names to flag live in the project's lint configuration, not here.
 - The token is attached by exactly one interceptor on the generated client. A hand-written `Authorization` header is a defect. ⚙
 - A `401` MUST trigger one silent refresh, then an interactive sign-in. It MUST NOT produce a retry loop and MUST NOT surface as a generic error.
 - A `403` is a final answer. It MUST be shown as a permission error and MUST NOT trigger a refresh - the token is fine, the permission is not. Retrying a `403` is how a UI turns a clear denial into a hang.
 - Scopes MUST be declared in one place and MUST be the narrowest set the application needs.
 - Sign-out MUST clear the MSAL cache, the TanStack Query cache, and every store. A previous user's data surviving a sign-out on a shared workstation is a disclosure, and shared workstations are the normal case in this domain.
+- Sign-out MUST also end the identity-provider session, including any upstream session the provider federates to, by calling the provider's end-session endpoint. Clearing local state while a provider session survives means the next sign-in completes silently as the previous user - the disclosure the rule above exists to prevent, reintroduced one step later. The next sign-in MUST prompt. Ending the provider session also signs the user out of other applications that share it; on a shared workstation, that is the intended effect.
 - The frontend holds no secrets. Everything in the bundle is public: a client id belongs there, a client secret never does.
 
 ## 10. Errors
@@ -148,7 +151,7 @@ Entra ID through MSAL. The browser proves who the user is. It decides nothing ab
 - MSW for all network mocking. `vi.mock` on the generated client is forbidden - it mocks past the contract. ⚙
 - Every form MUST have a test for a validation failure and a test for a server-side failure.
 - **Data boundaries**: telemetry, analytics, and error reporting MUST have a test proving a known classified field is scrubbed from a captured event.
-- **Authentication**: a `401` MUST have a test proving exactly one silent refresh is attempted before interactive sign-in, and a `403` MUST have a test proving no refresh occurs.
+- **Authentication**: a `401` MUST have a test proving exactly one silent refresh is attempted before interactive sign-in, and a `403` MUST have a test proving no refresh occurs. Sign-out MUST have a test proving the local caches are cleared and the provider's end-session endpoint is called.
 - Playwright for critical user journeys only.
 - Tests MUST NOT assert on class names, DOM structure, or component internals.
 

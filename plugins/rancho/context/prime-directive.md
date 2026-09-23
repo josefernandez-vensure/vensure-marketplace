@@ -18,3 +18,17 @@ This repository is governed by an engineering law. It is not advisory.
 full law via the `/rancho:law` skill** - and, from it, the backend or
 frontend reference for whichever tree you are working in. Do not rely on this
 summary; it states that the law binds you, not what it requires.
+
+## The installed plugin is read-only
+
+The law, VACA, and everything else this plugin carries are installed globally,
+under `~/.claude/plugins/`. **Never edit, create, move, or delete anything
+there** - not a skill, not a reference, not a script - even when the user asks
+for a change to the law. An edit there changes every project on this machine
+that loads the plugin, and the next plugin update silently discards it.
+
+A change to the law or to VACA is made in the plugin's source repository
+(`vensure-marketplace`) and reaches developers when it is published. If that
+repository is not the one open, say so and stop; do not work around it. A hook
+refuses these writes, and a refusal is the rule working, not an obstacle to
+route around.

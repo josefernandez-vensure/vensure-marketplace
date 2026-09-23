@@ -33,16 +33,16 @@ Every rule marked ⚙ in the law, and the mechanism that enforces it.
 
 ## Summary
 
-The law carries **126 ⚙ marks on rules**. Three sit on a section heading and cover everything beneath, so the marked rules expand to **129 rows**. Thirteen further rows record rules that carry no mark: nine named as required tests, four left to review.
+The law carries **129 ⚙ marks on rules**. Three sit on a section heading and cover everything beneath, so the marked rules expand to **132 rows**. Seventeen further rows record rules that carry no mark: thirteen named as required tests, four left to review.
 
 | | Rows | `build` | `required-test` | `dropped` |
 |---|---|---|---|---|
 | `../SKILL.md` | 16 | 14 | 0 | 2 |
-| `backend.md` | 98 | 90 | 7 | 1 |
-| `frontend.md` | 28 | 25 | 2 | 1 |
-| **Total** | **142** | **129** | **9** | **4** |
+| `backend.md` | 103 | 92 | 10 | 1 |
+| `frontend.md` | 30 | 26 | 3 | 1 |
+| **Total** | **149** | **132** | **13** | **4** |
 
-**Every one of the 129 marked rules can be made to fail the build.** No rule claims an enforcement it cannot deliver. Nothing is enforced yet, though - `build` means the check is buildable, not built.
+**Every one of the 132 marked rules can be made to fail the build.** No rule claims an enforcement it cannot deliver. Nothing is enforced yet, though - `build` means the check is buildable, not built.
 
 Eleven root rules are **duplicated** by a subordinate file, and four backend rules restate another backend rule. One check satisfies each pair; the canonical id is noted and the duplicate points at it.
 
@@ -154,6 +154,11 @@ Eleven root rules are **duplicated** by a subordinate file, and four backend rul
 | BE-51 | `FallbackPolicy` MUST deny | `contract` | build | S | Startup configuration assertion |
 | BE-52 | `IHttpContextAccessor` MUST NOT be referenced outside the composition root | `arch` | build | S | Assembly-scoped type reference assertion |
 | BE-53 | Application and domain code MUST NOT read raw claims | `arch` | build | S | `ClaimsPrincipal`/`ClaimTypes` banned outside `Api` |
+| BE-99 | An external permission authority's unavailability MUST deny; an expired cache entry is not served during an outage | `test` | required-test | M | Added by A-03. §14 **Authorization** |
+| BE-100 | An externally-resolved permission cache declares a bounded lifetime in an options class | `contract` | build | S | Added by A-03. Options sweep, as BE-96: the lifetime exists on a validated options class and is bounded; a missing or unbounded value fails |
+| BE-101 | An operation's authorization decision is reachable from the authorization behavior, not only a transport filter | `test` | required-test | M | Added by A-03. §14 **Authorization** |
+| BE-102 | An external authority's types and codes MUST NOT be referenced outside the composition root | `arch` | build | S | Added by A-03. Same shape as BE-53: the authority client's permission types banned outside `Api` |
+| BE-103 | Externally-resolved permissions are intersected with the agent manifest for an agent-actor principal | `test` | required-test | M | Added by A-03. §14 **Authorization** |
 
 ### §7 Data Classification
 
@@ -251,6 +256,8 @@ Eleven root rules are **duplicated** by a subordinate file, and four backend rul
 | FE-25 | A token MUST NOT be written to storage or a store | §9 | `eslint` | build | S | Same rule family as FE-23 |
 | FE-26 | The token is attached by exactly one interceptor | §9 | `eslint` | build | M | No literal `Authorization` header outside that module |
 | FE-27 | `401` retries once silently then goes interactive; `403` never refreshes | §9 | `test` | required-test | M | frontend §13 **Authentication** |
+| FE-29 | Sign-out ends the identity-provider session, not only local caches | §9 | `test` | required-test | M | Added by A-03. frontend §13 **Authentication** |
+| FE-30 | A credential nested inside a token MUST NOT be extracted, stored, forwarded, or logged | §9 | `eslint` | build | S | Added by A-03. Same rule family as FE-25: reads of the configured nested-credential claim names off a decoded token |
 | FE-18 | Components MUST NOT subscribe to hubs directly | §12 | `eslint` | build | S | Path-scoped restriction on the SignalR client import |
 | FE-19 | MSW for all mocking; no `vi.mock` on the generated client | §13 | `eslint` | build | S | `no-restricted-syntax` on `vi.mock` with a generated-path argument |
 | FE-20 | `pnpm lint && pnpm typecheck && pnpm test` gate every change | §14 | `ci` | build | S | CI pipeline |
@@ -263,7 +270,7 @@ The fix taken was to strip the mark and keep the obligation: each rule stays MUS
 
 One bullet had to be split to do this. BE-28 (a unique index on the attempt identity, a `contract` check) and BE-29 (what happens when two attempts race, only a test can say) shared a sentence and therefore a mark. They are now two rules, and only the first carries one.
 
-Sections written after this decision apply it from the start: BE-89, BE-92, and FE-27 were never marked, because no build check can reach them. They arrived as required tests. That is the convention working rather than being repaired.
+Sections written after this decision apply it from the start: BE-89, BE-92, BE-99, BE-101, BE-103, FE-27, and FE-29 were never marked, because no build check can reach them. They arrived as required tests. That is the convention working rather than being repaired.
 
 Promotion out of this category is possible and has happened once: BE-23's determinism was test-only until R-07 required paginated queries to declare their ordering as inspectable metadata rather than burying it in a LINQ chain. The same move may be available for some of the six - if it is, it is a change to the law under §10, not a change to a test.
 
@@ -326,6 +333,9 @@ The rule asserted a bijection the domain does not have. Backend modules are cons
 **A-02 · ROOT-05, ROOT-06, ROOT-10 · Frontend rules stated in the root law.**
 The root law carried three rules that bind only the frontend tree: how its folders are named, that its features may not import each other, and that a generated client response may not be cast. All three were already stated in full in `frontend.md`, so the root copy governed nothing the subordinate file did not already govern - it only made the root read as though one decomposition covered both trees. A-01 made this worse by writing the registry rule into §3, a section whose every other bullet is about .NET project references, EF schemas, and the outbox. *Applied:* the three rules leave the root law and the root table; §3 opens by scoping itself to backend modules and pointing at `frontend.md` §2; §4 keeps the boundary fact - frontend types are generated from the OpenAPI document - and delegates what the frontend does with them. The line drawn: **the root states obligations that span the boundary or bind both trees; each subordinate file states what is internal to its own.** FE-28's check was rescoped to match, reading only `src/features/` and the registry, with backend name reuse demoted from a cross-tree ⚙ to a SHOULD. Root drops from 19 rows to 16.
 
+**A-03 · §6 Authorization, frontend §9 · The law named an identity provider instead of a shape.**
+Backend §6 said "Entra ID claims are mapped to policies", and frontend §9 opened with "Entra ID through MSAL". The organization's applications authenticate through a different, federating provider, and their tokens carry no roles: permissions come from a remote authorization service through a vendor package. The law's intent held - deny by default, named policies, no raw claims below `Api`, a browser that decides nothing - but by naming one provider it was silent on the three failure modes a remote authority has and a token claim does not. The authority can be unreachable, and nothing said an outage denies (BE-51 covers a forgotten attribute, not an unreachable authority). Its answers can be cached past a revocation, and nothing bounded how long. It answers for the user, and nothing said that answer is still intersected with an agent's manifest under §8. On the frontend, sign-out cleared local caches but could leave the provider session alive, so the next person at a shared workstation signed in silently as the previous one. *Applied:* the provider names leave both files, and provider choice is recorded in each application's `DECISIONS.md`. Backend §6 gains the rule that a permission source is a composition-root concern with the authority's codes confined to `Api` (BE-102), a subsection on external permission authorities - fail closed (BE-99), a bounded and declared cache lifetime that an outage never extends (BE-100, BE-99), intersection for agent principals (BE-103) - and the rule that a transport filter is never the only enforcement point, applying `../SKILL.md` §7 where the wiring happens (BE-101). Frontend §9 gains ending the provider session on sign-out (FE-29) and the rule that a credential nested inside a token is never extracted (FE-30). The cache lifetime MUST be bounded and declared and SHOULD be configurable: a vendor client that caches for a fixed period complies by stating that period, so the rule does not fail every consumer of a package that does not expose it, and a lifetime nobody can state is still a defect. The four runtime rules arrived as required tests, named in backend §14 and frontend §13. Backend rows go from 98 to 103, frontend from 28 to 30.
+
 ## Prerequisites (all adopted)
 
 Four checks were blocked on an architectural decision rather than on the work of writing a test. All four decisions are now in the law.
@@ -344,10 +354,10 @@ Sequenced by value per unit of effort, not by document order.
 
 **First - the cheap ones that fail loudly.** `proj` and `roslyn` checks: BE-02, BE-39, BE-47, BE-57 (`CA2254` is a compiler switch), BE-50's banned `[Authorize]`, BE-98's banned environment predicates, BE-97's secret scan, plus the §15 Forbidden list as `BannedApiAnalyzers` entries. Frontend: FE-01 through FE-04, FE-11 through FE-13, FE-15, FE-18, FE-19 are almost all off-the-shelf ESLint configuration. **Roughly 25 rules enforced in about a day**, none requiring a decision.
 
-**Second - the reflection sweeps.** One test each, discovering every instance automatically: BE-25 and BE-26 (declared policy, declared idempotency), BE-64, BE-67, BE-70, BE-73, BE-51, BE-96 (every options class validated on start). These are the highest-leverage tests in the suite, because they cover every message that will ever be added, not just today's.
+**Second - the reflection sweeps.** One test each, discovering every instance automatically: BE-25 and BE-26 (declared policy, declared idempotency), BE-64, BE-67, BE-70, BE-73, BE-51, BE-96 (every options class validated on start), BE-100 (the permission-cache lifetime declared and bounded). These are the highest-leverage tests in the suite, because they cover every message that will ever be added, not just today's.
 
 **Third - the classification graph.** BE-55 is the keystone: BE-59, BE-60, BE-61, BE-69, and ROOT-16 all reuse its property-graph walk. Write it once. It is the largest single piece of work here and the one that carries the most risk if it is skipped. The same pass emits the class into the OpenAPI document (BE-83) and carries it into the generated types (FE-22), which is what makes FE-16 and FE-23 enforceable on the client at all.
 
-**Fourth - the structural arch tests.** BE-01, BE-04 through BE-07, BE-10, BE-13 through BE-20, BE-30, BE-33 through BE-38, BE-40, BE-43, BE-46, BE-48, BE-52, BE-53, BE-63, BE-76, and BE-78 through BE-82. Individually cheap, collectively the bulk of the row count.
+**Fourth - the structural arch tests.** BE-01, BE-04 through BE-07, BE-10, BE-13 through BE-20, BE-30, BE-33 through BE-38, BE-40, BE-43, BE-46, BE-48, BE-52, BE-53, BE-102, BE-63, BE-76, and BE-78 through BE-82. Individually cheap, collectively the bulk of the row count.
 
 **Every decision is settled.** The fifteen rewordings, all four prerequisites, and the badge question are in the law. Every check above can be built against the current text, and nothing in this file is now waiting on an answer - only on the work. Building checks against the current text means building the wrong checks for some of them, and R-09 in particular should change before anything caches anything.

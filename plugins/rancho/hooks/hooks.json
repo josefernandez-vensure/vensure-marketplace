@@ -1,5 +1,5 @@
 {
-  "description": "Puts the prime directive in context at session start, hands each session the current VACA state, and holds one session to one issue.",
+  "description": "Puts the prime directive in context at session start, hands each session the current VACA state, holds one session to one issue, and refuses writes into the installed plugin directories.",
   "hooks": {
     "SessionStart": [
       {
@@ -16,6 +16,16 @@
       }
     ],
     "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/plugin-guard.sh\"",
+            "timeout": 10
+          }
+        ]
+      },
       {
         "matcher": "Task",
         "hooks": [
