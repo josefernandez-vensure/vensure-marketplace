@@ -225,7 +225,7 @@ An implementation that is pure logic MUST live in `Application`. Putting it in `
 - One `DbContext` per module, one schema per module. A `DbContext` MUST NOT map another module's tables. ⚙
 - Mapping MUST live in `IEntityTypeConfiguration<T>` classes in Infrastructure. Mapping attributes on domain types are forbidden - the domain MUST NOT know it is persisted. ⚙
 - Lazy loading MUST be disabled.
-- The EF InMemory provider MUST NOT be used. Integration tests run against real SQL Server via Testcontainers. ⚙
+- Integration tests run against real SQL Server via Testcontainers. No other provider may stand in for it - the EF InMemory provider, SQLite in memory, or any other. ⚙
 - Aggregates MUST carry a row version. Concurrency conflicts MUST surface as a domain-meaningful outcome, not a raw `DbUpdateConcurrencyException`.
 - SQL Server is the default store. A second store requires a documented reason in the module's README.
 
@@ -452,12 +452,12 @@ Limits attach to the caller and to the run, not to the transport. HTTP rate limi
 
 ## 11. Configuration and Secrets
 
-- Configuration binds to strongly-typed options classes. Reading `IConfiguration` outside the composition root is forbidden. ⚙
+- Configuration binds to strongly-typed options classes. Outside the composition root, code MUST NOT read configuration from its source - `IConfiguration`, a process environment variable, or any other. ⚙ It receives a bound options class, which is what makes BE-96's validation reach every setting.
 - Every options class MUST have a validator and MUST be registered with `ValidateOnStart`. ⚙ A misconfigured application fails to start; it does not fail on the first request that happens to touch the setting.
 - An options default MUST NOT silently weaken a control. A missing limit, timeout, or policy denies (§9); it never falls back to permissive.
-- Secrets come from Key Vault through managed identity in every environment above local development. A connection string, client secret, signing key, or API key MUST NOT appear in `appsettings*.json`, in a committed environment file, or in source. ⚙
+- Secrets come from Key Vault through managed identity in every environment above local development. A secret MUST NOT appear in any committed file. ⚙ A secret is any value that grants access on its own: connection strings, client secrets, signing keys, API keys and package-feed tokens are examples of the class, not the list of it, and `appsettings*.json`, environment files and source are where it has happened, not where the rule applies. A key generated for a test and trusted by nothing outside it is not a secret. A committed file that needs a credential MUST reference it - an environment-variable macro such as `nuget.config`'s `%NUGET_PAT%`, or a credential provider - and MUST NOT carry a placeholder to be overwritten in place. A placeholder is one local edit away from a committed secret, and a check cannot tell a substituted value from the placeholder it replaced.
 - Local development uses user secrets. A developer MUST NOT need a production credential to run the application.
-- Configuration that differs by environment MUST differ by value, never by code path. `IsProduction()` and `IsDevelopment()` MUST NOT be referenced outside the composition root. ⚙ A branch on environment is a code path that no environment fully tests.
+- Configuration that differs by environment MUST differ by value, never by code path. Outside the composition root, code MUST NOT learn which environment it is running in, by any means. ⚙ A branch on environment is a code path that no environment fully tests. Where the environment's name belongs in telemetry, the composition root puts it there - a resource attribute, a log enricher - so nothing below it needs to ask.
 - A feature flag is configuration: typed, validated, and removable. A flag with no removal plan is technical debt with a switch on it.
 
 ## 12. Real-time
@@ -470,7 +470,7 @@ Limits attach to the caller and to the run, not to the transport. HTTP rate limi
 
 ## 13. API Layer
 
-- Every endpoint MUST be a type implementing the shared endpoint abstraction, with its Request and Response DTOs as type arguments. A route handler expressed as a lambda passed to `MapGet` or `MapPost` is forbidden. ⚙ A lambda has no type to inspect, so every rule about an endpoint's signature is unenforceable against one.
+- Every endpoint MUST be a type implementing the shared endpoint abstraction, with its Request and Response DTOs as type arguments. A route handler passed as a lambda or method group to a minimal-API route builder - `MapGet`, `MapPost`, `MapMethods`, or any other - is forbidden. ⚙ A lambda has no type to inspect, so every rule about an endpoint's signature is unenforceable against one.
 - Endpoints are registered by discovery over those types at the composition root. Hand-registering one is a defect. ⚙
 - An endpoint MUST map its Request DTO to a message, dispatch it, and translate `Result` to HTTP. It MUST NOT reference any type other than its DTOs, the dispatcher, and the result translator. ⚙ An endpoint branching on business state is a defect.
 - Endpoints MUST NOT reference domain types. ⚙
@@ -499,4 +499,4 @@ A rule no build check can reach is carried by a named required test below rather
 
 ## 15. Forbidden
 
-`dynamic` · service location outside the composition root · static mutable state · `DateTime.Now` / `DateTime.UtcNow` in domain or application code (inject `TimeProvider`) · `async void` outside event handlers · `.Result`, `.Wait()`, `.GetAwaiter().GetResult()` · catching `Exception` without rethrowing · `#region` · commented-out code
+`dynamic` · service location outside the composition root · static mutable state · reading the system clock in domain or application code - `DateTime.Now`, `DateTimeOffset.UtcNow`, `DateTime.Today`, or any other ambient read (inject `TimeProvider`) · `async void` outside event handlers · `.Result`, `.Wait()`, `.GetAwaiter().GetResult()` · catching `Exception` without rethrowing · `#region` · commented-out code

@@ -26,6 +26,8 @@ Silence is not permission. If a decision is uncovered, match the nearest precede
 
 Rules marked ⚙ are machine-checked. Violating one is a build failure, not a review comment.
 
+A rule states the class of thing it governs, never a list of that class's members. Members MAY be named, as illustrations written as such - "such as", "for example", "or any other" - and never as the boundary. This binds hardest on a ⚙ rule: a machine-checked rule is read as exhaustive, so one that enumerates grants every member it forgot to name, and its check then certifies that reading. What a mechanism actually reaches is recorded in `references/enforcement.md`, where a shortfall is a known gap (§10) rather than a permission.
+
 A rule no build check can reach carries no mark. It is carried instead by a named required test, listed in the Testing section of the file that owns it - equally binding, differently caught. `references/enforcement.md` maps every mark and every required test to its mechanism.
 
 ## 2. Repository Map
@@ -173,6 +175,8 @@ Frontend: `pnpm lint`, `pnpm typecheck`, `pnpm test`.
 All MUST pass before a change is complete. Never report work as done on unverified code.
 
 Every ⚙ rule and the mechanism that enforces it is inventoried in `references/enforcement.md`. A ⚙ with no entry there is unaccounted for and MUST be added. An entry whose check is not yet built is a known gap in enforcement - it does not make the rule optional.
+
+A check stricter than its rule is the same defect facing the other way. The check will be read as the rule, and the next reader of the rule is entitled to approve what the check refuses. A check and its rule MUST cover the same ground: widen the rule or narrow the check, in the same change.
 
 ## 11. Changing the Law
 

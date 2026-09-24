@@ -6,7 +6,7 @@
 
 React · Vite · TypeScript (strict) · Shadcn/ui · Tailwind · TanStack Query · TanStack Router · Zustand · React Hook Form + Zod · MSAL (`@azure/msal-browser`, `@azure/msal-react`) · Vitest + React Testing Library · Playwright · MSW · ESLint 9 flat config, type-aware · Prettier
 
-TypeScript `strict` MUST stay on. `any` is forbidden; use `unknown` and narrow. `@ts-ignore` is forbidden; `@ts-expect-error` is permitted only with a reason comment and an issue reference. ⚙
+TypeScript `strict` MUST stay on. `any` is forbidden; use `unknown` and narrow. Suppressing the type checker is forbidden - `@ts-ignore`, `@ts-nocheck`, or any other directive - except `@ts-expect-error`, which is permitted only with a reason comment and an issue reference. ⚙
 
 ## 2. Structure
 
@@ -114,7 +114,7 @@ Client state is UI state the server does not own: selections, wizard step, panel
 The organization's identity provider through MSAL. The browser proves who the user is. It decides nothing about what they may do - that is the server's answer, every time (`../SKILL.md` §7).
 
 - Token acquisition MUST live in exactly one place in `shared/lib/`. No component, hook, or query calls MSAL directly. ⚙
-- Access tokens MUST be acquired silently from MSAL's cache per request and MUST NOT be stored by the application. Writing a token to `localStorage`, `sessionStorage`, a cookie, or a store is forbidden. ⚙
+- Access tokens MUST be acquired silently from MSAL's cache per request and MUST NOT be stored by the application. Writing a token to browser storage of any kind - such as `localStorage`, `sessionStorage`, IndexedDB, or a cookie - or to a store is forbidden. ⚙
 - A token is opaque to the application. Its claims MAY be read for display within the user's own session and MUST NOT be used for any other purpose.
 - A credential nested inside a token - an embedded access or refresh token - MUST NOT be extracted, stored, forwarded, or logged. ⚙ A refresh token is a long-lived credential; reusing one found inside another token creates a credential-handling path nothing else in this section governs. The claim names to flag live in the project's lint configuration, not here.
 - The token is attached by exactly one interceptor on the generated client. A hand-written `Authorization` header is a defect. ⚙
@@ -135,8 +135,8 @@ The organization's identity provider through MSAL. The browser proves who the us
 
 `../SKILL.md` §8 governs, and its classes apply here unchanged. The browser is inside the authenticated boundary. Everything listed below is outside it.
 
-- `Confidential` and `Restricted` values MUST NOT appear in a URL path, query string, route param, or search param. ⚙ They land in browser history, server access logs, and `Referer` headers sent to third parties.
-- They MUST NOT be written to `localStorage`, `sessionStorage`, IndexedDB, or a cookie. ⚙ Server data belongs in the TanStack Query cache, which is memory-only and dies with the tab.
+- `Confidential` and `Restricted` values MUST NOT appear in any part of a URL - path, query string, fragment, route param, or search param. ⚙ They land in browser history, server access logs, and `Referer` headers sent to third parties.
+- They MUST NOT be written to browser storage of any kind - such as `localStorage`, `sessionStorage`, IndexedDB, Cache Storage, or a cookie. ⚙ Server data belongs in the TanStack Query cache, which is memory-only and dies with the tab.
 - Analytics, telemetry, session replay, and error reporting MUST scrub them. Breadcrumbs, form-field capture, and unredacted request bodies are the usual leak, and the default configuration of every one of these tools is wrong for this domain.
 - The client MUST NOT assemble an export of sensitive data out of paged reads. An export comes from a server endpoint carrying the same policy as the read, and is audited (`../SKILL.md` §8).
 
@@ -148,7 +148,7 @@ The organization's identity provider through MSAL. The browser proves who the us
 ## 13. Testing
 
 - Vitest + React Testing Library. Query by role and accessible name. `data-testid` is a last resort and requires a comment explaining why.
-- MSW for all network mocking. `vi.mock` on the generated client is forbidden - it mocks past the contract. ⚙
+- MSW for all network mocking. Module-mocking the generated client - `vi.mock`, `vi.doMock`, or any other - is forbidden: it mocks past the contract. ⚙
 - Every form MUST have a test for a validation failure and a test for a server-side failure.
 - **Data boundaries**: telemetry, analytics, and error reporting MUST have a test proving a known classified field is scrubbed from a captured event.
 - **Authentication**: a `401` MUST have a test proving exactly one silent refresh is attempted before interactive sign-in, and a `403` MUST have a test proving no refresh occurs. Sign-out MUST have a test proving the local caches are cleared and the provider's end-session endpoint is called.
