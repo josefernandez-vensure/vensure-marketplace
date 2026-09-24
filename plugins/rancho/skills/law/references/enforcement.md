@@ -15,7 +15,7 @@ Every rule marked ⚙ in the law, and the mechanism that enforces it.
 | `proj` | Project or build configuration - `.csproj`, `Directory.Build.props`, `tsconfig`, banned packages | Compile |
 | `roslyn` | Roslyn analyzer: a built-in CA rule, `BannedApiAnalyzers`, or a custom analyzer | Compile |
 | `arch` | ArchUnitNET test over types, assemblies, namespaces, attributes | Test run |
-| `contract` | Reflection, DI container, or EF model inspection - **one** test that discovers every instance of the rule automatically | Test run |
+| `contract` | Reflection, DI container, EF model, or committed-file inspection - **one** test that discovers every instance of the rule automatically | Test run |
 | `eslint` | ESLint rule, off-the-shelf or custom | Lint |
 | `ci` | Repository-level script - path checks, generated-artifact freshness, diff checks | CI |
 | `test` | A behavioural test that a human must write **per instance** | Test run |
@@ -131,7 +131,7 @@ Eleven root rules are **duplicated** by a subordinate file, and four backend rul
 |---|---|---|---|---|---|
 | BE-37 | One `DbContext` per module; MUST NOT map another module's tables | `contract` | build | S | EF model: every entity type originates in the owning module's assembly |
 | BE-38 | Mapping in `IEntityTypeConfiguration<T>`; no mapping attributes on domain types | `arch` | build | S | No EF attributes present on any Domain type |
-| BE-39 | EF InMemory provider MUST NOT be used | `proj` | build | S | Banned package reference; `BannedApiAnalyzers` on `UseInMemoryDatabase` |
+| BE-39 | Integration tests run against SQL Server; no other provider stands in for it | `proj` | build | S | A package allowlist, not a denylist: SQL Server is the only EF provider a test project may reference, so SQLite and InMemory both fail without being named. Amended by A-04 |
 | BE-40 | Repositories MUST NOT expose `IQueryable`, `DbSet`, or EF types | `arch` | build | S | Signature assertion on repository ports |
 | BE-41 | Command handlers write only through the repository | `arch` | build | S | No longer covered by BE-01: `Application` now references `Platform.Application`, where the unit-of-work port is declared. Assert directly - no type in a module `Application` references it |
 | BE-42 | No navigation properties between aggregate roots | `contract` | build | M | Unblocked by P-02. EF model navigation targets, resolved through the root marker |
@@ -210,10 +210,10 @@ Eleven root rules are **duplicated** by a subordinate file, and four backend rul
 
 | Id | Rule | Mechanism | Status | Effort | Check |
 |---|---|---|---|---|---|
-| BE-95 | `IConfiguration` MUST NOT be read outside the composition root | `arch` | build | S | Type reference assertion, as BE-52 does for `IHttpContextAccessor` |
+| BE-95 | Configuration MUST NOT be read from its source outside the composition root | `arch` + `roslyn` | build | S | `arch`: type reference assertion on `IConfiguration`, as BE-52 does for `IHttpContextAccessor`. `roslyn`: `BannedApiAnalyzers` on `System.Environment.GetEnvironmentVariable` and `GetEnvironmentVariables`, scoped to allow `Api`. Amended by A-04 |
 | BE-96 | Every options class has a validator and is registered with `ValidateOnStart` | `contract` | build | S | Reflection sweep over registered options types |
-| BE-97 | No secret in `appsettings*.json`, a committed environment file, or source | `ci` | build | S | Secret scanning plus a key-name denylist over config files |
-| BE-98 | `IsProduction()` / `IsDevelopment()` MUST NOT be referenced outside the composition root | `roslyn` | build | S | `BannedApiAnalyzers`, scoped to allow `Api` |
+| BE-97 | No secret in any committed file; a committed credential slot holds a reference, never a value | `contract` + `ci` | build | S | `contract`: a sweep of the committed configuration files - `appsettings*.json`, environment files, `nuget.config` - failing on a denylisted key name with a literal value, and on any `<packageSourceCredentials>` value that is not a `%VAR%` macro. It runs in the test suite, so it fails before a push. `ci`: entropy and provider-pattern secret scanning over the whole history, which no unit test can reach. Amended by A-04 |
+| BE-98 | Outside the composition root, code MUST NOT learn which environment it is running in | `roslyn` | build | S | `BannedApiAnalyzers` on the *types* that answer the question - `IHostEnvironment`, `IWebHostEnvironment`, both obsolete `IHostingEnvironment`s, and the `Environments` constants - scoped to allow `Api`. Banning the types rather than the predicates reaches `IsStaging()`, `IsEnvironment(string)` and `EnvironmentName == "..."` without naming them; an environment variable read is BE-95's. Amended by A-04 |
 
 ### §12-§13 Real-time and API
 
@@ -223,7 +223,7 @@ Eleven root rules are **duplicated** by a subordinate file, and four backend rul
 | BE-75 | Hub authorization uses the same named policies as the HTTP operation | `contract` | build | S | By construction if hubs dispatch messages: the policy resolves from the message |
 | BE-76 | SignalR messages carry DTOs; no domain types serialized | `arch` | build | S | Hub method signatures |
 | BE-77 | Endpoints MUST NOT reference domain types | `arch` | build | S | Unblocked by P-01 |
-| BE-80 | Every endpoint is a type implementing the shared endpoint abstraction | `arch` | build | S | Added by P-01. No lambda route handlers |
+| BE-80 | Every endpoint is a type implementing the shared endpoint abstraction | `arch` | build | S | Added by P-01. No call outside the discovery registrar to any `EndpointRouteBuilderExtensions` overload taking a handler delegate - every verb, not a list of them |
 | BE-81 | Endpoints registered by discovery; hand-registration forbidden | `contract` | build | S | Added by P-01. Container inspection, as BE-62 does for tools |
 | BE-82 | An endpoint references only its DTOs, the dispatcher, and the result translator | `arch` | build | S | Enabled by P-01. The endpoint counterpart of BE-74 |
 
@@ -231,7 +231,7 @@ Eleven root rules are **duplicated** by a subordinate file, and four backend rul
 
 | Id | Rule | Section | Mechanism | Status | Effort | Check |
 |---|---|---|---|---|---|---|
-| FE-01 | `strict` on; no `any`; no `@ts-ignore` | §1 | `proj` + `eslint` | build | S | `tsconfig`; `no-explicit-any`; `ban-ts-comment` |
+| FE-01 | `strict` on; no `any`; no type-checker suppression but a justified `@ts-expect-error` | §1 | `proj` + `eslint` | build | S | `tsconfig`; `no-explicit-any`; `ban-ts-comment` with every directive banned and `ts-expect-error` set to `allow-with-description` |
 | FE-02 | `@ts-expect-error` requires a reason and an issue reference | §1 | `eslint` | build | S | `ban-ts-comment` with `descriptionFormat` |
 | FE-03 | A feature MUST NOT import from another feature | §2 | `eslint` | build | S | `eslint-plugin-boundaries` |
 | FE-04 | Dependency direction `shared` -> `features` -> `app`; no layer imports upward | §2 | `eslint` | build | S | `eslint-plugin-boundaries`, one `rules` entry per layer |
@@ -247,19 +247,19 @@ Eleven root rules are **duplicated** by a subordinate file, and four backend rul
 | FE-13 | Components MUST NOT call `fetch` or the generated client directly | §7 | `eslint` | build | S | Path-scoped `no-restricted-imports` |
 | FE-14 | No `.css` import outside `shared/ui/`; no static object literal in `style` | §7 | `eslint` | build | S | R-14 applied |
 | FE-15 | Exactly one `ProblemDetails` parser, in `shared/lib/` | §10 | `eslint` | build | S | Only that path may reference the type |
-| FE-16 | Classified values MUST NOT appear in URLs or route/search params | §11 | `eslint` | build | M | Mark restored by P-03. Rule reads the class off the generated type |
+| FE-16 | Classified values MUST NOT appear in any part of a URL | §11 | `eslint` | build | M | Mark restored by P-03. Rule reads the class off the generated type |
 | FE-17 | Analytics, telemetry, and error reporting MUST scrub classified values | §11 | `test` | required-test | M | frontend §13 **Data boundaries**. Mark stripped |
 | FE-21 | No loop that exhausts `fetchNextPage` to assemble a whole collection | §4 | `eslint` | build | M | Added by R-13. `no-restricted-syntax`: `fetchNextPage` inside a loop or self-recursive call |
 | FE-22 | Generated types carry the data class of every property | §3 | `ci` | build | S | Added by P-03. Generation output asserted to contain the class |
-| FE-23 | Classified values MUST NOT be written to `localStorage`, `sessionStorage`, IndexedDB, or a cookie | §11 | `eslint` | build | M | Enabled by P-03. Same rule family as FE-16 |
+| FE-23 | Classified values MUST NOT be written to browser storage of any kind | §11 | `eslint` | build | M | Enabled by P-03. Same rule family as FE-16 |
 | FE-24 | Token acquisition lives in exactly one place in `shared/lib/` | §9 | `eslint` | build | S | Path-scoped restriction on the MSAL import |
-| FE-25 | A token MUST NOT be written to storage or a store | §9 | `eslint` | build | S | Same rule family as FE-23 |
+| FE-25 | A token MUST NOT be written to browser storage of any kind or a store | §9 | `eslint` | build | S | Same rule family as FE-23, and the same list of storage APIs: the two rules previously named different ones |
 | FE-26 | The token is attached by exactly one interceptor | §9 | `eslint` | build | M | No literal `Authorization` header outside that module |
 | FE-27 | `401` retries once silently then goes interactive; `403` never refreshes | §9 | `test` | required-test | M | frontend §13 **Authentication** |
 | FE-29 | Sign-out ends the identity-provider session, not only local caches | §9 | `test` | required-test | M | Added by A-03. frontend §13 **Authentication** |
 | FE-30 | A credential nested inside a token MUST NOT be extracted, stored, forwarded, or logged | §9 | `eslint` | build | S | Added by A-03. Same rule family as FE-25: reads of the configured nested-credential claim names off a decoded token |
 | FE-18 | Components MUST NOT subscribe to hubs directly | §12 | `eslint` | build | S | Path-scoped restriction on the SignalR client import |
-| FE-19 | MSW for all mocking; no `vi.mock` on the generated client | §13 | `eslint` | build | S | `no-restricted-syntax` on `vi.mock` with a generated-path argument |
+| FE-19 | MSW for all mocking; no module mock of the generated client | §13 | `eslint` | build | S | `no-restricted-syntax` on any `vi` module-mocking call with a generated-path argument |
 | FE-20 | `pnpm lint && pnpm typecheck && pnpm test` gate every change | §14 | `ci` | build | S | CI pipeline |
 
 ## The badge problem
@@ -336,6 +336,9 @@ The root law carried three rules that bind only the frontend tree: how its folde
 **A-03 · §6 Authorization, frontend §9 · The law named an identity provider instead of a shape.**
 Backend §6 said "Entra ID claims are mapped to policies", and frontend §9 opened with "Entra ID through MSAL". The organization's applications authenticate through a different, federating provider, and their tokens carry no roles: permissions come from a remote authorization service through a vendor package. The law's intent held - deny by default, named policies, no raw claims below `Api`, a browser that decides nothing - but by naming one provider it was silent on the three failure modes a remote authority has and a token claim does not. The authority can be unreachable, and nothing said an outage denies (BE-51 covers a forgotten attribute, not an unreachable authority). Its answers can be cached past a revocation, and nothing bounded how long. It answers for the user, and nothing said that answer is still intersected with an agent's manifest under §8. On the frontend, sign-out cleared local caches but could leave the provider session alive, so the next person at a shared workstation signed in silently as the previous one. *Applied:* the provider names leave both files, and provider choice is recorded in each application's `DECISIONS.md`. Backend §6 gains the rule that a permission source is a composition-root concern with the authority's codes confined to `Api` (BE-102), a subsection on external permission authorities - fail closed (BE-99), a bounded and declared cache lifetime that an outage never extends (BE-100, BE-99), intersection for agent principals (BE-103) - and the rule that a transport filter is never the only enforcement point, applying `../SKILL.md` §7 where the wiring happens (BE-101). Frontend §9 gains ending the provider session on sign-out (FE-29) and the rule that a credential nested inside a token is never extracted (FE-30). The cache lifetime MUST be bounded and declared and SHOULD be configurable: a vendor client that caches for a fixed period complies by stating that period, so the rule does not fail every consumer of a package that does not expose it, and a lifetime nobody can state is still a defect. The four runtime rules arrived as required tests, named in backend §14 and frontend §13. Backend rows go from 98 to 103, frontend from 28 to 30.
 
+**A-04 · BE-39, BE-80, BE-95, BE-97, BE-98, FE-01, FE-16, FE-19, FE-23, FE-25, §15 · A ⚙ rule named members of its class instead of the class.**
+A machine-checked rule is read as exhaustive: the check is taken to be the boundary, so whatever passes it is permitted. A rule that enumerates therefore grants every member it forgot to name. BE-98 named `IsProduction()` and `IsDevelopment()`; `IsStaging()`, `IsEnvironment("Development")` and a comparison on `EnvironmentName` are the same question, and a check built to the text let them through. BE-97 named four kinds of secret in three places; a consuming application's reference implementation commits a `nuget.config` whose `<packageSourceCredentials>` holds placeholders, one local substitution away from a committed package-feed token - a kind and a place the rule did not name. A sweep for the same shape found it again in rules nobody had tripped over yet. BE-95 banned `IConfiguration` but not the environment variables behind it. BE-39 banned the InMemory provider and left SQLite. BE-80 named `MapGet` and `MapPost`. FE-01 omitted `@ts-nocheck`. FE-25 and FE-23 listed different storage APIs for the same concern, and FE-25's list lacked IndexedDB. FE-16 omitted the fragment, FE-19 `vi.doMock`, and §15's clock item `DateTimeOffset.UtcNow` and `DateTime.Today`. *Applied:* each rule now states its class, with members kept only as marked illustrations. `../SKILL.md` §1 makes that the rule for writing rules, and §10 adds the converse case: a check stricter than its rule is the same contradiction, resolved by widening the rule or narrowing the check in the same change. BE-98's check moves from predicates to types, which closes the `EnvironmentName` gap a predicate ban leaves, and telemetry that needs the environment's name gets it from the composition root. BE-97 gains the requirement that a committed credential slot holds a reference, which is what makes the check decidable - a sweep cannot tell a substituted value from the placeholder it replaced. BE-97's row records its two genuinely different checks, `contract` for the committed set and `ci` for history, and the `contract` mechanism admits committed-file inspection. No rule id is added or retired and the row counts stand.
+
 ## Prerequisites (all adopted)
 
 Four checks were blocked on an architectural decision rather than on the work of writing a test. All four decisions are now in the law.
@@ -352,7 +355,7 @@ Four checks were blocked on an architectural decision rather than on the work of
 
 Sequenced by value per unit of effort, not by document order.
 
-**First - the cheap ones that fail loudly.** `proj` and `roslyn` checks: BE-02, BE-39, BE-47, BE-57 (`CA2254` is a compiler switch), BE-50's banned `[Authorize]`, BE-98's banned environment predicates, BE-97's secret scan, plus the §15 Forbidden list as `BannedApiAnalyzers` entries. Frontend: FE-01 through FE-04, FE-11 through FE-13, FE-15, FE-18, FE-19 are almost all off-the-shelf ESLint configuration. **Roughly 25 rules enforced in about a day**, none requiring a decision.
+**First - the cheap ones that fail loudly.** `proj` and `roslyn` checks: BE-02, BE-39, BE-47, BE-57 (`CA2254` is a compiler switch), BE-50's banned `[Authorize]`, BE-98's banned environment types, BE-95's banned environment-variable reads, BE-97's secret scan, plus the §15 Forbidden list as `BannedApiAnalyzers` entries. Frontend: FE-01 through FE-04, FE-11 through FE-13, FE-15, FE-18, FE-19 are almost all off-the-shelf ESLint configuration. **Roughly 25 rules enforced in about a day**, none requiring a decision.
 
 **Second - the reflection sweeps.** One test each, discovering every instance automatically: BE-25 and BE-26 (declared policy, declared idempotency), BE-64, BE-67, BE-70, BE-73, BE-51, BE-96 (every options class validated on start), BE-100 (the permission-cache lifetime declared and bounded). These are the highest-leverage tests in the suite, because they cover every message that will ever be added, not just today's.
 

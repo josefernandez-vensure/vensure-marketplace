@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.5.0
+
+- The law states classes, not lists. A machine-checked rule is read as
+  exhaustive, so a rule that enumerates grants every member it forgot to name.
+  `SKILL.md` §1 now requires a rule to state its class, with members named
+  only as illustrations. §10 adds the converse: a check stricter than its rule
+  is the same contradiction, and the rule is widened or the check narrowed in
+  the same change. Amendment A-04 in `enforcement.md` records why.
+- `BE-98` forbids code outside the composition root from learning which
+  environment it runs in, by any means. The check bans the environment types
+  rather than two of the four predicates, so `IsStaging()`,
+  `IsEnvironment(string)` and `EnvironmentName` comparisons are caught too.
+- `BE-97` forbids a secret in any committed file, not only in the three places it
+  listed. A committed credential slot, such as `nuget.config`'s
+  `<packageSourceCredentials>`, holds a `%VAR%` reference and never a
+  placeholder to be overwritten.
+- The same fix for rules with the same gap: `BE-95` covers environment-variable
+  reads, `BE-39` any substitute test database provider, `BE-80` every route
+  builder verb, `FE-01` `@ts-nocheck`, `FE-16` the URL fragment, `FE-19`
+  `vi.doMock`, `FE-23` and `FE-25` any browser storage, and §15 every ambient
+  clock read.
+
 ## 1.4.5
 
 - `vaca`'s task reader skips non-task files. The `[0-9]*.md` glob also matches
