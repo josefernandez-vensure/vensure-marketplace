@@ -153,7 +153,7 @@ Eleven root rules are **duplicated** by a subordinate file, and four backend rul
 | BE-50 | Every Command and Query declares a named policy; no bare `[Authorize]` | `contract` + `roslyn` | build | S | Reflection sweep (as BE-25); `BannedApiAnalyzers` on parameterless `[Authorize]` |
 | BE-51 | `FallbackPolicy` MUST deny | `contract` | build | S | Startup configuration assertion |
 | BE-52 | `IHttpContextAccessor` MUST NOT be referenced outside the composition root | `arch` | build | S | Assembly-scoped type reference assertion |
-| BE-53 | Application and domain code MUST NOT read raw claims | `arch` | build | S | `ClaimsPrincipal`/`ClaimTypes` banned outside `Api` |
+| BE-53 | Application and domain code MUST NOT read raw claims | `arch` | build | S | Every type raw claims can be read through, such as `ClaimsPrincipal`, `ClaimsIdentity`, `Claim`, `ClaimTypes` or `JwtRegisteredClaimNames`, banned outside `Api`. Ban the `System.Security.Claims` namespace rather than the members, as BE-98 bans types rather than predicates |
 | BE-99 | An external permission authority's unavailability MUST deny; an expired cache entry is not served during an outage | `test` | required-test | M | Added by A-03. §14 **Authorization** |
 | BE-100 | An externally-resolved permission cache declares a bounded lifetime in an options class | `contract` | build | S | Added by A-03. Options sweep, as BE-96: the lifetime exists on a validated options class and is bounded; a missing or unbounded value fails |
 | BE-101 | An operation's authorization decision is reachable from the authorization behavior, not only a transport filter | `test` | required-test | M | Added by A-03. §14 **Authorization** |
