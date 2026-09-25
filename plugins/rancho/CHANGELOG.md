@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.1
+
+- `BE-53`'s check bans the class of claim types, not two members of it. It
+  named `ClaimsPrincipal` and `ClaimTypes`, so a check built to the note let
+  `Claim`, `ClaimsIdentity` and `JwtRegisteredClaimNames` through - the gap
+  A-04 closed for the rules in 1.5.0, left open in a check note. The rule is
+  unchanged; only the check it prescribes is widened.
+
 ## 1.5.0
 
 - The law states classes, not lists. A machine-checked rule is read as

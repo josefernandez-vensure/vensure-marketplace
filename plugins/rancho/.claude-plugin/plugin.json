@@ -1,7 +1,7 @@
 {
   "name": "rancho",
   "displayName": "Rancho — Vensure Dev Assistant",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Vensure's coding assistant: VACA (Vensure Agentic Code Assistant) plus the engineering law that governs .NET and React service work.",
   "license": "MIT",
   "author": {
