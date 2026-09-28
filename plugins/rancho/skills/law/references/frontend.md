@@ -4,7 +4,7 @@
 
 ## 1. Stack
 
-React · Vite · TypeScript (strict) · Shadcn/ui · Tailwind · TanStack Query · TanStack Router · Zustand · React Hook Form + Zod · MSAL (`@azure/msal-browser`, `@azure/msal-react`) · Vitest + React Testing Library · Playwright · MSW · ESLint 9 flat config, type-aware · Prettier
+React · Vite · TypeScript (strict) · Shadcn/ui · Tailwind · TanStack Query · TanStack Router · Zustand · React Hook Form + Zod · the organization's identity library (`DECISIONS.md`) · Vitest + React Testing Library · Playwright · MSW · ESLint 9 flat config, type-aware · Prettier
 
 TypeScript `strict` MUST stay on. `any` is forbidden; use `unknown` and narrow. Suppressing the type checker is forbidden - `@ts-ignore`, `@ts-nocheck`, or any other directive - except `@ts-expect-error`, which is permitted only with a reason comment and an issue reference. ⚙
 
@@ -15,7 +15,7 @@ src/
   app/                  composition root. Nothing outside it may import from it.
     routes/             the route tree. A route file composes features.
     router.tsx
-    providers.tsx       query client, router, MSAL, theme
+    providers.tsx       query client, router, identity provider, theme
   features/<feature>/   one user-facing capability. Only the folders it needs.
     api/                query options, mutations, use of the generated client
     components/
@@ -28,6 +28,8 @@ src/
   generated/            OpenAPI output. Never hand-edited.
   routeTree.gen.ts      TanStack Router output. Never hand-edited.
 ```
+
+When a host shell mounts the application, its lifecycle entry - such as `bootstrap`, `mount` and `unmount` - is part of `app/`. It is a composition root like any other.
 
 Dependencies flow one way: `shared` -> `features` -> `app`.
 
@@ -111,17 +113,18 @@ Client state is UI state the server does not own: selections, wizard step, panel
 
 ## 9. Authentication
 
-The organization's identity provider through MSAL. The browser proves who the user is. It decides nothing about what they may do - that is the server's answer, every time (`../SKILL.md` §7).
+The organization's identity provider, through its identity library. Which provider and which library are recorded in `DECISIONS.md`. The browser proves who the user is. It decides nothing about what they may do - that is the server's answer, every time (`../SKILL.md` §7).
 
-- Token acquisition MUST live in exactly one place in `shared/lib/`. No component, hook, or query calls MSAL directly. ⚙
-- Access tokens MUST be acquired silently from MSAL's cache per request and MUST NOT be stored by the application. Writing a token to browser storage of any kind - such as `localStorage`, `sessionStorage`, IndexedDB, or a cookie - or to a store is forbidden. ⚙
-- A token is opaque to the application. Its claims MAY be read for display within the user's own session and MUST NOT be used for any other purpose.
+- An application mounted in a host shell uses the shell's session through the identity library and MUST NOT run a sign-in flow of its own. A second flow is a second session: sign-out in one would leave the other signed in.
+- Token acquisition MUST live in exactly one place in `shared/lib/`. No component, hook, or query calls the identity library, or reads or writes its session store, directly. ⚙
+- A token is obtained from the identity library per request and MUST NOT be retained by the application beyond that request - not in browser storage of any kind, such as `localStorage`, `sessionStorage`, IndexedDB, or a cookie, not in a store, and not in a module-level cache. ⚙ The identity library's own session store is the one place a token may live. Where the library offers a choice of store, the application MUST configure the shortest-lived one it supports.
+- A token is opaque to the application. Its claims MAY be read for display within the user's own session and MUST NOT be used for any other purpose. The same holds for the signed-in user's profile as the identity library returns it.
 - A credential nested inside a token - an embedded access or refresh token - MUST NOT be extracted, stored, forwarded, or logged. ⚙ A refresh token is a long-lived credential; reusing one found inside another token creates a credential-handling path nothing else in this section governs. The claim names to flag live in the project's lint configuration, not here.
 - The token is attached by exactly one interceptor on the generated client. A hand-written `Authorization` header is a defect. ⚙
-- A `401` MUST trigger one silent refresh, then an interactive sign-in. It MUST NOT produce a retry loop and MUST NOT surface as a generic error.
+- A `401` MUST trigger one silent refresh, then an interactive sign-in - for an application in a host shell, the shell's sign-in page. It MUST NOT produce a retry loop and MUST NOT surface as a generic error.
 - A `403` is a final answer. It MUST be shown as a permission error and MUST NOT trigger a refresh - the token is fine, the permission is not. Retrying a `403` is how a UI turns a clear denial into a hang.
-- Scopes MUST be declared in one place and MUST be the narrowest set the application needs.
-- Sign-out MUST clear the MSAL cache, the TanStack Query cache, and every store. A previous user's data surviving a sign-out on a shared workstation is a disclosure, and shared workstations are the normal case in this domain.
+- What the application requests from the provider - scopes, a service name, or any other grant - MUST be declared in one place and MUST be the narrowest the application needs.
+- Sign-out MUST have the identity library clear its session store, and MUST clear the TanStack Query cache and every store. A previous user's data surviving a sign-out on a shared workstation is a disclosure, and shared workstations are the normal case in this domain.
 - Sign-out MUST also end the identity-provider session, including any upstream session the provider federates to, by calling the provider's end-session endpoint. Clearing local state while a provider session survives means the next sign-in completes silently as the previous user - the disclosure the rule above exists to prevent, reintroduced one step later. The next sign-in MUST prompt. Ending the provider session also signs the user out of other applications that share it; on a shared workstation, that is the intended effect.
 - The frontend holds no secrets. Everything in the bundle is public: a client id belongs there, a client secret never does.
 
@@ -136,7 +139,7 @@ The organization's identity provider through MSAL. The browser proves who the us
 `../SKILL.md` §8 governs, and its classes apply here unchanged. The browser is inside the authenticated boundary. Everything listed below is outside it.
 
 - `Confidential` and `Restricted` values MUST NOT appear in any part of a URL - path, query string, fragment, route param, or search param. ⚙ They land in browser history, server access logs, and `Referer` headers sent to third parties.
-- They MUST NOT be written to browser storage of any kind - such as `localStorage`, `sessionStorage`, IndexedDB, Cache Storage, or a cookie. ⚙ Server data belongs in the TanStack Query cache, which is memory-only and dies with the tab.
+- They MUST NOT be written to browser storage of any kind - such as `localStorage`, `sessionStorage`, IndexedDB, Cache Storage, or a cookie. ⚙ Server data belongs in the TanStack Query cache, which is memory-only and dies with the tab. The identity library's session store (§9) MAY hold the signed-in user's own profile as the provider returns it. The application MUST NOT write to that store.
 - Analytics, telemetry, session replay, and error reporting MUST scrub them. Breadcrumbs, form-field capture, and unredacted request bodies are the usual leak, and the default configuration of every one of these tools is wrong for this domain.
 - The client MUST NOT assemble an export of sensitive data out of paged reads. An export comes from a server endpoint carrying the same policy as the read, and is audited (`../SKILL.md` §8).
 
@@ -151,7 +154,7 @@ The organization's identity provider through MSAL. The browser proves who the us
 - MSW for all network mocking. Module-mocking the generated client - `vi.mock`, `vi.doMock`, or any other - is forbidden: it mocks past the contract. ⚙
 - Every form MUST have a test for a validation failure and a test for a server-side failure.
 - **Data boundaries**: telemetry, analytics, and error reporting MUST have a test proving a known classified field is scrubbed from a captured event.
-- **Authentication**: a `401` MUST have a test proving exactly one silent refresh is attempted before interactive sign-in, and a `403` MUST have a test proving no refresh occurs. Sign-out MUST have a test proving the local caches are cleared and the provider's end-session endpoint is called.
+- **Authentication**: a `401` MUST have a test proving exactly one silent refresh is attempted before interactive sign-in - the provider's sign-in, or the host shell's sign-in page - and a `403` MUST have a test proving no refresh occurs. Sign-out MUST have a test proving the local caches are cleared and the provider's end-session endpoint is called.
 - Playwright for critical user journeys only.
 - Tests MUST NOT assert on class names, DOM structure, or component internals.
 
