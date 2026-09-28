@@ -7,6 +7,10 @@
   `Claim`, `ClaimsIdentity` and `JwtRegisteredClaimNames` through - the gap
   A-04 closed for the rules in 1.5.0, left open in a check note. The rule is
   unchanged; only the check it prescribes is widened.
+- `BE-94`'s mechanism is `contract`, not `arch`. A declared dimension key is a
+  `const string` the compiler inlines, so in IL it is the same `ldstr` as an
+  arbitrary literal and ArchUnitNET cannot tell the two apart. The check reads
+  the committed call sites instead. The rule and its status are unchanged.
 
 ## 1.5.0
 

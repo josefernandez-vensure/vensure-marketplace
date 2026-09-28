@@ -204,7 +204,7 @@ Eleven root rules are **duplicated** by a subordinate file, and four backend rul
 | BE-91 | Outbox rows persist the correlation id of the writing transaction | `contract` | build | S | EF model: the column exists on the outbox entity |
 | BE-92 | The dispatcher restores the correlation id on delivery | `test` | required-test | M | §14 **Correlation** |
 | BE-93 | A handler MUST NOT reference `ILogger` | `arch` | build | S | Dispatch logging belongs to the pipeline behavior alone |
-| BE-94 | Metric dimensions come from a declared closed set of keys | `arch` | build | S | No arbitrary string as a dimension key; bounds cardinality by construction |
+| BE-94 | Metric dimensions come from a declared closed set of keys | `contract` | build | S | Committed-file inspection of every metric call site: each dimension key is a member of the declared key set, never a literal or a computed string; bounds cardinality by construction. Not `arch`: a declared key is a `const string`, which the compiler inlines, so in IL a declared key and an arbitrary literal are the same `ldstr` and a type-level assertion cannot tell them apart |
 
 ### §11 Configuration and Secrets
 
