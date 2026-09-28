@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.6.0
+
+- The law names the identity library as a class, not MSAL. A-03 took the
+  provider's name out and left its library in, so frontend §9 described a
+  library that applications in the organization's host shell do not use.
+  Those applications read tokens from a session store the shell writes and
+  shares, and could not satisfy `FE-25` whatever their own code did.
+  Amendment A-05 in `enforcement.md` records why.
+- `FE-24` covers the identity library's session store as well as its calls:
+  nothing outside the one module reads or writes it. `FE-25` forbids the
+  application retaining a token beyond the request, including in a
+  module-level cache. The library's own store is the one place a token may
+  live, and the application configures the shortest-lived store the library
+  supports - memory, for an application that runs its own sign-in.
+- An application in a host shell runs no sign-in of its own, and its `401`
+  goes to the shell's sign-in page (`FE-27`). The grant it requests - scopes,
+  a service name, or any other - is declared once and is the narrowest it
+  needs. Sign-out has the library clear its store.
+- §11 lets the identity library's store hold the user's own profile, and
+  forbids the application writing to it (`FE-23`).
+- `BE-104`: a claim read before the token's signature is validated may only
+  select how the token is validated, and must agree with the validated token.
+  A required test in backend §14 **Authorization** carries it.
+- Backend §6's "External permission authorities" becomes "External
+  authorities". `BE-99` and `BE-100` now cover a remote service that
+  validates the token, not only one that answers for permissions.
+
 ## 1.5.1
 
 - `BE-53`'s check bans the class of claim types, not two members of it. It
