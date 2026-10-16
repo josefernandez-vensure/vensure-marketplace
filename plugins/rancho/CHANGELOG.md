@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.7.0
+
+- **Breaking for any application still on shadcn/ui or Tailwind.** The law
+  names the UI library as a class, not a component kit and a styling system.
+  Frontend §1 named Shadcn/ui and Tailwind, so an application built on the
+  organization's design system could not satisfy `FE-12` or `FE-14` whatever
+  its own code did. Each application records its UI library, and the
+  component library it is built on, in `DECISIONS.md`. Amendment A-06 in
+  `enforcement.md` records why.
+- `FE-32`: a UI-class package - one whose purpose is presentation, such as a
+  component, styling, icon or class-name package - is a dependency only if the
+  UI library depends on it, and application code imports no UI-class package
+  but the UI library and its component library. Packages the application uses
+  in its own right, such as its runtime, are outside the rule.
+- §2 removes `shared/ui/`. `FE-31`: features and `app/` use the UI library
+  directly, `shared/` imports neither it nor its component library, and a
+  module that re-exports, wraps, adapts or restyles a UI-library component is
+  forbidden.
+- `FE-12` keeps React Hook Form + Zod. A UI-library input is bound with
+  `Controller`, and the UI library's own validator is forbidden.
+- `FE-14`: stylesheets enter only through the global stylesheet, which imports
+  the UI library's stylesheet entry, its component library's theme and its
+  icon stylesheet, plus one layout partial that uses only the library's tokens
+  and mixins and never targets a library component. R-14 is reworded to match.
+- Each consumer adds five lists to its lint configuration, beside the
+  identity-library lists from 1.6.0:
+  - the UI library's packages;
+  - its component library's packages;
+  - the UI-class packages;
+  - the library's validator;
+  - the library's class prefixes.
+- The `Controller` binding under `FE-12`, and a wrapper written inside a
+  feature under `FE-31`, are reached by review. Frontend rows go from 30 to 32.
+
 ## 1.6.0
 
 - The law names the identity library as a class, not MSAL. A-03 took the
