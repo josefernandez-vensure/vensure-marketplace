@@ -4,7 +4,9 @@
 
 ## 1. Stack
 
-React · Vite · TypeScript (strict) · Shadcn/ui · Tailwind · TanStack Query · TanStack Router · Zustand · React Hook Form + Zod · the organization's identity library (`DECISIONS.md`) · Vitest + React Testing Library · Playwright · MSW · ESLint 9 flat config, type-aware · Prettier
+React · Vite · TypeScript (strict) · the organization's UI library and the component library it is built on (`DECISIONS.md`) · TanStack Query · TanStack Router · Zustand · React Hook Form + Zod · the organization's identity library (`DECISIONS.md`) · Vitest + React Testing Library · Playwright · MSW · ESLint 9 flat config, type-aware · Prettier
+
+A UI-class package - one whose purpose is presentation, such as a component, styling, icon, animation or class-name package, or any other - is a dependency only if the UI library depends on it. Application code imports no UI-class package but the UI library and the component library it is built on. ⚙
 
 TypeScript `strict` MUST stay on. `any` is forbidden; use `unknown` and narrow. Suppressing the type checker is forbidden - `@ts-ignore`, `@ts-nocheck`, or any other directive - except `@ts-expect-error`, which is permitted only with a reason comment and an issue reference. ⚙
 
@@ -23,7 +25,6 @@ src/
     stores/
     schemas/
   shared/               used by two or more features
-    ui/                 Shadcn primitives
     lib/
   generated/            OpenAPI output. Never hand-edited.
   routeTree.gen.ts      TanStack Router output. Never hand-edited.
@@ -88,7 +89,7 @@ Client state is UI state the server does not own: selections, wizard step, panel
 
 ## 6. Forms and Validation
 
-- React Hook Form + Zod through Shadcn's `<Form>`. No other form library. ⚙
+- React Hook Form + Zod. A UI-library input is bound in the feature with React Hook Form's `Controller`, and receives its error text through the input's own error property. No other form library, and no validation through the UI library's own validator. ⚙
 - Every form MUST have a Zod schema. Ad-hoc validation inside handlers is forbidden.
 - Schemas MUST mirror the backend Request DTO's constraints. Where they diverge, the backend is right.
 - Client validation is UX. Server errors MUST still be handled and displayed - a `ProblemDetails` 400 is an expected outcome, not an edge case.
@@ -96,11 +97,11 @@ Client state is UI state the server does not own: selections, wizard step, panel
 
 ## 7. Components
 
-- Shadcn primitives live in `shared/ui/` and MAY be modified - they are source, not a dependency. Any modification MUST be noted in the file.
+- Features and `app/` use the UI library and the component library it is built on directly. `shared/` MUST NOT import either. A module that re-exports, wraps, adapts or restyles a UI-library component is forbidden, wherever it lives. ⚙
 - Components MUST NOT call `fetch` or the generated client directly. Data access goes through a hook in the feature's `api/`. ⚙
 - Presentational components MUST NOT contain data fetching or business rules.
 - Prefer composition over configuration. A component with more than roughly seven props, or with boolean props that change layout, SHOULD be split.
-- Styling is Tailwind. A `.css` import outside `shared/ui/` and the global stylesheet is forbidden. ⚙
+- Styling is the UI library's. The global stylesheet imports, once, the UI library's stylesheet entry, the theme of the component library it is built on, and the library's icon stylesheet. Layout the library has no component for lives in one layout partial, imported by the global stylesheet. That partial uses only the library's own tokens and mixins, styles only the application's own markup, and MUST NOT target or restyle a library component. Any other stylesheet import, utility-class system or CSS-in-JS is forbidden. ⚙
 - A static object literal passed to `style` is forbidden. ⚙ A computed value is fine - that is what the prop is for.
 - Every interactive element MUST be keyboard-operable and MUST have an accessible name.
 
