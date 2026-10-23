@@ -1,24 +1,18 @@
-# Enforcement Inventory
+# Enforcement Inventory - Core
 
-Every rule marked ⚙ in the law, and the mechanism that enforces it.
+Every rule marked ⚙ in the core law, the role whose stack laws carry it, and the record of how the law came to read as it does.
 
-`../SKILL.md` §1 defines ⚙ as **"machine-checked. Violating one is a build failure, not a review comment."** This file is the audit of that claim, and the claim now holds: every rule still carrying a mark can be made to fail the build. A ⚙ with no entry here is unaccounted for and MUST be added.
+`../SKILL.md` §1 defines ⚙ as **"machine-checked. Violating one is a build failure, not a review comment."** This file is the audit of that claim for the core law. A check is written in a technology, so a core rule's check lives in a stack law: this file names the role each rule binds, and every stack law of that role lists the rule, with its mechanism and check, under **Core rules carried** in its own inventory (`../SKILL.md` §10). A ⚙ with no entry here is unaccounted for and MUST be added.
 
 ## How to read this
 
 **Ids are permanent.** `BE-31` stays `BE-31` when sections renumber. The Section column is maintained; the id never changes. Tests reference the id in their name: `BE_31_QueryHandlers_DoNotReferenceAggregates`.
 
-**Mechanism** - what does the checking:
+**Each prefix belongs to one law.** `ROOT` is the core law's. A stack law declares its own prefix at the top of its inventory - `BE` is `rancho-dotnet`'s, `FE` is `rancho-react`'s - and a new stack law takes a new one. An id is never reused, in any law.
 
-| Code | Mechanism | Fails at |
-|---|---|---|
-| `proj` | Project or build configuration - `.csproj`, `Directory.Build.props`, `tsconfig`, banned packages | Compile |
-| `roslyn` | Roslyn analyzer: a built-in CA rule, `BannedApiAnalyzers`, or a custom analyzer | Compile |
-| `arch` | ArchUnitNET test over types, assemblies, namespaces, attributes | Test run |
-| `contract` | Reflection, DI container, EF model, or committed-file inspection - **one** test that discovers every instance of the rule automatically | Test run |
-| `eslint` | ESLint rule, off-the-shelf or custom | Lint |
-| `ci` | Repository-level script - path checks, generated-artifact freshness, diff checks | CI |
-| `test` | A behavioural test that a human must write **per instance** | Test run |
+**Mechanism** codes belong to the stack laws. Each stack inventory defines the codes for the tools its technology checks with.
+
+**Binds** - the role (`../SKILL.md` §2) whose stack laws MUST carry the rule: `server`, `client`, or `both`.
 
 **Status:**
 
@@ -33,237 +27,44 @@ Every rule marked ⚙ in the law, and the mechanism that enforces it.
 
 ## Summary
 
-The law carries **131 ⚙ marks on rules**. Three sit on a section heading and cover everything beneath, so the marked rules expand to **134 rows**. Eighteen further rows record rules that carry no mark: fourteen named as required tests, four left to review.
+The core law carries **14 ⚙ marks**, one on each `build` row below. Two further rows record root rules whose mark was dropped and which review enforces.
 
 | | Rows | `build` | `required-test` | `dropped` |
 |---|---|---|---|---|
 | `../SKILL.md` | 16 | 14 | 0 | 2 |
-| `backend.md` | 104 | 92 | 11 | 1 |
-| `frontend.md` | 32 | 28 | 3 | 1 |
-| **Total** | **152** | **134** | **14** | **4** |
 
-**Every one of the 134 marked rules can be made to fail the build.** No rule claims an enforcement it cannot deliver. Nothing is enforced yet, though - `build` means the check is buildable, not built.
+**Every one of the 14 marked rules can be made to fail the build** in each stack law that carries it. Totals for each stack law are in that stack law's inventory.
 
-Eleven root rules are **duplicated** by a subordinate file, and four backend rules restate another backend rule. One check satisfies each pair; the canonical id is noted and the duplicate points at it.
+Eleven root rules are **duplicated** by a stack-law rule. One check satisfies each pair; the stack law's inventory names the canonical id.
 
 ## Root - `../SKILL.md`
 
-| Id | Rule | Section | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|---|
-| ROOT-01 | No module references another module's Domain/Application/Infrastructure | §3 | `proj` + `arch` | build | S | Assembly dependency assertion; also expressible as a `ProjectReference` allowlist |
-| ROOT-02 | Domain events MUST NOT cross a module boundary | §3 | `arch` | build | S | Canonical: BE-07 |
-| ROOT-03 | "An event with both audiences is two events" | §3 | — | dropped | — | R-01 applied: mark removed, rule stands for review |
-| ROOT-04 | One schema per module; no cross-schema joins, no cross-module FKs | §3 | `contract` | build | M | EF model inspection: every entity's schema equals the module's; no FK targets outside it |
-| ROOT-07 | Endpoints take a Request DTO, return a Response DTO; no domain type reachable from HTTP | §4 | `arch` | build | M | Unblocked by P-01. Canonical: BE-77 |
-| ROOT-08 | Query results projected directly to Response DTOs | §4 | `arch` | build | S | Canonical: BE-14 |
-| ROOT-09 | OpenAPI document generated and committed | §4 | `ci` | build | S | Regenerate in CI, fail on any diff |
-| ROOT-11 | Every collection endpoint paginated | §4 | `arch` | build | S | Canonical: BE-19 |
-| ROOT-12 | One page shape across the API | §4 | `arch` | build | S | Canonical: BE-20 |
-| ROOT-13 | Every state-changing endpoint declares an idempotency mechanism | §4 | `contract` | build | S | Canonical: BE-26 |
-| ROOT-14 | Deny by default, everywhere | §7 | — | dropped | — | R-03 applied: a principle; the rules implementing it carry their own marks |
-| ROOT-15 | Acting principal explicit; no ambient HTTP context in application or domain | §7 | `arch` | build | S | Canonical: BE-52 |
-| ROOT-16 | Unclassified is `Restricted` | §8 | `arch` | build | L | Canonical: BE-55 |
-| ROOT-17 | Integration events MUST NOT carry `Restricted` payloads | §8 | `arch` | build | M | Canonical: BE-61 |
-| ROOT-18 | A field's class travels with its contract, into the OpenAPI document and the generated types | §8 | `ci` | build | M | Added by P-03. Canonical: BE-83 |
-| ROOT-19 | Every unit of work carries a correlation id | §9 | `proj` | build | S | Canonical: BE-90 |
+| Id | Rule | Section | Binds | Status |
+|---|---|---|---|---|
+| ROOT-01 | No module references another module's internals; only its published contracts | §3 | server | build |
+| ROOT-02 | Domain events MUST NOT cross a module boundary | §3 | server | build |
+| ROOT-03 | "An event with both audiences is two events" | §3 | server | dropped |
+| ROOT-04 | One schema per module; no cross-schema joins, no cross-module FKs | §3 | server | build |
+| ROOT-07 | Endpoints take a Request DTO, return a Response DTO; no domain type reachable from HTTP | §4 | server | build |
+| ROOT-08 | Query results projected directly to Response DTOs | §4 | server | build |
+| ROOT-09 | OpenAPI document generated and committed | §4 | server | build |
+| ROOT-11 | Every collection endpoint paginated | §4 | server | build |
+| ROOT-12 | One page shape across the API | §4 | server | build |
+| ROOT-13 | Every state-changing endpoint declares an idempotency mechanism | §4 | server | build |
+| ROOT-14 | Deny by default, everywhere | §7 | both | dropped |
+| ROOT-15 | Acting principal explicit; no ambient HTTP context in application or domain | §7 | server | build |
+| ROOT-16 | Unclassified is `Restricted` | §8 | server | build |
+| ROOT-17 | Integration events MUST NOT carry `Restricted` payloads | §8 | server | build |
+| ROOT-18 | A field's class travels with its contract, into the OpenAPI document and the generated types | §8 | both | build |
+| ROOT-19 | Every unit of work carries a correlation id | §9 | server | build |
 
-## Backend - `backend.md`
+ROOT-03 is dropped by R-01 and ROOT-14 by R-03: each rule stands, enforced by review. ROOT-05, ROOT-06 and ROOT-10 left the root law under A-02 and are retired.
 
-### §2 Project Reference Law
+## Records
 
-| Id | Rule | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|
-| BE-01 | Reference table: each project references only what the table allows | `proj` | build | S | Allowlist keyed on the kind each project declares - an undeclared or unrecognised kind fails. Asserted in CI and by `arch` |
-| BE-02 | Domain references no EF Core, Mediator, ASP.NET, `IHttpContextAccessor`, application types | `proj` + `arch` | build | S | Banned assembly references on the Domain project |
-| BE-03 | No grouping by pattern: no `Application/Handlers/`, `Domain/Entities/`, etc. | `ci` | build | S | Forbidden directory-name check (denylist only - the positive form is not checkable) |
+A record states a rule as it then read, why it resisted checking or had to change, and what replaced it. Records are kept as the reasoning behind wording that would otherwise look arbitrary, and as the record `../SKILL.md` §11 requires - the law changes first. A record that concerns the core law, or more than one stack law, is kept here. One that concerns a single stack law is kept in that stack law's inventory.
 
-### §3 Domain Layer
-
-| Id | Rule | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|
-| BE-04 | Aggregate state private; no public setters; collections as `IReadOnlyCollection<T>` | `arch` | build | S | Public property setters on Domain types = fail |
-| BE-05 | Aggregate methods MUST NOT return `Result`, a DTO, or any application type | `arch` | build | S | Return types of public Domain methods must be Domain or BCL |
-| BE-06 | Aggregates MUST NOT reference repositories, `DbContext`, `HttpClient`, or any I/O | `arch` | build | S | Banned namespaces on Domain (`System.IO`, `System.Net`, EF) |
-| BE-07 | Domain events are intra-module | `arch` | build | S | Domain event types not referenced outside their module's assemblies |
-| BE-08 | No bare `Guid` in the `Domain` or `Application` public surface | `arch` | build | S | R-04 applied |
-| BE-09 | Domain events past tense | — | dropped | — | R-05 applied: now SHOULD, unmarked |
-| BE-10 | Domain events carry ids and values, never entity references | `arch` | build | S | Property types of event types must not be entity types |
-| BE-78 | An aggregate root is marked as one at the type level | `arch` | build | S | Added by P-02. Marker interface present on every root |
-| BE-79 | An aggregate holds another aggregate's id, never a reference | `arch` | build | S | Enabled by P-02: no property of a root-marked type is another root-marked type |
-
-### §4 Application Layer
-
-| Id | Rule | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|
-| BE-11 | Command return type limited to identifier and outcome | `arch` | build | S | `ICommand<T>` closed over `Unit` or an id type |
-| BE-12 | A query handler references no repository port and never calls `SaveChangesAsync` | `arch` + `roslyn` | build | S | R-06 applied |
-| BE-13 | Command handlers mutate only through aggregate methods; no `DbContext`/SQL | `arch` | build | S | Covered by BE-01: Application cannot reference EF |
-| BE-14 | Query handlers project straight to DTOs, untracked; no aggregate materialization | `arch` + `contract` | build | M | Query handler types must not reference aggregates; `QueryTrackingBehavior.NoTracking` asserted on the context |
-| BE-15 | Query message and abstraction in Application, concrete handler in Infrastructure | `arch` | build | S | Type-location assertion by interface |
-| BE-16 | Query handlers MUST NOT use an aggregate repository | `arch` | build | S | No repository port referenced from query handler types |
-| BE-17 | `Repository` reserved for the write path; read-side types named `<Feature>Reader` | `arch` | build | S | Naming plus interface-origin assertion |
-| BE-18 | Handlers MUST NOT reference `HttpContext`, `IHttpContextAccessor`, transport types | `arch` | build | S | Same check as BE-52 |
-| BE-19 | Every collection query paginated | `arch` | build | S | Query handler return types: `Page<T>` only, never `List<T>`/`IEnumerable<T>` |
-| BE-20 | One shared page shape | `arch` | build | S | Exactly one generic page type exists solution-wide |
-| BE-21 | Every paginated query declares a maximum page size | `arch` | build | S | Paginated query types must expose `MaxPageSize` |
-| BE-22 | A request above the maximum is rejected, never clamped | `contract` | build | M | Reflection over paginated query types; assert the validator rejects `max + 1` |
-| BE-23 | Ordering declared as a descriptor whose last term is a unique key | `contract` | build | M | R-07 applied: promoted from test-only. Descriptor inspection over all paginated queries |
-| BE-24 | One cursor type solution-wide, payload exactly sort key plus id | `arch` | build | S | R-08 applied: the prohibition follows by construction |
-| BE-25 | A message with no declared policy MUST fail to dispatch | `contract` | build | S | Reflection over all message types at test time; runtime guard in the behavior |
-| BE-26 | Every command declares an idempotency mechanism | `contract` | build | S | Same reflection sweep as BE-25 |
-| BE-27 | Idempotency record written through the same unit of work; Redis MUST NOT be the store | `arch` | build | S | Idempotency store type depends on `DbContext`, never on `IConnectionMultiplexer` |
-| BE-28 | Unique index on the attempt identity | `contract` | build | S | EF model inspection: index exists and `IsUnique` |
-| BE-29 | Concurrent duplicates resolve as one execution and one replay | `test` | required-test | M | §14 **Idempotency**. Mark stripped; split out of BE-28's bullet, which keeps its own |
-| BE-30 | Idempotency is a pipeline behavior, never per-endpoint | `arch` | build | S | Only the behavior may reference the idempotency store |
-| BE-31 | Agent tool invocations carry a key derived from run and step | `arch` | build | S | By construction: the tool invoker is the only caller, and takes the key as a required argument |
-| BE-32 | A transaction MUST NOT span a module boundary | `arch` | build | S | Covered by BE-01 |
-| BE-33 | Integration events written to the outbox in the same transaction; no direct publish | `arch` | build | S | Application handlers may reference the outbox port only, never a bus client |
-| BE-34 | Every public Infrastructure type is an adapter | `arch` | build | M | Implements a Domain/Application port or a known framework extension point |
-| BE-35 | Infrastructure types live under `Persistence/`, `Queries/`, `Messaging/`, `External/` | `arch` | build | S | Namespace assertion |
-| BE-36 | `Infrastructure/Queries/<Feature>/` mirrors the Application feature folder | `ci` | build | S | Directory comparison |
-| BE-84 | Every integration event type carries its version in its name | `arch` | build | S | Naming assertion over the `Contracts` project |
-| BE-85 | The published contract surface is snapshotted; a shape change to an existing version fails the build | `ci` | build | M | Snapshot and diff, the same mechanism as ROOT-09 |
-| BE-86 | No domain type in an integration event payload | `arch` | build | S | Property types of contract types resolve to ids, primitives, value objects |
-
-### §5 Persistence
-
-| Id | Rule | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|
-| BE-37 | One `DbContext` per module; MUST NOT map another module's tables | `contract` | build | S | EF model: every entity type originates in the owning module's assembly |
-| BE-38 | Mapping in `IEntityTypeConfiguration<T>`; no mapping attributes on domain types | `arch` | build | S | No EF attributes present on any Domain type |
-| BE-39 | Integration tests run against SQL Server; no other provider stands in for it | `proj` | build | S | A package allowlist, not a denylist: SQL Server is the only EF provider a test project may reference, so SQLite and InMemory both fail without being named. Amended by A-04 |
-| BE-40 | Repositories MUST NOT expose `IQueryable`, `DbSet`, or EF types | `arch` | build | S | Signature assertion on repository ports |
-| BE-41 | Command handlers write only through the repository | `arch` | build | S | No longer covered by BE-01: `Application` now references `Platform.Application`, where the unit-of-work port is declared. Assert directly - no type in a module `Application` references it |
-| BE-42 | No navigation properties between aggregate roots | `contract` | build | M | Unblocked by P-02. EF model navigation targets, resolved through the root marker |
-| BE-43 | Domain types acquire no public parameterless ctors, public setters, or EF attributes | `arch` | build | S | Extends BE-04 and BE-38 |
-| BE-44 | Cache decorators registered explicitly per query, never auto-applied | `contract` | build | M | Container inspection: no open-generic decorator registration over `IQueryHandler<,>` |
-| BE-45 | **Every** cache key includes the acting principal | `arch` | build | S | R-09 applied: unconditional, built by the one key builder |
-| BE-46 | Every cache key embeds its aggregates' version stamps, declared explicitly | `arch` + `contract` | build | M | Cached queries implement a dependency-declaring interface; key builder consumes it |
-| BE-47 | `KEYS` and `SCAN`-and-delete invalidation forbidden | `roslyn` | build | S | `BannedApiAnalyzers` on the Redis APIs |
-| BE-48 | Command handlers MUST NOT touch the cache | `arch` | build | S | No cache type referenced from command handler types |
-| BE-49 | A Redis failure MUST be treated as a miss | `test` | required-test | S | §14 **Cache**. Mark stripped |
-| BE-87 | A committed migration MUST NOT be edited | `ci` | build | S | Diff every migration file against its committed history |
-| BE-88 | A migration references no application code | `arch` | build | S | Migration types depend on EF only |
-| BE-89 | Migrations run clean twice; a destructive one keeps the previous version serving | `test` | required-test | M | §14 **Migrations** |
-
-### §6 Authorization
-
-| Id | Rule | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|
-| BE-50 | Every Command and Query declares a named policy; no bare `[Authorize]` | `contract` + `roslyn` | build | S | Reflection sweep (as BE-25); `BannedApiAnalyzers` on parameterless `[Authorize]` |
-| BE-51 | `FallbackPolicy` MUST deny | `contract` | build | S | Startup configuration assertion |
-| BE-52 | `IHttpContextAccessor` MUST NOT be referenced outside the composition root | `arch` | build | S | Assembly-scoped type reference assertion |
-| BE-53 | Application and domain code MUST NOT read raw claims | `arch` | build | S | Every type raw claims can be read through, such as `ClaimsPrincipal`, `ClaimsIdentity`, `Claim`, `ClaimTypes` or `JwtRegisteredClaimNames`, banned outside `Api`. Ban the `System.Security.Claims` namespace rather than the members, as BE-98 bans types rather than predicates |
-| BE-99 | An external authority's unavailability - one that validates the token or answers for permissions - MUST deny; an expired cache entry is not served during an outage | `test` | required-test | M | Added by A-03, widened by A-05. §14 **Authorization** |
-| BE-100 | An external authority's cached decision - a validation result or a permission decision - declares a bounded lifetime in an options class | `contract` | build | S | Added by A-03, widened by A-05. Options sweep, as BE-96: the lifetime exists on a validated options class and is bounded; a missing or unbounded value fails |
-| BE-101 | An operation's authorization decision is reachable from the authorization behavior, not only a transport filter | `test` | required-test | M | Added by A-03. §14 **Authorization** |
-| BE-102 | An external authority's types and codes MUST NOT be referenced outside the composition root | `arch` | build | S | Added by A-03. Same shape as BE-53: the authority client's permission types banned outside `Api` |
-| BE-103 | Externally-resolved permissions are intersected with the agent manifest for an agent-actor principal | `test` | required-test | M | Added by A-03. §14 **Authorization** |
-| BE-104 | A claim read before the token is validated only selects how it is validated, and must agree with the validated token | `test` | required-test | M | Added by A-05. §14 **Authorization**: a token whose selecting claims disagree with its validated issuer or endpoint is refused, and no claim read before validation reaches the principal |
-
-### §7 Data Classification
-
-| Id | Rule | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|
-| BE-54 | A class is declared once, on the value type; attribute lives in `SharedKernel` | `arch` | build | S | Attribute defined in `SharedKernel`; no redundant redeclaration on DTO properties |
-| BE-55 | Every property reachable from an egress boundary resolves to a class | `arch` | build | L | Transitive property-graph walk from each boundary root. **The keystone check** |
-| BE-56 | `Confidential`/`Restricted` types redact in `ToString()`, no implicit string conversion | `arch` | build | S | Overrides `ToString`; declares no `op_Implicit` to `string` |
-| BE-57 | No interpolation of a classified value into a log message template | `roslyn` | build | S | Enable `CA2254` as error, plus a custom rule for classified arguments |
-| BE-58 | Every model-visible DTO is explicitly marked | `arch` | build | S | R-10 applied: the "distinct set" half is now unmarked prose |
-| BE-59 | No model-visible DTO contains `Confidential`/`Restricted`, transitively | `arch` | build | M | Reuses BE-55's graph walk |
-| BE-60 | `Restricted` MUST NOT be written to Redis in any form | `arch` | build | M | Reuses BE-55's graph walk over cache value types |
-| BE-61 | Integration events and outbox rows MUST NOT carry `Restricted` | `arch` | build | M | Reuses BE-55's graph walk over contract types |
-| BE-83 | The class is emitted into the OpenAPI document on every Response DTO property | `ci` | build | M | Added by P-03. Emitter fails on a property whose class it cannot resolve |
-
-### §8 AI Agents
-
-| Id | Rule | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|
-| BE-62 | Tools projected from the manifest; hand-registration forbidden | `contract` | build | M | Container inspection: every tool descriptor originates from the projector |
-| BE-63 | Run scopes derive from the same manifest | `arch` | build | S | No scope literal outside the manifest projection |
-| BE-64 | Every manifest entry resolves to a real handler with a matching policy | `contract` | build | S | Reflection test over manifest entries |
-| BE-65 | The principal carries an actor claim identifying the agent | `test` | required-test | S | §14 **Agents**. Mark stripped |
-| BE-66 | An agent-actor principal MUST NOT start another agent run | `test` | required-test | S | §14 **Agents**. Mark stripped; the guard is runtime, the test proves it |
-| BE-67 | Autonomous runs need a separate manifest, no `HumanRequirement.Required` entries | `contract` | build | S | Reflection over manifests |
-| BE-68 | No bare `string` in a tool parameter; declared wrapper types only | `arch` | build | S | R-11 applied |
-| BE-69 | Tool output MUST be a Response DTO; no domain objects or raw rows | `arch` | build | S | Reuses BE-55/BE-59 machinery |
-
-### §9 Quotas and Rate Limits
-
-| Id | Rule | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|
-| BE-70 | The global rate limiter's default policy covers every endpoint | `contract` | build | S | Endpoint data source inspection: rate-limit metadata present on every endpoint |
-| BE-71 | Every agent run carries a budget fixed at start | `proj` | build | S | By construction: budget is a required constructor parameter of the run |
-| BE-72 | Exceeding a budget aborts; MUST NOT silently truncate | `test` | required-test | M | §14 **Budgets**. Mark stripped |
-| BE-73 | Limits are configuration and fail closed | `contract` | build | S | Options `ValidateOnStart`; test proving a missing value denies |
-
-### §10 Observability
-
-| Id | Rule | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|
-| BE-90 | The correlation id is a required constructor parameter of the dispatch context | `proj` | build | S | By construction: the context cannot be built without one |
-| BE-91 | Outbox rows persist the correlation id of the writing transaction | `contract` | build | S | EF model: the column exists on the outbox entity |
-| BE-92 | The dispatcher restores the correlation id on delivery | `test` | required-test | M | §14 **Correlation** |
-| BE-93 | A handler MUST NOT reference `ILogger` | `arch` | build | S | Dispatch logging belongs to the pipeline behavior alone |
-| BE-94 | Metric dimensions come from a declared closed set of keys | `contract` | build | S | Committed-file inspection of every metric call site: each dimension key is a member of the declared key set, never a literal or a computed string; bounds cardinality by construction. Not `arch`: a declared key is a `const string`, which the compiler inlines, so in IL a declared key and an arbitrary literal are the same `ldstr` and a type-level assertion cannot tell them apart |
-
-### §11 Configuration and Secrets
-
-| Id | Rule | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|
-| BE-95 | Configuration MUST NOT be read from its source outside the composition root | `arch` + `roslyn` | build | S | `arch`: type reference assertion on `IConfiguration`, as BE-52 does for `IHttpContextAccessor`. `roslyn`: `BannedApiAnalyzers` on `System.Environment.GetEnvironmentVariable` and `GetEnvironmentVariables`, scoped to allow `Api`. Amended by A-04 |
-| BE-96 | Every options class has a validator and is registered with `ValidateOnStart` | `contract` | build | S | Reflection sweep over registered options types |
-| BE-97 | No secret in any committed file; a committed credential slot holds a reference, never a value | `contract` + `ci` | build | S | `contract`: a sweep of the committed configuration files - `appsettings*.json`, environment files, `nuget.config` - failing on a denylisted key name with a literal value, and on any `<packageSourceCredentials>` value that is not a `%VAR%` macro. It runs in the test suite, so it fails before a push. `ci`: entropy and provider-pattern secret scanning over the whole history, which no unit test can reach. Amended by A-04 |
-| BE-98 | Outside the composition root, code MUST NOT learn which environment it is running in | `roslyn` | build | S | `BannedApiAnalyzers` on the *types* that answer the question - `IHostEnvironment`, `IWebHostEnvironment`, both obsolete `IHostingEnvironment`s, and the `Environments` constants - scoped to allow `Api`. Banning the types rather than the predicates reaches `IsStaging()`, `IsEnvironment(string)` and `EnvironmentName == "..."` without naming them; an environment variable read is BE-95's. Amended by A-04 |
-
-### §12-§13 Real-time and API
-
-| Id | Rule | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|
-| BE-74 | A hub references only DTOs and the dispatcher | `arch` | build | S | R-12 applied |
-| BE-75 | Hub authorization uses the same named policies as the HTTP operation | `contract` | build | S | By construction if hubs dispatch messages: the policy resolves from the message |
-| BE-76 | SignalR messages carry DTOs; no domain types serialized | `arch` | build | S | Hub method signatures |
-| BE-77 | Endpoints MUST NOT reference domain types | `arch` | build | S | Unblocked by P-01 |
-| BE-80 | Every endpoint is a type implementing the shared endpoint abstraction | `arch` | build | S | Added by P-01. No call outside the discovery registrar to any `EndpointRouteBuilderExtensions` overload taking a handler delegate - every verb, not a list of them |
-| BE-81 | Endpoints registered by discovery; hand-registration forbidden | `contract` | build | S | Added by P-01. Container inspection, as BE-62 does for tools |
-| BE-82 | An endpoint references only its DTOs, the dispatcher, and the result translator | `arch` | build | S | Enabled by P-01. The endpoint counterpart of BE-74 |
-
-## Frontend - `frontend.md`
-
-| Id | Rule | Section | Mechanism | Status | Effort | Check |
-|---|---|---|---|---|---|---|
-| FE-01 | `strict` on; no `any`; no type-checker suppression but a justified `@ts-expect-error` | §1 | `proj` + `eslint` | build | S | `tsconfig`; `no-explicit-any`; `ban-ts-comment` with every directive banned and `ts-expect-error` set to `allow-with-description` |
-| FE-02 | `@ts-expect-error` requires a reason and an issue reference | §1 | `eslint` | build | S | `ban-ts-comment` with `descriptionFormat` |
-| FE-03 | A feature MUST NOT import from another feature | §2 | `eslint` | build | S | `eslint-plugin-boundaries` |
-| FE-04 | Dependency direction `shared` -> `features` -> `app`; no layer imports upward | §2 | `eslint` | build | S | `eslint-plugin-boundaries`, one `rules` entry per layer |
-| FE-28 | Every feature is declared in `src/features/REGISTRY.md` | §2 | `ci` | build | S | Added by A-01, scoped by A-02. Listing of `src/features/` compared against the registry. No backend input |
-| FE-05 | API types generated into `src/generated/` | §3 | `ci` | build | S | Regenerate and diff, with ROOT-09 |
-| FE-06 | `src/generated/` MUST NOT be hand-edited | §3 | `ci` | build | S | Diff check against a fresh generation |
-| FE-07 | A generated client response MUST NOT be cast, asserted, or re-declared | §3 | `eslint` | build | M | R-02 applied: `no-restricted-syntax` on casts of generated types |
-| FE-08 | All server data through TanStack Query; no `useEffect` + `fetch` | §4 | `eslint` | build | M | Path-scoped `no-restricted-globals` on `fetch`; custom rule for the `useEffect` pattern |
-| FE-09 | Query keys come from a per-feature factory | §4 | `eslint` | build | M | Custom rule: `queryKey` must be a call expression, never an array literal |
-| FE-10 | Every list query paginated | §4 | — | dropped | — | R-13 applied: enforced server-side by BE-19. Client half is now FE-21 |
-| FE-11 | Stores are feature-scoped | §5 | `eslint` | build | S | Path-scoped restriction on the `zustand` import |
-| FE-12 | RHF + Zod only; no other form library, and no validation through the UI library's validator | §6 | `eslint` | build | S | Amended by A-06. `no-restricted-imports` on other form libraries and on the UI library's validator, both listed in the project's lint configuration. Binding a UI-library input through `Controller`, and its error text through the input's own error property, are reached by review |
-| FE-13 | Components MUST NOT call `fetch` or the generated client directly | §7 | `eslint` | build | S | Path-scoped `no-restricted-imports` |
-| FE-14 | Stylesheets enter only through the global stylesheet and its one layout partial; the partial never targets a UI-library component; no static object literal in `style` | §7 | `eslint` + `ci` | build | S | R-14 applied, amended by A-06. `eslint`: a stylesheet import in any module but the global stylesheet's entry. `ci`: a selector in the layout partial matching the UI library's class prefixes, listed in the project's lint configuration |
-| FE-15 | Exactly one `ProblemDetails` parser, in `shared/lib/` | §10 | `eslint` | build | S | Only that path may reference the type |
-| FE-16 | Classified values MUST NOT appear in any part of a URL | §11 | `eslint` | build | M | Mark restored by P-03. Rule reads the class off the generated type |
-| FE-17 | Analytics, telemetry, and error reporting MUST scrub classified values | §11 | `test` | required-test | M | frontend §13 **Data boundaries**. Mark stripped |
-| FE-21 | No loop that exhausts `fetchNextPage` to assemble a whole collection | §4 | `eslint` | build | M | Added by R-13. `no-restricted-syntax`: `fetchNextPage` inside a loop or self-recursive call |
-| FE-22 | Generated types carry the data class of every property | §3 | `ci` | build | S | Added by P-03. Generation output asserted to contain the class |
-| FE-23 | Classified values MUST NOT be written to browser storage of any kind | §11 | `eslint` | build | M | Enabled by P-03. Same rule family as FE-16. The identity library's session store is excepted in the rule itself (A-05), so rule and check still cover the same ground: the library's own writes are not application source. Any application write to one of that store's configured keys is flagged, inside the FE-24 module or out |
-| FE-24 | Token acquisition lives in exactly one place in `shared/lib/`; nothing else calls the identity library or touches its session store | §9 | `eslint` | build | S | Amended by A-05. The identity library's packages and its session store's keys are listed in the project's lint configuration, as FE-30's claim names are. Flags an import of a listed package, or a storage read or write of a listed key, outside that one module |
-| FE-25 | A token MUST NOT be retained by the application beyond the request - in browser storage of any kind, a store, or a module-level cache | §9 | `eslint` | build | M | Same rule family as FE-23, and the same list of storage APIs: the two rules previously named different ones. Amended by A-05: also flags a token value assigned to a module-scope binding. The library's own session store is not application source. The shortest-lived-store clause is configuration, reached by review, not by this check |
-| FE-26 | The token is attached by exactly one interceptor | §9 | `eslint` | build | M | No literal `Authorization` header outside that module |
-| FE-27 | `401` retries once silently then goes interactive; `403` never refreshes | §9 | `test` | required-test | M | frontend §13 **Authentication**. Amended by A-05: in a host shell, the interactive step is the shell's sign-in page |
-| FE-29 | Sign-out ends the identity-provider session, not only local caches | §9 | `test` | required-test | M | Added by A-03. frontend §13 **Authentication** |
-| FE-30 | A credential nested inside a token MUST NOT be extracted, stored, forwarded, or logged | §9 | `eslint` | build | S | Added by A-03. Same rule family as FE-25: reads of the configured nested-credential claim names off a decoded token |
-| FE-31 | No wrapper, adapter or re-export of a UI-library component; `shared/` imports neither the UI library nor its component library | §7 | `eslint` | build | S | Added by A-06. `boundaries` / path-scoped `no-restricted-imports` refusing the listed UI packages under `src/shared/**`; `no-restricted-syntax` on an `export … from` of a listed UI package. A wrapper, adapter or restyle written inside a feature, without a re-export, is reached by review |
-| FE-32 | A UI-class package is a dependency only if the UI library depends on it; application code imports no UI-class package but the UI library and its component library | §1 | `ci` + `eslint` | build | S | Added by A-06. `ci`: the manifest's UI-class dependencies compared against the UI library's published dependency closure. `eslint`: `no-restricted-imports` on the UI-class packages in that closure, minus the UI library and its component library. The closure also holds packages the application uses in its own right, such as its runtime; those are outside the rule and outside the check. The UI-class packages are listed in the project's lint configuration |
-| FE-18 | Components MUST NOT subscribe to hubs directly | §12 | `eslint` | build | S | Path-scoped restriction on the SignalR client import |
-| FE-19 | MSW for all mocking; no module mock of the generated client | §13 | `eslint` | build | S | `no-restricted-syntax` on any `vi` module-mocking call with a generated-path argument |
-| FE-20 | `pnpm lint && pnpm typecheck && pnpm test` gate every change | §14 | `ci` | build | S | CI pipeline |
+Records written before 2.0.0 call the core law the root, and name `backend.md` and `frontend.md`. Those two files are now the `rancho-dotnet` and `rancho-react` stack laws, each its plugin's `skills/law/SKILL.md`, with their section numbers unchanged.
 
 ## The badge problem
 
@@ -279,7 +80,7 @@ Promotion out of this category is possible and has happened once: BE-23's determ
 
 ## Rewordings applied
 
-All fifteen are now in the law. Each entry records the rule, why the original wording resisted checking, and what replaced it. Kept as the reasoning behind wording that would otherwise look arbitrary - and as the record required by `../SKILL.md` §10, which says the law changes first.
+All fifteen are now in the law. Each entry records the rule, why the original wording resisted checking, and what replaced it. The three that touch a root rule are kept here. R-04 to R-12 are in `rancho-dotnet`'s inventory, and R-13 to R-15 in `rancho-react`'s.
 
 **R-01 · ROOT-03 · "An event with both audiences is two events."**
 A design judgment about intent. No mechanical test distinguishes one event serving two audiences from one event that legitimately has one. *Applied:* drop the ⚙ and keep the sentence as guidance. The enforceable half - domain events do not leave the module - is already ROOT-02/BE-07.
@@ -289,42 +90,6 @@ A design judgment about intent. No mechanical test distinguishes one event servi
 
 **R-03 · ROOT-14 · "Deny by default, everywhere."**
 A principle spanning authorization, rate limiting, classification, and configuration. Not one check. *Applied:* remove the ⚙ from the principle and let it stand as the stated intent of BE-50, BE-51, BE-70, BE-73, and ROOT-16, each of which is separately checkable.
-
-**R-04 · BE-08 · "Raw `Guid` and `int` MUST NOT appear as identifier parameters."**
-Requires knowing which parameters are identifiers. *Applied:* strengthen to the decidable form - *no public method, constructor, or property in `Domain` or `Application` exposes a bare `Guid`.* Stricter than intended and easy to check; `int` stays permitted since counts and quantities are legitimate.
-
-**R-05 · BE-09 · "Domain events MUST be past tense."**
-English morphology. A suffix denylist is brittle and produces false failures on irregular verbs. *Applied:* drop the ⚙, keep as SHOULD. BE-10 - events carry ids and values, not entity references - is the half that matters and is already checkable.
-
-**R-06 · BE-12 · "A Query MUST NOT mutate."**
-Needs effect analysis. *Applied:* reword to the proxy that actually holds - *a query handler MUST NOT reference a repository port, and MUST NOT call `SaveChangesAsync`.* First half is `arch`, second is `BannedApiAnalyzers` scoped to query handler types.
-
-**R-07 · BE-23 · "Ordering MUST be deterministic."** *(a promotion, not a blocker - BE-23 is enforceable today by test)*
-Buried in a LINQ chain, invisible to static analysis. *Applied:* require paginated queries to declare their sort as data - an ordering descriptor ending in a unique key - rather than expressing it only as `OrderBy`. The rule then becomes a `contract` check over the descriptors, and the badge becomes true.
-
-**R-08 · BE-24 · "A cursor MUST NOT encode a filter, a sort, a principal."**
-The contents of an opaque blob are not statically knowable. *Applied:* require one cursor type solution-wide whose payload is a record of exactly `(sortKey, id)`. Then `arch` checks the type, and the prohibition follows by construction.
-
-**R-09 · BE-45 · "A cache key for a permission-filtered projection MUST include the acting principal."**
-"Permission-filtered" is not decidable. The law itself calls this the single most likely way the authorization model gets bypassed, and it is currently the least enforceable rule in the document. *Applied:* make it unconditional - *every cache key includes the acting principal*, built by one key builder that always includes it. Strictly safer, trivially checkable, and it costs only some cache-hit rate on genuinely public projections. **This is the most valuable rewording in this file.**
-
-**R-10 · BE-58 · "The model-visible DTO set is distinct from the UI's where they differ in class."**
-The conditional is the problem. *Applied:* split. Keep the ⚙ on the checkable half - *every model-visible DTO is explicitly marked* - and let BE-59 carry the actual protection. The "distinct set" guidance stays as prose.
-
-**R-11 · BE-68 · "A tool MUST NOT accept a URL, route, table name, or query text."**
-Distinguishing a behaviour-selecting string from a data string is semantic. *Applied:* require every tool string parameter to be a declared wrapper type - `SearchTerm`, `CommentBody` - with bare `string` forbidden in tool parameter position. `arch` then checks it, and adding a new wrapper becomes a deliberate, reviewable act.
-
-**R-12 · BE-74 · "Hubs MUST NOT contain business logic."**
-"Business logic" is not a static property. *Applied:* reword to the shape the rule is really describing - *a hub method MUST map its argument to a message, dispatch it, and return; it MUST NOT reference any type outside DTOs and the dispatcher.* That is an `arch` type-reference check.
-
-**R-13 · FE-10 · "Every list query MUST be paginated."**
-The client cannot verify this; it consumes whatever the generated client exposes. *Applied:* the frontend ⚙ is dropped, the law now says outright that enforcement is server-side (BE-19), and the genuinely client-side half became a marked rule of its own - *no loop that exhausts `fetchNextPage` to assemble a whole collection*, FE-21.
-
-**R-14 · FE-14 · "Inline `style` only for genuinely dynamic values."**
-"Genuinely dynamic" is judgment. *Applied:* split. `ci`/`eslint` enforces the checkable half - no stylesheet import outside the global stylesheet and its layout partial (A-06) - and a static object literal passed to `style` becomes a lint error. Anything computed passes, which is the intent.
-
-**R-15 · FE-16 · "Classified values MUST NOT appear in URLs or route/search params."**
-The frontend has no classification metadata today, so nothing can decide which values are classified: the mark was fiction. *Applied:* the ⚙ is removed and the law states the condition on which it returns - classification carried into the OpenAPI document and the generated types, P-03 below. The rule itself is untouched and still MUST. This is the one rewording that made a rule *less* enforced rather than more, because the alternative was leaving a mark that no check could ever honour.
 
 ## Amendments
 
@@ -345,32 +110,13 @@ A machine-checked rule is read as exhaustive: the check is taken to be the bound
 **A-05 · §6 Authorization, frontend §1, §2, §9, §11 · The law named an identity library instead of a shape.**
 A-03 took the provider's name out of the law and left its library in. Frontend §9 was written around MSAL: tokens acquired silently from its cache, never stored by the application, the MSAL cache cleared on sign-out. An application mounted in the organization's host shell uses none of that. The shell's own login application signs the user in and writes the access, ID and refresh tokens, with the user's profile, to one `localStorage` store that the shell and every application on the origin share, and the library offers no memory-only option. Such an application could not comply with FE-25 whatever its own code did, because the only token it can reach is in a store it does not own, and `../SKILL.md` §11 forbids working around the rule in one repository. What FE-25 protects - no second copy, and no store the application owns - still held; only its wording assumed a library. On the backend, the organization's authentication package reads routing claims off a token before its signature is checked, then validates it with an uncached remote call. Nothing limited what an unvalidated claim may decide, and backend §6's external-authority rules covered a remote permission service but not a remote validation service with the same three failure modes. *Applied:* frontend §1 names the identity library as a class, recorded in `DECISIONS.md` as A-03 did for the provider. §2 places a host shell's lifecycle entry in `app/`. §9 forbids an application in a host shell from running its own sign-in, widens FE-24 to the library's session store and FE-25 from "stored" to "retained beyond the request", names that store as the one place a token may live with the shortest-lived store the library supports, states the grant rule as a class - scopes, a service name, or any other - and has sign-out clear the store through the library. §11 excepts that store for the user's own profile and forbids the application writing to it. FE-27's interactive step is the shell's sign-in page. Backend §6 gains BE-104: a claim read before validation may only select how the token is validated, and must agree with the validated token. The subsection becomes "External authorities", so BE-99 and BE-100 cover a validating authority too. Nothing is weakened for an application that runs its own sign-in: where its library offers a memory store, FE-25 now requires it. Backend rows go from 103 to 104; frontend stays at 30.
 
-**A-06 · frontend §1, §2, §6, §7, FE-12, FE-14 · The law named a component kit and a styling system instead of a shape.**
-Frontend §1 named Shadcn/ui and Tailwind, §2 gave `shared/ui/` to Shadcn primitives, §6 routed every form through Shadcn's `<Form>`, and §7 made Tailwind the only styling. The organization's applications are required to build on its own design system: a component library, itself built on a commercial component suite, published as a package with its own stylesheet, theme and icon set. An application on it could not comply with FE-12 or FE-14 whatever its own code did, because the `<Form>` and `shared/ui/` they name do not exist, and `../SKILL.md` §11 forbids working around the rule in one repository. What the rules protected still held: one form library with one schema per form, styling the codebase cannot drift from, and no stylesheet arriving from anywhere. Only their wording assumed a kit. Copying a kit into `shared/ui/` as editable source was also the opposite of what a design system needs. A local copy is a fork that drifts from the design system, and a wrapper layer in `shared/` is where that fork would grow back.
-*Applied:* §1 names the UI library and the component library it is built on as a class, recorded in `DECISIONS.md`, as A-03 and A-05 did for the identity provider and library. §1 also gains FE-32: a UI-class package - one whose purpose is presentation, such as a component, styling, icon, animation or class-name package - exists only if the UI library depends on it, and application code imports no UI-class package but the UI library and its component library. The rule and its check are scoped to that class: the library's dependency closure also holds packages the application uses in its own right, such as its runtime, and a ban on the whole closure would forbid them. §2 removes `shared/ui/`. §7 replaces the editable-primitives rule with FE-31: features and `app/` use the library directly, `shared/` imports neither library, and a wrapper, adapter or re-export is forbidden. §7's styling rule and FE-14 become the library's stylesheet entry, its component library's theme and its icon stylesheet, imported once by the global stylesheet, plus one layout partial for layout the library has no component for. That partial uses only the library's own tokens and mixins, and never targets a library component; this is the pattern the organization's own application template uses. §6 and FE-12 keep React Hook Form + Zod, bind a library input through `Controller`, and forbid the library's own validator, so every form still has exactly one schema. Two clauses no build check reaches are recorded as reached by review in their rows: the `Controller` binding under FE-12, and a wrapper written inside a feature under FE-31. The packages each check reads are listed in the project's lint configuration, as FE-24's are, so no rule names a product (A-04). Nothing is weakened for an application whose UI library ships as editable source: it records that library in `DECISIONS.md` and uses it directly, and FE-31 forbids the wrapper layer `shared/ui/` used to invite. Frontend rows go from 30 to 32.
+**A-07 · §2, §3, §6, §8, §9, §10, §11 · The law named its stacks instead of a role.**
+The root law was written for one pair of trees: a `backend/` in .NET and a `frontend/` in React. §2 drew their folders, §10 ran `dotnet` and `pnpm`, and the mechanism of half its sections was a path into `backend.md` or `frontend.md`, all three files shipped in one plugin with the development process that reads them. VACA inherited the coupling: its agents read "the backend or frontend reference", so a project on any other stack had no law to read, and a project could not take a different stack law without every project taking it. Nothing the root law required was about .NET or React; only where it pointed was. *Applied:* the root becomes the core law, the same in every project, and each technology becomes a stack law in a plugin of its own - `rancho-dotnet`, role `server`, and `rancho-react`, role `client`, from `backend.md` and `frontend.md` with their section numbers unchanged. A project enables the stack laws it builds with. §2 replaces the repository map with the binding - every tree names exactly one stack law in its `CLAUDE.md`, and an unbound tree stops work rather than being guessed at - the two roles, and what every stack law carries, including a core map from each core section to its mechanism and a gap list for any it cannot carry. §3 states the module boundary as internals and published contracts, not as four .NET projects; §6 names a result value and RFC 9457 problem details, not a .NET type; §8's egress table names a real-time client, not SignalR; §9 says server to client. §10 runs the verification of every stack law a change touches, and requires each stack law to carry the check of every core rule its role binds. §11 extends to stack laws, and sends a rule every stack law of a role would need to the core. The ROOT table loses its mechanism, effort and check columns, which were .NET, and gains the role each rule binds; each stack inventory carries those rows under **Core rules carried**. One stack rule is widened to match: `rancho-react` §12 named SignalR as the only channel a client could receive real-time messages over, which assumed the server's stack. It now names the class, and FE-18's packages move to the project's lint configuration. No rule is weakened and no id is added or retired. ROOT-18, previously canonical at BE-83 alone, is carried by both roles: BE-83 for the server, FE-22 for the client.
+
+A-06 concerns `rancho-react` alone and is kept in its inventory.
 
 ## Prerequisites (all adopted)
 
-Four checks were blocked on an architectural decision rather than on the work of writing a test. All four decisions are now in the law.
-
-**P-01 · Endpoints are types, not raw lambdas.** *Adopted.* ArchUnitNET sees types; it cannot see the signature of a lambda handed to `MapPost`. `backend.md` §13 now requires every endpoint to be a type implementing the shared endpoint abstraction, registered by discovery (BE-80, BE-81). This unblocked ROOT-07 and BE-77, and made checkable a rule that had never carried a mark at all: BE-82, an endpoint referencing only its DTOs, the dispatcher, and the translator - the endpoint counterpart of what R-12 did for hubs.
-
-**P-02 · Aggregate roots carry a marker.** *Adopted.* Nothing distinguished a root from an entity at the type level. `backend.md` §3 now requires the marker (BE-78). This unblocked BE-42 and made BE-79 checkable - *an aggregate holds another aggregate's id, never a reference*, which has been law since the first draft with no way to test it.
+Four checks were blocked on an architectural decision rather than on the work of writing a test. All four decisions are now in the law. P-03 spans both roles and is kept here. P-01, P-02 and P-04 are in `rancho-dotnet`'s inventory.
 
 **P-03 · Classification reaches the frontend.** *Adopted.* The browser had no way to know which fields were classified, which is why R-15 had to strip FE-16's mark. The class is now emitted into the OpenAPI document as a vendor extension (BE-83), carried into the generated types (FE-22), and readable by ESLint. That restored FE-16 and made FE-23 checkable. FE-17 stays `test`: a lint rule can catch a classified value handed to a telemetry call, but whether an SDK's scrubbing configuration is correct is a runtime fact, not a static one.
-
-**P-04 · One cursor type.** *Adopted* as part of R-08.
-
-## Build order
-
-Sequenced by value per unit of effort, not by document order.
-
-**First - the cheap ones that fail loudly.** `proj` and `roslyn` checks: BE-02, BE-39, BE-47, BE-57 (`CA2254` is a compiler switch), BE-50's banned `[Authorize]`, BE-98's banned environment types, BE-95's banned environment-variable reads, BE-97's secret scan, plus the §15 Forbidden list as `BannedApiAnalyzers` entries. Frontend: FE-01 through FE-04, FE-11 through FE-13, FE-15, FE-18, FE-19 are almost all off-the-shelf ESLint configuration. **Roughly 25 rules enforced in about a day**, none requiring a decision.
-
-**Second - the reflection sweeps.** One test each, discovering every instance automatically: BE-25 and BE-26 (declared policy, declared idempotency), BE-64, BE-67, BE-70, BE-73, BE-51, BE-96 (every options class validated on start), BE-100 (the external-authority cache lifetime declared and bounded). These are the highest-leverage tests in the suite, because they cover every message that will ever be added, not just today's.
-
-**Third - the classification graph.** BE-55 is the keystone: BE-59, BE-60, BE-61, BE-69, and ROOT-16 all reuse its property-graph walk. Write it once. It is the largest single piece of work here and the one that carries the most risk if it is skipped. The same pass emits the class into the OpenAPI document (BE-83) and carries it into the generated types (FE-22), which is what makes FE-16 and FE-23 enforceable on the client at all.
-
-**Fourth - the structural arch tests.** BE-01, BE-04 through BE-07, BE-10, BE-13 through BE-20, BE-30, BE-33 through BE-38, BE-40, BE-43, BE-46, BE-48, BE-52, BE-53, BE-102, BE-63, BE-76, and BE-78 through BE-82. Individually cheap, collectively the bulk of the row count.
-
-**Every decision is settled.** The fifteen rewordings, all four prerequisites, and the badge question are in the law. Every check above can be built against the current text, and nothing in this file is now waiting on an answer - only on the work. Building checks against the current text means building the wrong checks for some of them, and R-09 in particular should change before anything caches anything.

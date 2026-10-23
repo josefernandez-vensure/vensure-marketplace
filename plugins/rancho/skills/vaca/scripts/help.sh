@@ -71,6 +71,7 @@ if [ ! -d ".claude" ]; then
   echo ""
 fi
 
-echo "Code written under VACA is governed by the engineering law: /rancho:law"
+echo "Code written under VACA is governed by the engineering law: /rancho:law,"
+echo "and the stack law each tree's CLAUDE.md names, as: Stack law: /<plugin>:law"
 
 exit 0

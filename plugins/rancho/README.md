@@ -1,7 +1,9 @@
 # rancho — Vensure Dev Assistant
 
-A Claude Code plugin carrying the engineering law and the development-process
-tooling built around it.
+A Claude Code plugin carrying the core engineering law and the
+development-process tooling built around it. It is the same in every project.
+The technology-specific half of the law is in the stack-law plugins beside it -
+`rancho-dotnet`, `rancho-react` - which each project enables for itself.
 
 ## Layout
 
@@ -10,8 +12,8 @@ rancho/
 ├── .claude-plugin/plugin.json   manifest — the only file that goes in here
 ├── skills/                      skills as <name>/SKILL.md    [law, vaca]
 │   ├── law/
-│   │   ├── SKILL.md             the root law
-│   │   └── references/          backend.md, frontend.md, enforcement.md
+│   │   ├── SKILL.md             the core law
+│   │   └── references/          enforcement.md: the core inventory and records
 │   └── vaca/
 │       ├── SKILL.md             Vensure Agentic Code Assistant
 │       ├── references/          one file per phase, plus conventions.md
@@ -261,29 +263,74 @@ that is a reason to take the dependency, not to write a longer regex.
 
 ## The law
 
-`skills/law/` holds the engineering law. Only the frontmatter `description` is
-always in context; the body loads when the skill triggers, and
-`references/backend.md`, `references/frontend.md`, and
-`references/enforcement.md` load when the law instructs Claude to read them.
+`skills/law/` holds the core engineering law: what must be true in every tree,
+whatever it is built with. How one technology satisfies it is a **stack law**,
+shipped as a plugin of its own - `rancho-dotnet` (role `server`) and
+`rancho-react` (role `client`) today. Core §2 states the contract every stack
+law meets: a role, a core map from each core section to the section carrying
+it, a gap list, Stack, Testing, and Verification sections, and its own
+enforcement inventory.
+
+Only the frontmatter `description` is always in context; the body loads when
+the skill triggers, and `references/enforcement.md` loads when the law
+instructs Claude to read it. A stack law loads the same way, from its own
+plugin, and only in a project that enables that plugin.
 
 Skills are model-invoked, which is a weaker guarantee than the law's own claim
 that it "is not advisory". The `SessionStart` hook closes that gap: it states
 that the law binds and that the skill must be read, and deliberately restates no
 rules — so there is exactly one copy of every rule to keep current.
 
-Consuming repositories should keep thin `CLAUDE.md` stubs, which restore the
-subtree-triggered load that nested `CLAUDE.md` files give for free:
+### Binding a project
 
-```
-backend/CLAUDE.md   ->  "Backend law: references/backend.md in the rancho:law skill."
-frontend/CLAUDE.md  ->  "Frontend law: references/frontend.md in the rancho:law skill."
-```
+A project chooses its stack laws; VACA and the core law do not change. Two
+steps, both committed to the project:
 
-`references/enforcement.md` is kept whole. Its rollout sections ("Prerequisites",
-"Build order") are specific to the first adopting repository, but they are
-cross-linked to the inventory by rule id and by an internal anchor, so splitting
-the file breaks those references. Trim them when a second repository needs a
-different inventory.
+1. Enable the stack-law plugins it builds with, in `.claude/settings.json`:
+
+   ```json
+   {
+     "enabledPlugins": {
+       "rancho-dotnet@vensure-marketplace": true,
+       "rancho-react@vensure-marketplace": true
+     }
+   }
+   ```
+
+2. Bind each tree with one line in the `CLAUDE.md` at its root. A nested
+   `CLAUDE.md` loads when Claude reads files beneath it, so the binding arrives
+   with the tree:
+
+   ```
+   backend/CLAUDE.md   ->  Stack law: /rancho-dotnet:law
+   frontend/CLAUDE.md  ->  Stack law: /rancho-react:law
+   ```
+
+   A single-tree repository binds its root `CLAUDE.md`. A repository with two
+   servers on different stacks binds each tree to its own.
+
+An unbound tree, or one bound to a stack law the session does not have, is a
+defect the law tells Claude to stop on and report, never to guess past.
+
+### Adding a stack law
+
+A new technology is a new plugin, `plugins/rancho-<stack>/`, holding
+`skills/law/SKILL.md` and `skills/law/references/enforcement.md`. It declares a
+role, maps every core section, lists its gaps, carries every core rule its
+role binds under **Core rules carried**, and takes an id prefix of its own.
+`rancho-dotnet` and `rancho-react` are the worked examples. It depends on the
+core law and never on another stack law, so either tree of a project can change
+stack without touching the other.
+
+### The enforcement inventories
+
+The core inventory, `references/enforcement.md`, lists the `ROOT` rows and the
+role each binds, and holds every record that concerns the core law or more than
+one stack law. Each stack law's inventory holds its own rows, the core rows its
+role carries with their mechanism and check, and the records that concern it
+alone. Ids are permanent across the split.
 
 Changing a rule: change the law first, then bring the codebase into compliance.
-Per §11, the document is never edited to accommodate code that violates it.
+Per §11, the document is never edited to accommodate code that violates it. A
+stack-law rule is changed in its own plugin; a rule every stack law of a role
+would need is changed here.
