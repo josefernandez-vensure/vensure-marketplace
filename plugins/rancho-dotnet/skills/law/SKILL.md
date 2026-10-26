@@ -1,6 +1,56 @@
-# Backend Law - .NET
+---
+name: law
+description: The .NET server stack law - project references, domain and application layers, EF Core persistence, authorization, data classification, AI agents, quotas, observability, configuration, real-time, and the API layer. Subordinate to the core law in /rancho:law. Read in full, after the core law, before writing, reviewing, or placing code in a tree whose CLAUDE.md names `Stack law: /rancho-dotnet:law`.
+---
 
-`../SKILL.md` governs. This file adds backend rules. ⚙ = machine-checked.
+# .NET Stack Law
+
+The core law, `/rancho:law`, governs: read it first. This is a stack law under core §2. It adds the .NET rules, and it carries the core law's mechanism in every tree bound to it. Core §N is §N of the core law. ⚙ = machine-checked. Every ⚙ here, and every core rule this role carries, is inventoried in `references/enforcement.md`, beside this file: consult it by rule id rather than reading it whole.
+
+A tree is bound to this stack law by one line in the `CLAUDE.md` at its root:
+
+```
+Stack law: /rancho-dotnet:law
+```
+
+If `/rancho:law` is not available in the session, stop and say so. This file alone is not the law.
+
+## Role
+
+`server`. A tree bound here publishes the API contract (core §4), owns its modules and their persistence, and owns every egress boundary in core §8.
+
+## Core map
+
+| Core | Carried here by |
+|---|---|
+| §3 Module Boundary Law | §2 Project Reference Law · §4 Transactions and consistency, Integration event contracts · §5 Persistence |
+| §4 API Contract | §13 API Layer · §4 Pagination, Idempotency · §9 Transport |
+| §5 Validation | §4 Pipeline behaviors |
+| §6 Error Contract | §2 (`Result` placement) · §3 Aggregates · §4 Commands and Queries · §13 API Layer |
+| §7 Security Baseline | §6 Authorization · §8 AI Agents · §11 Configuration and Secrets |
+| §8 Data Boundaries | §7 Data Classification · §5 Read-side caching · §12 Real-time |
+| §9 Observability | §10 Observability |
+| §10 Verification | §14 Testing · §16 Verification · `references/enforcement.md` |
+
+Gaps: none.
+
+## Layout
+
+Paths are relative to the tree root - the directory whose `CLAUDE.md` binds this stack law.
+
+```
+src/
+  Modules/<Module>/
+    <Module>.Domain/          BCL only. No framework references.
+    <Module>.Application/     Commands, queries, handlers, behaviors.
+    <Module>.Infrastructure/  EF Core, adapters, DbContext.
+    <Module>.Contracts/       Public surface. The only project other modules may reference.
+  Shared/SharedKernel/        Base types only. No business rules.
+  Api/                        Composition root, endpoints, auth wiring.
+tests/
+```
+
+§2 states what each project may reference.
 
 ## 1. Stack
 
@@ -41,11 +91,11 @@ The Domain project MUST NOT reference EF Core, Mediator, ASP.NET, `IHttpContextA
 
 **`SharedKernel` and the two `Platform.*` projects are shared, not modules.** `Platform.*` carries the dispatch pipeline - `Result`, the message abstractions, the solution-wide page shape and cursor type, and the behaviors. A platform project that names a module has stopped being platform, by fact 1.
 
-`Result` lives in `Platform.Application`, not in `SharedKernel`. `Domain` does not reference `Platform.Application`, so "the domain MUST NOT reference `Result`" (`../SKILL.md` §6) is carried by the compiler rather than by an analyzer.
+`Result` lives in `Platform.Application`, not in `SharedKernel`. `Domain` does not reference `Platform.Application`, so "the domain MUST NOT reference `Result`" (core §6) is carried by the compiler rather than by an analyzer.
 
 `Contracts` references `Platform.Application` because a published query message MUST name both its `Result` response and the abstraction it is dispatched by. That is the only reason for the reference: nothing else from `Platform.Application` may appear in a contract's public surface, so the committed contract snapshot (§4) is coupled to the message abstraction and to nothing else.
 
-"For composition only" governs the reference, not the contents of `Api`: `Api` registers Infrastructure in the container and MUST NOT call into it. `SharedKernel` and `Platform.Application` are exempt from that qualifier, because `Api` uses them directly at the two boundaries the law assigns it - `Result` to `ProblemDetails` (`../SKILL.md` §6) and the correlation id (§10).
+"For composition only" governs the reference, not the contents of `Api`: `Api` registers Infrastructure in the container and MUST NOT call into it. `SharedKernel` and `Platform.Application` are exempt from that qualifier, because `Api` uses them directly at the two boundaries the law assigns it - `Result` to `ProblemDetails` (core §6) and the correlation id (§10).
 
 A module is a Bounded Context. Its projects exist **at most once per module**, never per feature: a module with no model of its own omits `Domain`, one that publishes nothing to its siblings omits `Contracts`, and `Application` is what makes a module dispatchable at all. A module has one Domain, shared by all of its features - features are use cases over that model, not copies of it. Vertical slicing applies to the **Application project only**.
 
@@ -303,7 +353,7 @@ public static readonly AgentOperation <Operation> = new(
 - Every Command and Query MUST declare a named policy. Bare `[Authorize]` and unattributed endpoints are defects. ⚙
 - `AuthorizationOptions.FallbackPolicy` MUST deny, so a forgotten attribute fails closed. ⚙
 - Policies are evaluated by the authorization behavior via `IAuthorizationService`, against the explicit principal from the dispatch context.
-- A transport-level authorization filter - `[Authorize(<policy>)]`, middleware, or a vendor package's equivalent - MAY enforce in addition, but MUST NOT be the only enforcement point. Every operation's decision MUST be reachable from the authorization behavior, so a caller that bypasses HTTP receives the identical answer (`../SKILL.md` §7).
+- A transport-level authorization filter - `[Authorize(<policy>)]`, middleware, or a vendor package's equivalent - MAY enforce in addition, but MUST NOT be the only enforcement point. Every operation's decision MUST be reachable from the authorization behavior, so a caller that bypasses HTTP receives the identical answer (core §7).
 - The acting principal MUST travel in the dispatch context. `IHttpContextAccessor` MUST NOT be referenced outside the composition root. ⚙ Violating this silently replaces an agent's narrowed principal with the full user token and voids every agent restriction below.
 - Identity-provider claims and externally-sourced permissions are mapped to policies at the composition root. Application and domain code MUST NOT read raw claims. ⚙
 - A claim read from a token before its signature is validated MAY select how the token is validated - such as which issuer's keys, or which remote validation endpoint - and MUST NOT be trusted for anything else: not identity, not tenancy, not a permission lookup. Once the token is validated, the claim that made the selection MUST agree with the validated token, or the token is refused.
@@ -321,13 +371,13 @@ A token claim cannot be unavailable, and neither can a signature checked against
 
 ## 7. Data Classification
 
-`../SKILL.md` §8 defines the classes and the boundaries. This section is the mechanism.
+Core §8 defines the classes and the boundaries. This section is the mechanism.
 
 ### Declaring a class
 
 - A class is declared **once**, on the type that carries the value: the Value Object or the strongly-typed id. The attribute lives in `SharedKernel`, so `Domain` can carry it without acquiring a framework dependency. ⚙
 - An architecture test MUST assert that every property reachable from an egress boundary resolves to a class. A property whose type carries no declaration is `Restricted`, and fails at the boundary. ⚙
-- The class MUST be emitted into the OpenAPI document as a vendor extension on every property of every Response DTO, so it reaches the frontend with the contract. The emitter MUST fail rather than emit a property whose class it cannot resolve. ⚙
+- The class MUST be emitted into the OpenAPI document as a vendor extension on every property of every Response DTO, so it reaches every client with the contract. The emitter MUST fail rather than emit a property whose class it cannot resolve. ⚙
 - This is what §3's Value Object rule buys. A `string` holding a government identifier cannot be classified and fails the test; a `NationalId` value object carries its class into every DTO, log line, and cache key it ever reaches.
 
 ```csharp
@@ -346,7 +396,7 @@ public sealed record NationalId
 - Structured logging only. A message template MUST NOT interpolate a classified value - a destructuring policy cannot redact what interpolation has already flattened into a string. ⚙
 - The destructuring policy redacts by class and MUST fail closed: a type it cannot resolve is redacted, not written.
 - Log the identifier of a record, never its sensitive contents. `PersonId` is loggable; `NationalId` is not.
-- Exception messages, `ProblemDetails`, and validation errors MUST NOT echo a classified value. `../SKILL.md` §6 forbids leaking internals; this extends it to the data. A validator reporting that `123-45-6789` is not a valid national id has just written that value to a log, a browser, and an error tracker in one step.
+- Exception messages, `ProblemDetails`, and validation errors MUST NOT echo a classified value. core §6 forbids leaking internals; this extends it to the data. A validator reporting that `123-45-6789` is not a valid national id has just written that value to a log, a browser, and an error tracker in one step.
 
 ### The model-visible surface
 
@@ -424,7 +474,7 @@ Limits attach to the caller and to the run, not to the transport. HTTP rate limi
 
 ## 10. Observability
 
-`../SKILL.md` §9 governs. This is the mechanism. What may be emitted is §7's business, not this section's: classification applies to every log line, metric label, and trace attribute.
+Core §9 governs. This is the mechanism. What may be emitted is §7's business, not this section's: classification applies to every log line, metric label, and trace attribute.
 
 ### Correlation
 
@@ -501,3 +551,7 @@ A rule no build check can reach is carried by a named required test below rather
 ## 15. Forbidden
 
 `dynamic` · service location outside the composition root · static mutable state · reading the system clock in domain or application code - `DateTime.Now`, `DateTimeOffset.UtcNow`, `DateTime.Today`, or any other ambient read (inject `TimeProvider`) · `async void` outside event handlers · `.Result`, `.Wait()`, `.GetAwaiter().GetResult()` · catching `Exception` without rethrowing · `#region` · commented-out code
+
+## 16. Verification
+
+`dotnet build` (warnings are errors) and `dotnet test` (includes architecture tests). Both MUST pass before a change is complete.

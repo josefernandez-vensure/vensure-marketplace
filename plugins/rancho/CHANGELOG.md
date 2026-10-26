@@ -1,5 +1,45 @@
 # Changelog
 
+## 2.0.0
+
+- **Breaking for every project.** The law is split in two. `rancho` carries
+  the core law, which is the same in every project, and VACA. Each technology
+  is a stack law in a plugin of its own, which a project enables for itself:
+  `rancho-dotnet` 1.0.0, role `server`, was `references/backend.md`, and
+  `rancho-react` 1.0.0, role `client`, was `references/frontend.md`. Their
+  section numbers are unchanged. Amendment A-07 in `enforcement.md` records
+  why.
+- **What each project does to upgrade:**
+  - Install the stack laws it builds with at project scope, so that
+    `enabledPlugins` in its `.claude/settings.json` lists them, and commit
+    that file.
+  - Replace each tree's `CLAUDE.md` stub with its binding, for example
+    `Stack law: /rancho-dotnet:law`.
+  - Add the real-time client packages to its lint configuration, for
+    `FE-18`.
+- §2 Repository Map becomes §2 Stack Laws. Every tree is bound to exactly one
+  stack law by its `CLAUDE.md`, and an unbound tree is a defect to stop on,
+  never one to guess past. Every stack law declares a role, maps every core
+  section to the section that carries it, lists its gaps, and carries Stack,
+  Testing and Verification sections and its own enforcement inventory. A
+  stack law never depends on another.
+- §3, §6, §8 and §9 no longer name a stack. The module boundary is internals
+  and published contracts, not four .NET projects; the error contract names a
+  result value and RFC 9457 problem details; the egress table names a
+  real-time client, not SignalR. No rule is weakened.
+- §10 runs the verification of every stack law a change touches, and requires
+  each stack law to carry the check of every core rule its role binds. The
+  `dotnet` and `pnpm` commands move to the stack laws.
+- `enforcement.md` is split three ways. The core inventory keeps the `ROOT`
+  rows - now with the role each binds, and without their .NET mechanisms -
+  and every record that concerns the core law or more than one stack law.
+  Each stack inventory takes its own rows, the core rows it carries with their
+  mechanism and check, and the records that concern it alone. Ids are
+  unchanged, and every one of the 152 rows survives.
+- VACA, the `vaca-stream` agent, the help card and the `SessionStart` prime
+  directive read the core law, then the stack law bound to the tree, in place
+  of "the backend or frontend reference".
+
 ## 1.7.0
 
 - **Breaking for any application still on shadcn/ui or Tailwind.** The law

@@ -4,7 +4,7 @@
     "name": "Vensure Engineering"
   },
   "description": "Claude Code plugins from Vensure Engineering: coding assistants, engineering governance, and development tooling.",
-  "version": "1.7.0",
+  "version": "2.0.0",
   "metadata": {
     "pluginRoot": "./plugins"
   },
@@ -13,8 +13,8 @@
       "name": "rancho",
       "displayName": "Rancho — Vensure Dev Assistant",
       "source": "./plugins/rancho",
-      "description": "Vensure's coding assistant: VACA (Vensure Agentic Code Assistant) plus the engineering law that governs .NET and React service work.",
-      "version": "1.7.0",
+      "description": "Vensure's coding assistant: VACA (Vensure Agentic Code Assistant) plus the core engineering law, the same in every project. Stack laws for each technology are separate plugins.",
+      "version": "2.0.0",
       "author": {
         "name": "Vensure Engineering"
       },
@@ -24,15 +24,63 @@
         "assistant",
         "architecture",
         "ddd",
-        "dotnet",
-        "react",
         "governance",
         "code-review"
       ],
       "tags": [
         "assistant",
+        "governance"
+      ],
+      "license": "MIT"
+    },
+    {
+      "name": "rancho-dotnet",
+      "displayName": "Rancho — .NET Stack Law",
+      "source": "./plugins/rancho-dotnet",
+      "description": "The .NET server stack law: DDD modules, EF Core, authorization, data classification, AI agents and observability, carrying the rancho core law in .NET.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Vensure Engineering"
+      },
+      "repository": "https://github.com/josefernandez-vensure/vensure-marketplace",
+      "category": "development",
+      "keywords": [
         "governance",
+        "stack-law",
         "dotnet",
+        "ddd",
+        "ef-core",
+        "server"
+      ],
+      "tags": [
+        "governance",
+        "stack-law",
+        "dotnet"
+      ],
+      "license": "MIT"
+    },
+    {
+      "name": "rancho-react",
+      "displayName": "Rancho — React Stack Law",
+      "source": "./plugins/rancho-react",
+      "description": "The React client stack law: feature boundaries, generated API types, TanStack Query, forms, authentication and browser data boundaries, carrying the rancho core law in React.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Vensure Engineering"
+      },
+      "repository": "https://github.com/josefernandez-vensure/vensure-marketplace",
+      "category": "development",
+      "keywords": [
+        "governance",
+        "stack-law",
+        "react",
+        "typescript",
+        "tanstack",
+        "client"
+      ],
+      "tags": [
+        "governance",
+        "stack-law",
         "react"
       ],
       "license": "MIT"

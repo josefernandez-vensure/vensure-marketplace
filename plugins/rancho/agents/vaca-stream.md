@@ -23,10 +23,15 @@ epic merged, which is exactly when it stops being useful.
 
 ## Before writing anything
 
-Read the engineering law via the `law` skill, and from it the backend or
-frontend reference for the tree you are about to touch. It is binding: it
-decides what the code must look like, and reading it afterwards is not the same
-thing.
+Read the core engineering law via the `/rancho:law` skill, then the stack law
+bound to the tree you are about to touch: the nearest `CLAUDE.md` at or above
+the files in your scope names it, as `Stack law: /<plugin>:law`. Read both in
+full. They are binding: they decide what the code must look like, and reading
+them afterwards is not the same thing.
+
+If a tree in your scope names no stack law, or names one that is not available
+in this session, stop before writing anything, record it in your stream file,
+and report it. Never pick a stack law by guessing from the files.
 
 Then read, in this order:
 

@@ -15,20 +15,24 @@ This repository is governed by an engineering law. It is not advisory.
   build failure, not a review comment.
 
 **Before writing, placing, or reviewing any code in this repository, read the
-full law via the `/rancho:law` skill** - and, from it, the backend or
-frontend reference for whichever tree you are working in. Do not rely on this
+full core law via the `/rancho:law` skill** - and then, in full, the stack law
+bound to the tree you are working in. The nearest `CLAUDE.md` at or above the
+files names it, as `Stack law: /<plugin>:law`. A tree with no binding, or one
+naming a stack law this session does not have, is a defect: stop and say so,
+and never choose a stack law by guessing from the files. Do not rely on this
 summary; it states that the law binds you, not what it requires.
 
-## The installed plugin is read-only
+## The installed plugins are read-only
 
-The law, VACA, and everything else this plugin carries are installed globally,
-under `~/.claude/plugins/`. **Never edit, create, move, or delete anything
-there** - not a skill, not a reference, not a script - even when the user asks
-for a change to the law. An edit there changes every project on this machine
-that loads the plugin, and the next plugin update silently discards it.
+The core law, the stack laws, VACA, and everything else these plugins carry
+are installed globally, under `~/.claude/plugins/`. **Never edit, create,
+move, or delete anything there** - not a skill, not a reference, not a script -
+even when the user asks for a change to the law. An edit there changes every
+project on this machine that loads the plugin, and the next plugin update
+silently discards it.
 
-A change to the law or to VACA is made in the plugin's source repository
-(`vensure-marketplace`) and reaches developers when it is published. If that
-repository is not the one open, say so and stop; do not work around it. A hook
-refuses these writes, and a refusal is the rule working, not an obstacle to
-route around.
+A change to the core law, a stack law, or VACA is made in the plugins' source
+repository (`vensure-marketplace`) and reaches developers when it is
+published. If that repository is not the one open, say so and stop; do not
+work around it. A hook refuses these writes, and a refusal is the rule
+working, not an obstacle to route around.

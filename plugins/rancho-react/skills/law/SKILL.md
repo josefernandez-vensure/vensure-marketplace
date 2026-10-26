@@ -1,6 +1,38 @@
-# Frontend Law - React
+---
+name: law
+description: The React client stack law - structure and feature boundaries, generated API types, server and client state, forms, components and styling, routing, authentication, errors, data boundaries in the browser, real-time, and testing. Subordinate to the core law in /rancho:law. Read in full, after the core law, before writing, reviewing, or placing code in a tree whose CLAUDE.md names `Stack law: /rancho-react:law`.
+---
 
-`../SKILL.md` governs. This file adds frontend rules. ⚙ = machine-checked.
+# React Stack Law
+
+The core law, `/rancho:law`, governs: read it first. This is a stack law under core §2. It adds the React rules, and it carries the core law's mechanism in every tree bound to it. Core §N is §N of the core law. ⚙ = machine-checked. Every ⚙ here, and every core rule this role carries, is inventoried in `references/enforcement.md`, beside this file: consult it by rule id rather than reading it whole.
+
+A tree is bound to this stack law by one line in the `CLAUDE.md` at its root:
+
+```
+Stack law: /rancho-react:law
+```
+
+If `/rancho:law` is not available in the session, stop and say so. This file alone is not the law.
+
+## Role
+
+`client`. A tree bound here consumes the API contract a server stack law publishes (core §4), and owns what reaches the user's device. It decides nothing about what the user may do: that is the server's answer, every time.
+
+## Core map
+
+| Core | Carried here by |
+|---|---|
+| §3 Module Boundary Law | Not bound: core §3 governs server modules. Client boundaries are §2 Structure. |
+| §4 API Contract | §3 API Types · §4 Server State |
+| §5 Validation | §6 Forms and Validation |
+| §6 Error Contract | §10 Errors · §6 Forms and Validation |
+| §7 Security Baseline | §8 Routing · §9 Authentication |
+| §8 Data Boundaries | §3 API Types · §11 Data Boundaries |
+| §9 Observability | §11 Data Boundaries, for what telemetry may carry |
+| §10 Verification | §13 Testing · §14 Verification · `references/enforcement.md` |
+
+Gaps: core §9 requires the correlation id to cross the server-to-client boundary. How a client carries it - adopting the id a response returns, and attaching it to its own telemetry and error reports - is not yet stated here.
 
 ## 1. Stack
 
@@ -43,9 +75,9 @@ Dependencies flow one way: `shared` -> `features` -> `app`.
 
 ### Feature names
 
-- Every feature MUST be declared in `src/features/REGISTRY.md`: the folder name and one line saying what capability it covers. ⚙ An undeclared feature folder is a defect. The check reads `src/features/` and the registry and nothing else - it does not reach into the backend tree.
-- Where a feature covers the same concept as a backend module, it SHOULD reuse that module's name. Shared vocabulary is worth having. A build check that crosses into the other tree to enforce it is not, and a naming convention is not worth coupling two trees over.
-- The two trees share vocabulary, not shape. A backend module MAY have no feature. A feature MAY read several modules' contracts, and a UI-only feature - a dashboard, onboarding, global search - MAY map to none. A backend module is a consistency boundary; a feature is a user capability. They are not the same decomposition and MUST NOT be forced into one.
+- Every feature MUST be declared in `src/features/REGISTRY.md`: the folder name and one line saying what capability it covers. ⚙ An undeclared feature folder is a defect. The check reads `src/features/` and the registry and nothing else - it does not reach into the server tree.
+- Where a feature covers the same concept as a server module, it SHOULD reuse that module's name. Shared vocabulary is worth having. A build check that crosses into the other tree to enforce it is not, and a naming convention is not worth coupling two trees over.
+- The two trees share vocabulary, not shape. A server module MAY have no feature. A feature MAY read several modules' contracts, and a UI-only feature - a dashboard, onboarding, global search - MAY map to none. A server module is a consistency boundary; a feature is a user capability. They are not the same decomposition and MUST NOT be forced into one.
 
 ### Routing
 
@@ -60,11 +92,11 @@ tanstackRouter({
 
 ## 3. API Types ⚙
 
-- All request and response types are generated from the backend OpenAPI document into `src/generated/`.
+- All request and response types are generated from the server's OpenAPI document into `src/generated/`.
 - `src/generated/` MUST NOT be hand-edited.
 - A response from the generated client MUST NOT be cast, type-asserted, or re-declared by a locally written type. Contract drift must be a compile error, not a runtime surprise.
-- Generated types MUST carry the data class of every property, as emitted into the OpenAPI document (`../SKILL.md` §8). ⚙ Without it, every data-boundary rule on this side is a hope rather than a check.
-- Regenerate whenever the backend contract changes, and commit the output.
+- Generated types MUST carry the data class of every property, as emitted into the OpenAPI document (core §8). ⚙ Without it, every data-boundary rule on this side is a hope rather than a check.
+- Regenerate whenever the server's contract changes, and commit the output.
 
 ## 4. Server State - TanStack Query
 
@@ -73,7 +105,7 @@ tanstackRouter({
 - Query keys MUST come from a per-feature factory. Inline array literals as keys are forbidden - they make invalidation unauditable. ⚙
 - Mutations MUST declare their invalidations explicitly. A mutation that leaves stale data on screen is incomplete.
 - Loading, error, and empty states MUST each be handled. A component that renders only the success path is incomplete.
-- Every list query MUST be paginated. Enforcement is server-side (`../SKILL.md` §4) - the client cannot verify it, and MUST NOT work around it.
+- Every list query MUST be paginated. Enforcement is server-side (core §4) - the client cannot verify it, and MUST NOT work around it.
 - A loop that exhausts `fetchNextPage` to assemble a whole collection is forbidden. ⚙ The page you were handed is not the data set, and treating it as one produces a UI that is quietly wrong at scale.
 - Cursor-paged lists use `useInfiniteQuery`. Looping pages to reassemble a complete client-side collection is forbidden; if a screen needs a total or an aggregate, the server computes it.
 - A mutation MUST NOT be retried automatically unless it carries an idempotency key. The key is generated once per user intent and reused across every retry of that intent - regenerating it per attempt defeats the mechanism completely.
@@ -91,7 +123,7 @@ Client state is UI state the server does not own: selections, wizard step, panel
 
 - React Hook Form + Zod. A UI-library input is bound in the feature with React Hook Form's `Controller`, and receives its error text through the input's own error property. No other form library, and no validation through the UI library's own validator. ⚙
 - Every form MUST have a Zod schema. Ad-hoc validation inside handlers is forbidden.
-- Schemas MUST mirror the backend Request DTO's constraints. Where they diverge, the backend is right.
+- Schemas MUST mirror the server's Request DTO constraints. Where they diverge, the server is right.
 - Client validation is UX. Server errors MUST still be handled and displayed - a `ProblemDetails` 400 is an expected outcome, not an edge case.
 - Field-level errors from `ProblemDetails` MUST be mapped back onto the corresponding form fields, not shown only as a banner.
 
@@ -114,7 +146,7 @@ Client state is UI state the server does not own: selections, wizard step, panel
 
 ## 9. Authentication
 
-The organization's identity provider, through its identity library. Which provider and which library are recorded in `DECISIONS.md`. The browser proves who the user is. It decides nothing about what they may do - that is the server's answer, every time (`../SKILL.md` §7).
+The organization's identity provider, through its identity library. Which provider and which library are recorded in `DECISIONS.md`. The browser proves who the user is. It decides nothing about what they may do - that is the server's answer, every time (core §7).
 
 - An application mounted in a host shell uses the shell's session through the identity library and MUST NOT run a sign-in flow of its own. A second flow is a second session: sign-out in one would leave the other signed in.
 - Token acquisition MUST live in exactly one place in `shared/lib/`. No component, hook, or query calls the identity library, or reads or writes its session store, directly. ⚙
@@ -137,17 +169,17 @@ The organization's identity provider, through its identity library. Which provid
 
 ## 11. Data Boundaries
 
-`../SKILL.md` §8 governs, and its classes apply here unchanged. The browser is inside the authenticated boundary. Everything listed below is outside it.
+Core §8 governs, and its classes apply here unchanged. The browser is inside the authenticated boundary. Everything listed below is outside it.
 
 - `Confidential` and `Restricted` values MUST NOT appear in any part of a URL - path, query string, fragment, route param, or search param. ⚙ They land in browser history, server access logs, and `Referer` headers sent to third parties.
 - They MUST NOT be written to browser storage of any kind - such as `localStorage`, `sessionStorage`, IndexedDB, Cache Storage, or a cookie. ⚙ Server data belongs in the TanStack Query cache, which is memory-only and dies with the tab. The identity library's session store (§9) MAY hold the signed-in user's own profile as the provider returns it. The application MUST NOT write to that store.
 - Analytics, telemetry, session replay, and error reporting MUST scrub them. Breadcrumbs, form-field capture, and unredacted request bodies are the usual leak, and the default configuration of every one of these tools is wrong for this domain.
-- The client MUST NOT assemble an export of sensitive data out of paged reads. An export comes from a server endpoint carrying the same policy as the read, and is audited (`../SKILL.md` §8).
+- The client MUST NOT assemble an export of sensitive data out of paged reads. An export comes from a server endpoint carrying the same policy as the read, and is audited (core §8).
 
 ## 12. Real-time
 
-- SignalR messages update the TanStack Query cache. Components MUST NOT subscribe to hubs directly. ⚙
-- The UI MUST be correct if no SignalR message ever arrives. Real-time is an optimization over refetch, never the only path to a state.
+- Real-time messages - over SignalR, or any other channel the server offers - update the TanStack Query cache. Components MUST NOT subscribe to hubs directly. ⚙ The real-time client packages to flag live in the project's lint configuration, not here.
+- The UI MUST be correct if no real-time message ever arrives. Real-time is an optimization over refetch, never the only path to a state.
 
 ## 13. Testing
 

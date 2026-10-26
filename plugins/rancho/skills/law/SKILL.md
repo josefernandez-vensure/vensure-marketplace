@@ -1,6 +1,6 @@
 ---
 name: law
-description: The binding engineering law for this codebase - module boundaries, API and error contracts, validation placement, data classification and egress, AI-agent permissions, and observability. Read before writing, reviewing, or placing any backend (.NET/DDD) or frontend (React) code; before designing an endpoint, integration event, or agent tool; and whenever deciding whether a change is compliant.
+description: The binding core engineering law, the same in every project - module boundaries, API and error contracts, validation placement, data classification and egress, AI-agent permissions, observability, and how a tree is bound to the stack law that carries those rules in its technology. Read before writing, reviewing, or placing any code; before designing an endpoint, integration event, or agent tool; and whenever deciding whether a change is compliant. Then read the stack law bound to the tree you are working in.
 ---
 
 # Engineering Law
@@ -26,38 +26,43 @@ Silence is not permission. If a decision is uncovered, match the nearest precede
 
 Rules marked ⚙ are machine-checked. Violating one is a build failure, not a review comment.
 
-A rule states the class of thing it governs, never a list of that class's members. Members MAY be named, as illustrations written as such - "such as", "for example", "or any other" - and never as the boundary. This binds hardest on a ⚙ rule: a machine-checked rule is read as exhaustive, so one that enumerates grants every member it forgot to name, and its check then certifies that reading. What a mechanism actually reaches is recorded in `references/enforcement.md`, where a shortfall is a known gap (§10) rather than a permission.
+A rule states the class of thing it governs, never a list of that class's members. Members MAY be named, as illustrations written as such - "such as", "for example", "or any other" - and never as the boundary. This binds hardest on a ⚙ rule: a machine-checked rule is read as exhaustive, so one that enumerates grants every member it forgot to name, and its check then certifies that reading. What a mechanism actually reaches is recorded in an enforcement inventory (§10), where a shortfall is a known gap rather than a permission.
 
-A rule no build check can reach carries no mark. It is carried instead by a named required test, listed in the Testing section of the file that owns it - equally binding, differently caught. `references/enforcement.md` maps every mark and every required test to its mechanism.
+A rule no build check can reach carries no mark. It is carried instead by a named required test, listed in the Testing section of the law that owns it - equally binding, differently caught. The enforcement inventories map every mark and every required test to its mechanism.
 
-## 2. Repository Map
+## 2. Stack Laws
 
-```
-backend/
-  src/
-    Modules/<Module>/
-      <Module>.Domain/          BCL only. No framework references.
-      <Module>.Application/     Commands, queries, handlers, behaviors.
-      <Module>.Infrastructure/  EF Core, adapters, DbContext.
-      <Module>.Contracts/       Public surface. The only project other modules may reference.
-    Shared/SharedKernel/        Base types only. No business rules.
-    Api/                        Composition root, endpoints, auth wiring.
-  tests/
-frontend/
-  src/
-    app/                        Composition root: routes, router, providers.
-    features/<feature>/         One user-facing capability.
-    shared/
-    generated/                  OpenAPI output. Never hand-edited.
-```
+This document is the **core law**: what MUST be true in every tree, whatever it is built with. A **stack law** states how one technology satisfies it. Each stack law is its own plugin, carrying a `law` skill - such as `/rancho-dotnet:law` or `/rancho-react:law` - and a project enables the stack laws it builds with.
 
-Backend rules: `references/backend.md`. Frontend rules: `references/frontend.md`. Both are files in this skill's own directory, alongside this one. Read the relevant one **in full** before writing code in that tree - this document alone is not sufficient to write compliant code in either tree. `references/enforcement.md` is the inventory of every machine-checked rule; consult it by rule id rather than reading it whole.
+- Every tree that holds code MUST be bound to exactly one stack law. The binding is one line in the `CLAUDE.md` at the root of that tree: `Stack law: /<plugin>:law`. A repository that is a single tree binds it in its root `CLAUDE.md`.
+- The tree a file belongs to is the nearest directory at or above it whose `CLAUDE.md` names a stack law.
+- Before writing, placing, or reviewing code in a tree, read this document and then that tree's stack law **in full**. This document alone is not sufficient to write compliant code in any tree.
+- A tree with no binding, a binding to a stack law that is not available in the session, or two bindings for one tree is a defect in the repository. Stop and say so. A stack law MUST NOT be chosen by guessing from file extensions or folder names.
+
+Every stack law declares one **role**:
+
+| Role | What it does with the API contract (§4) |
+|---|---|
+| `server` | Publishes it: owns modules, endpoints, persistence, and every egress boundary in §8. |
+| `client` | Consumes it: generates its types from the published document, and owns what reaches the user's device. |
+
+The core law states obligations that bind every tree, or that span the boundary between a server and a client. A stack law states what is internal to its own tree. Every stack law MUST carry:
+
+- **Role** and **Core map**, at the top: for each section of this document, the section of the stack law that carries its mechanism. A section the stack law cannot yet carry is listed as a gap. A gap is a defect in the stack law, never an exemption from the core.
+- **Stack**: the technologies it governs.
+- **Testing**: the required tests that carry its unmarked rules (§1).
+- **Verification**: the commands that MUST pass before a change in its tree is complete (§10).
+- An enforcement inventory, `references/enforcement.md` in its own skill, listing every ⚙ it carries and every core rule its role binds.
+
+A stack law MAY add rules. It MUST NOT weaken one stated here. A stack law that contradicts this document is the defect, exactly as code that contradicts it is.
+
+A stack law MUST NOT depend on another stack law. The two trees of a project share only what this document states - the API contract, the data classes, and the correlation id - so either can be replaced without touching the other.
 
 ## 3. Module Boundary Law
 
-This section governs backend modules. Frontend boundaries are a different decomposition with their own rules, in `references/frontend.md` §2.
+This section governs server modules. Client boundaries are a different decomposition, stated by the client stack law.
 
-- A module MUST NOT reference another module's `Domain`, `Application`, or `Infrastructure`. Only `<Module>.Contracts`. ⚙
+- A module MUST NOT reference another module's internals - its domain model, its use cases, or its adapters. Only its published contracts. ⚙
 - Cross-module **writes** MUST be asynchronous: publish an integration event, committed with the state change through the outbox. Calling another module's write path inline is forbidden.
 - Cross-module **reads** MAY be synchronous through the other module's published query contract.
 - Domain events MUST NOT cross a module boundary. Integration events always do. ⚙
@@ -71,7 +76,7 @@ This section governs backend modules. Frontend boundaries are a different decomp
 - Request DTOs MUST map to a Command or Query. Endpoints map, dispatch, and translate. They contain no business logic.
 - Query results MUST be projected directly to Response DTOs. Loading an aggregate to build a read model is forbidden. ⚙
 - The OpenAPI document is generated and committed. ⚙
-- Frontend API types are generated from that document, never hand-written. How the frontend consumes them - and that contract drift surfaces as a compile error rather than a runtime surprise - is `references/frontend.md` §3.
+- Client API types are generated from that document, never hand-written. How a client consumes them - and that contract drift surfaces as a compile error rather than a runtime surprise - is the client stack law's.
 
 ### Collections
 
@@ -87,15 +92,15 @@ This section governs backend modules. Frontend boundaries are a different decomp
 
 ### Limits
 
-- Every endpoint MUST be covered by a rate limit policy. A rejection is `429` with `Retry-After`, shaped as `ProblemDetails`.
-- Transport limits do not bound an in-process caller. Agent runs carry their own budgets; see `references/backend.md` §9.
+- Every endpoint MUST be covered by a rate limit policy. A rejection is `429` with `Retry-After`, shaped as problem details (§6).
+- Transport limits do not bound an in-process caller. Agent runs carry their own budgets, stated by the server stack law.
 
 ## 5. Validation
 
 - Authoritative validation is a pipeline behavior on the Command/Query, not the endpoint. Callers that bypass HTTP - agents, jobs, tests - MUST receive identical validation.
 - Request DTO annotations MAY duplicate it for early failure and OpenAPI documentation. They MUST NOT be the only validation.
 - A handler MUST be able to assume its message is structurally valid, and MUST NOT re-validate shape.
-- Frontend validation is UX. Nothing server-side may treat it as a guarantee.
+- Client validation is UX. Nothing server-side may treat it as a guarantee.
 
 ## 6. Error Contract
 
@@ -103,8 +108,8 @@ Three translation boundaries. Each is owned by exactly one layer. No layer may s
 
 | Boundary | Owner | Rule |
 |---|---|---|
-| Domain outcome to `Result` | Application handler | The domain speaks in domain vocabulary and MUST NOT reference `Result`. |
-| `Result` to `ProblemDetails` | API endpoint | Every failure response is RFC 9457 `ProblemDetails`. |
+| Domain outcome to result value | Application handler | The domain speaks in domain vocabulary and MUST NOT reference the result type. |
+| Result value to problem details | API endpoint | Every failure response is RFC 9457 problem details (`ProblemDetails`). |
 | Exception to 500 | Global middleware | Exceptions signal bugs, never business outcomes. |
 
 - Expected business outcomes MUST be return values. Exceptions MUST NOT be control flow.
@@ -116,7 +121,7 @@ Three translation boundaries. Each is owned by exactly one layer. No layer may s
 - Deny by default, everywhere. Authorized-by-omission is a defect, never a default. The principle is not itself checkable; the rules that implement it are, and each carries its own mark.
 - Authorization attaches to the **message** (Command/Query), not the transport. HTTP and in-process callers get identical checks.
 - The acting principal MUST be explicit in the dispatch context. Reading ambient HTTP context from application or domain code is forbidden. ⚙
-- AI agents MUST hold a strict narrowing of the calling user's permissions - never equal, never wider. Full rules in `references/backend.md` §8.
+- AI agents MUST hold a strict narrowing of the calling user's permissions - never equal, never wider. Full rules in the server stack law.
 - Secrets MUST NOT appear in source, config files, or logs.
 
 ## 8. Data Boundaries
@@ -133,8 +138,8 @@ Classification is a property of the **data**, not of the endpoint that happens t
 The test decides the class. The following illustrate it and do not enumerate it: `Public` - a published listing, marketing copy. `Internal` - org structure, site locations, operational metrics. `Confidential` - contact details, pay, performance, hours worked. `Restricted` - government identifiers, date of birth, bank and payment details, health and medical, protected-class attributes. A field this codebase holds that no example names is still classified, by the test.
 
 - **Unclassified is `Restricted`.** Deny by default applies to data, not only to operations. ⚙
-- A class MUST be declared once, on the type that carries the value - never repeated per DTO, per log call, or per endpoint. Two declarations of the same fact will drift. Mechanism in `references/backend.md` §7.
-- A field's class MUST travel with its contract: the OpenAPI document carries the class of every property, and the generated frontend types carry it onward. ⚙ A boundary rule the client cannot evaluate is not a rule.
+- A class MUST be declared once, on the type that carries the value - never repeated per DTO, per log call, or per endpoint. Two declarations of the same fact will drift. Mechanism in the server stack law.
+- A field's class MUST travel with its contract: the OpenAPI document carries the class of every property, and the generated client types carry it onward. ⚙ A boundary rule the client cannot evaluate is not a rule.
 
 ### Egress boundaries
 
@@ -142,7 +147,7 @@ Each boundary has exactly one owner. There is no other path across it.
 
 | Boundary | Owner | Rule |
 |---|---|---|
-| Response DTO to an HTTP or SignalR client | API endpoint / hub | `Confidential` and above require the operation's policy to grant that field. |
+| Response DTO to an HTTP or real-time client | API endpoint / real-time hub | `Confidential` and above require the operation's policy to grant that field. |
 | Anything placed in a model's context | Agent tool projection | The model vendor is an external processor. `Restricted` MUST NOT cross. |
 | Log, metric, trace, or error report | Logging behavior | `Confidential` and above MUST NOT be written. Log the id, never the value. |
 | Cache entry | Cache decorator | `Restricted` MUST NOT be cached. `Confidential` only under a principal-scoped key. |
@@ -159,25 +164,26 @@ Each boundary has exactly one owner. There is no other path across it.
 Every request, message, job, and agent run MUST be attributable end to end. A log line that cannot be tied to the work that produced it is noise with a timestamp.
 
 - Every unit of work MUST carry a correlation id: an HTTP request, a dispatched message, an outbox delivery, a background job, an agent run and each of its steps. ⚙
-- The correlation id MUST cross every boundary the work crosses - module to module through the outbox, user to agent, backend to frontend. A boundary that drops it breaks the trace at the exact point where a trace earns its keep.
+- The correlation id MUST cross every boundary the work crosses - module to module through the outbox, user to agent, server to client. A boundary that drops it breaks the trace at the exact point where a trace earns its keep.
 - Logs, metrics, and traces MUST share that one identity. Three signals that cannot be joined are three tools, not one system.
 - An agent run MUST be reconstructable from telemetry alone: which user, which operations, which rows, what it cost. An agent whose actions cannot be replayed after the fact is not auditable, and an unauditable agent is not deployable.
 - Telemetry MUST NOT be optional per environment. Sampling rates MAY differ; emission MUST NOT.
 - What may be emitted is governed by §8. Classification applies to every log line, metric label, and trace attribute, not only to responses.
 
-Mechanism in `references/backend.md` §10.
+Mechanism in the server stack law.
 
 ## 10. Verification
 
-Backend: `dotnet build` (warnings are errors) and `dotnet test` (includes architecture tests).
-Frontend: `pnpm lint`, `pnpm typecheck`, `pnpm test`.
+Every stack law names its verification commands. Before a change is complete, the commands of every stack law whose tree the change touches MUST pass. Never report work as done on unverified code.
 
-All MUST pass before a change is complete. Never report work as done on unverified code.
+Every ⚙ rule and the mechanism that enforces it is inventoried. The core law's rules are in `references/enforcement.md`, in this skill's own directory; each stack law's are in its own. A ⚙ with no entry is unaccounted for and MUST be added. An entry whose check is not yet built is a known gap in enforcement - it does not make the rule optional.
 
-Every ⚙ rule and the mechanism that enforces it is inventoried in `references/enforcement.md`. A ⚙ with no entry there is unaccounted for and MUST be added. An entry whose check is not yet built is a known gap in enforcement - it does not make the rule optional.
+A core rule binds every stack law of the role it names, and each of them MUST carry the rule's check in its own inventory. A stack law that cannot is not compliant with this document, and the rule does not become optional in its trees.
 
 A check stricter than its rule is the same defect facing the other way. The check will be read as the rule, and the next reader of the rule is entitled to approve what the check refuses. A check and its rule MUST cover the same ground: widen the rule or narrow the check, in the same change.
 
 ## 11. Changing the Law
 
 This document is not edited to accommodate code that violates it. To change a rule: change it here first, then bring the codebase into compliance in the same change. Until the law says otherwise, a rule the codebase no longer satisfies is a defect in the codebase.
+
+A stack law is changed the same way, in its own plugin. A rule that one stack law needs and every stack law of its role would need too belongs here, not in the stack law that found it.

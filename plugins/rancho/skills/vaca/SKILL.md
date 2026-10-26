@@ -81,9 +81,9 @@ Use the LLM for work that requires reasoning: writing PRDs, analyzing parallelis
 
 ## Engineering Law
 
-Code produced under VACA is governed by the engineering law in `/rancho:law`. VACA decides *what* gets built and in what order; the law decides what the code must look like. Where they touch:
+Code produced under VACA is governed by the engineering law: the core law in `/rancho:law`, and the stack law each tree of the project is bound to - the nearest `CLAUDE.md` names it, as `Stack law: /<plugin>:law` (core §2). VACA is the same in every project; which stack laws apply is the project's choice, not VACA's. VACA decides *what* gets built and in what order; the law decides what the code must look like. Where they touch:
 
-- Agents launched in the Execute phase must read the law before writing code, and the backend or frontend reference for whichever tree they are working in.
+- Agents launched in the Execute phase must read the core law, then the stack law bound to whichever tree they are working in, before writing code. A tree with no binding is reported, not guessed at.
 - Task acceptance criteria may reference law sections, but must not restate rules — one copy of every rule, or they drift.
 - If a task as written cannot be implemented without violating the law, that is a defect in the task. Say so and revise the task, rather than letting an agent ship the violation.
 

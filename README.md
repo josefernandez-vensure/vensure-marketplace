@@ -1,11 +1,13 @@
 # vensure-marketplace
 
 A Claude Code plugin marketplace: engineering governance and delivery tooling
-for .NET and React services.
+for services. One core law and one delivery process serve every project; each
+project chooses the stack laws for the technologies it builds with.
 
 ## Requirements
 
-The `law` skill needs nothing beyond Claude Code. `vaca` drives git and GitHub,
+The law skills - the core law and every stack law - need nothing beyond Claude
+Code. `vaca` drives git and GitHub,
 so it needs:
 
 | | | |
@@ -32,23 +34,40 @@ account running `gh` needs permission to create labels there.
 /plugin install rancho@vensure-marketplace
 ```
 
-Then run `/reload-plugins` if the install summary asks you to.
+Then, in each project, install the stack laws it builds with - for example:
+
+```bash
+/plugin install rancho-dotnet@vensure-marketplace
+```
+
+```bash
+/plugin install rancho-react@vensure-marketplace
+```
+
+Choose **project** scope when the install asks. That writes the plugin to the
+project's `.claude/settings.json` under `enabledPlugins`; commit it, so every
+collaborator gets the same stack laws and no other project gets them at all.
+Then bind each tree - see [Stack laws](#stack-laws).
+
+Run `/reload-plugins` if the install summary asks you to.
 
 ## Plugins
 
 ### rancho — Dev Assistant
 
-Two skills, one command, and one agent, installed together. The skills are usable independently.
+Two skills, one command, and one agent, installed together and the same in
+every project. The skills are usable independently.
 
 | | Invoke | What it does |
 |---|---|---|
-| skill `law` | `/rancho:law` | The engineering law: module boundaries, API and error contracts, validation placement, data classification and egress, AI-agent permissions, observability. Backend (.NET/DDD), frontend (React), and the enforcement inventory load on demand. |
+| skill `law` | `/rancho:law` | The core engineering law: module boundaries, API and error contracts, validation placement, data classification and egress, AI-agent permissions, observability, and how each tree is bound to its stack law. The enforcement inventory loads on demand. |
 | skill `vaca` | `/rancho:vaca` | Vensure Agentic Code Assistant. Spec-driven delivery: PRD → epic → GitHub issues → parallel agents → shipped code. |
 | command | `/rancho:help` | The VACA reference card: the five phases, the phrases that drive each, and where VACA keeps its state. |
 
 The two are meant to work together. VACA decides *what* gets built and in what
 order; the law decides what the finished code must look like. Agents that VACA
-launches read the law before writing anything.
+launches read the core law, then the stack law bound to the tree they work in,
+before writing anything.
 
 A `SessionStart` hook states that the law is binding and points at the skill. It
 deliberately restates no rules, so there is exactly one copy of each to keep
@@ -63,6 +82,30 @@ the wiring is in [the plugin's own README](plugins/rancho/README.md).
 "standup", "start working on issue 42". The two sections below are the whole of
 it: the reference card, then one feature from ideation to archive.
 `/rancho:help` prints the same card inside a session.
+
+### Stack laws
+
+A stack law carries the core law in one technology. Each is a plugin of its
+own, enabled per project, and each holds one skill, `law`.
+
+| Plugin | Invoke | Role | What it governs |
+|---|---|---|---|
+| `rancho-dotnet` | `/rancho-dotnet:law` | server | .NET 10: DDD modules and project references, EF Core, authorization, data classification, AI agents, quotas, observability, configuration, real-time, the API layer. |
+| `rancho-react` | `/rancho-react:law` | client | React: feature boundaries, generated API types, TanStack Query, forms, components and styling, routing, authentication, browser data boundaries. |
+
+A project binds each of its trees with one line in the `CLAUDE.md` at the
+tree's root:
+
+```
+backend/CLAUDE.md   ->  Stack law: /rancho-dotnet:law
+frontend/CLAUDE.md  ->  Stack law: /rancho-react:law
+```
+
+A tree with no binding stops work rather than being guessed at. A stack law
+depends on the core law and never on another stack law, so either tree can
+change stack without touching the other - a new technology is a new
+`rancho-<stack>` plugin. How to write one is in
+[the rancho README](plugins/rancho/README.md#adding-a-stack-law).
 
 ## Using VACA
 
@@ -390,9 +433,11 @@ vensure-marketplace/
 ├── .claude-plugin/
 │   └── marketplace.json      the catalog — one entry per plugin
 ├── plugins/
+│   ├── rancho-dotnet/        stack law, role server: skills/law/
+│   ├── rancho-react/         stack law, role client: skills/law/
 │   └── rancho/
 │       ├── .claude-plugin/plugin.json
-│       ├── skills/law/       SKILL.md + references/
+│       ├── skills/law/       the core law: SKILL.md + references/
 │       ├── skills/vaca/      SKILL.md + references/ + scripts/
 │       ├── commands/help.md  the /rancho:help command
 │       ├── hooks/hooks.json  SessionStart: the prime directive
