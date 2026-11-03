@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.0
+
+- Amendment A-08, from a consuming project's compliance audit of 2026-10-30
+  (items 3 and 5), with the owners' review of it. Records in
+  `enforcement.md`.
+- §6 gains a fourth translation boundary: commit outcome to result value,
+  owned by the one pipeline step that commits. A persistence adapter MAY
+  catch the exceptions its framework uses to signal a concurrency conflict or
+  a unique-key violation, and MUST translate them where they are raised.
+- §8: a class is declared on the domain type and on its published contract
+  type, and a check proves the two agree. Every other carrier inherits it. A
+  property projected from a classified source MAY carry a property-level
+  class. The OpenAPI document now carries the class of request properties and
+  parameters as well as response properties (ROOT-18), and the client
+  enforces it at its own boundaries.
+- Released with `rancho-dotnet` 1.1.0 and `rancho-react` 1.1.0, which carry
+  the stack-law halves.
+
 ## 2.0.0
 
 - **Breaking for every project.** The law is split in two. `rancho` carries

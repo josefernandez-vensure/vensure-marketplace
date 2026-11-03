@@ -32,11 +32,11 @@ Every rule marked ⚙ in the .NET stack law, every core rule its role carries, a
 
 ## Summary
 
-The stack law carries **91 ⚙ marks**. One sits on a section heading, §2, and covers everything beneath it. Its rules are **104 rows**: 92 `build`, 11 `required-test`, and 1 `dropped`. Its role, `server`, carries **14 core rules**, below.
+The stack law carries **95 ⚙ marks**. One sits on a section heading, §2, and covers everything beneath it. Its rules are **112 rows**: 98 `build`, 13 `required-test`, and 1 `dropped`. Its role, `server`, carries **14 core rules**, below.
 
 **Every marked rule can be made to fail the build.** No rule claims an enforcement it cannot deliver. Nothing is enforced yet, though - `build` means the check is buildable, not built.
 
-Four rules restate another rule in this file, and eleven core rules restate one. One check satisfies each pair; the canonical id is noted and the duplicate points at it.
+Five rules restate another rule in this file, and eleven core rules restate one. One check satisfies each pair; the canonical id is noted and the duplicate points at it.
 
 ## Core rules carried
 
@@ -56,7 +56,7 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | ROOT-15 | Acting principal explicit; no ambient HTTP context in application or domain | §7 | `arch` | build | S | Canonical: BE-52 |
 | ROOT-16 | Unclassified is `Restricted` | §8 | `arch` | build | L | Canonical: BE-55 |
 | ROOT-17 | Integration events MUST NOT carry `Restricted` payloads | §8 | `arch` | build | M | Canonical: BE-61 |
-| ROOT-18 | A field's class travels with its contract, into the OpenAPI document and the generated types | §8 | `ci` | build | M | Added by P-03. Canonical: BE-83. The client half is the client stack law's |
+| ROOT-18 | A field's class travels with its contract: the OpenAPI document carries the class of every request and response property and every parameter | §8 | `ci` | build | M | Added by P-03, widened by A-08. Canonical: BE-83. The client half is the client stack law's |
 | ROOT-19 | Every unit of work carries a correlation id | §9 | `proj` | build | S | Canonical: BE-90 |
 
 ## Stack law - `../SKILL.md`
@@ -65,9 +65,12 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 
 | Id | Rule | Mechanism | Status | Effort | Check |
 |---|---|---|---|---|---|
-| BE-01 | Reference table: each project references only what the table allows | `proj` | build | S | Allowlist keyed on the kind each project declares - an undeclared or unrecognised kind fails. Asserted in CI and by `arch` |
+| BE-01 | Reference table: each project references, and declares packages, only as the table allows | `proj` | build | S | Allowlist keyed on the kind each project declares - an undeclared or unrecognised kind fails. Each direct `ProjectReference` checked against the row's project column, and each `PackageReference` against its package column; `Api` may declare no package an Infrastructure project declares. Asserted in CI and by `arch`. Amended by A-09: `Api` admits `<Module>.Application`, and the package column is now checked - it had no check before |
 | BE-02 | Domain references no EF Core, Mediator, ASP.NET, `IHttpContextAccessor`, application types | `proj` + `arch` | build | S | Banned assembly references on the Domain project |
 | BE-03 | No grouping by pattern: no `Application/Handlers/`, `Domain/Entities/`, etc. | `ci` | build | S | Forbidden directory-name check (denylist only - the positive form is not checkable) |
+| BE-105 | `Api` names only Contracts, Application, Platform and `SharedKernel` types and Infrastructure registration entry points, and never calls into Infrastructure after startup | `arch` | build | M | Added by A-09. Type references of every `Api` type resolve to those sets. Types the dispatcher's source generator emits, marked with `GeneratedCodeAttribute`, are skipped - the rule puts them outside it |
+| BE-106 | Each module's Infrastructure exposes exactly one registration entry point, `Add<Module>Module(IServiceCollection, IConfiguration)` | `arch` | build | S | Added by A-09. Exactly one public static extension method over `IServiceCollection` per module Infrastructure assembly, with that signature |
+| BE-107 | `InternalsVisibleTo` names test assemblies only | `contract` | build | S | Added by A-09. Every `InternalsVisibleTo` attribute on every production assembly names a project whose declared kind is `<Anything>.Tests` |
 
 ### §3 Domain Layer
 
@@ -77,7 +80,8 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-05 | Aggregate methods MUST NOT return `Result`, a DTO, or any application type | `arch` | build | S | Return types of public Domain methods must be Domain or BCL |
 | BE-06 | Aggregates MUST NOT reference repositories, `DbContext`, `HttpClient`, or any I/O | `arch` | build | S | Banned namespaces on Domain (`System.IO`, `System.Net`, EF) |
 | BE-07 | Domain events are intra-module | `arch` | build | S | Domain event types not referenced outside their module's assemblies |
-| BE-08 | No bare `Guid` in the `Domain` or `Application` public surface | `arch` | build | S | R-04 applied |
+| BE-08 | No bare `Guid` in the public surface of `Domain` or of a command or query message | `arch` | build | S | R-04 applied. Narrowed by A-09 from all of `Application` to its messages: the rest of `Application` is reached through them |
+| BE-109 | A command or query message, and a Response DTO, reference no `Domain` type; ids they carry are `Contracts` ids | `arch` | build | S | Added by A-09. Property and constructor-parameter types of every message and Response DTO, transitively, resolve outside `Domain` |
 | BE-09 | Domain events past tense | — | dropped | — | R-05 applied: now SHOULD, unmarked |
 | BE-10 | Domain events carry ids and values, never entity references | `arch` | build | S | Property types of event types must not be entity types |
 | BE-78 | An aggregate root is marked as one at the type level | `arch` | build | S | Added by P-02. Marker interface present on every root |
@@ -91,8 +95,10 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-12 | A query handler references no repository port and never calls `SaveChangesAsync` | `arch` + `roslyn` | build | S | R-06 applied |
 | BE-13 | Command handlers mutate only through aggregate methods; no `DbContext`/SQL | `arch` | build | S | Covered by BE-01: Application cannot reference EF |
 | BE-14 | Query handlers project straight to DTOs, untracked; no aggregate materialization | `arch` + `contract` | build | M | Query handler types must not reference aggregates; `QueryTrackingBehavior.NoTracking` asserted on the context |
-| BE-15 | Query message and abstraction in Application, concrete handler in Infrastructure | `arch` | build | S | Type-location assertion by interface |
-| BE-16 | Query handlers MUST NOT use an aggregate repository | `arch` | build | S | No repository port referenced from query handler types |
+| BE-15 | Query message and abstraction in Application; every concrete handler in Infrastructure, by convention | `arch` | build | S | Type-location assertion by interface: every `IQueryHandler<,>` implementation is in a module Infrastructure assembly, with no exception for a pure handler. Amended by A-09 |
+| BE-108 | A query handler references no `Domain` type | `arch` | build | S | Added by A-09. Type references of every `IQueryHandler<,>` implementation resolve outside `Domain`. Subsumes BE-16, and the repository-port half of BE-12 |
+| BE-112 | Every query handler that reads a relational database is tested against real SQL Server | `test` | required-test | M | Added by A-09. §14 **Queries**. SQL into a DTO is not checked against the model at compile time |
+| BE-16 | Query handlers MUST NOT use an aggregate repository | `arch` | build | S | Covered by BE-108: a repository port is a `Domain` type |
 | BE-17 | `Repository` reserved for the write path; read-side types named `<Feature>Reader` | `arch` | build | S | Naming plus interface-origin assertion |
 | BE-18 | Handlers MUST NOT reference `HttpContext`, `IHttpContextAccessor`, transport types | `arch` | build | S | Same check as BE-52 |
 | BE-19 | Every collection query paginated | `arch` | build | S | Query handler return types: `Page<T>` only, never `List<T>`/`IEnumerable<T>` |
@@ -110,7 +116,9 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-31 | Agent tool invocations carry a key derived from run and step | `arch` | build | S | By construction: the tool invoker is the only caller, and takes the key as a required argument |
 | BE-32 | A transaction MUST NOT span a module boundary | `arch` | build | S | Covered by BE-01 |
 | BE-33 | Integration events written to the outbox in the same transaction; no direct publish | `arch` | build | S | Application handlers may reference the outbox port only, never a bus client |
-| BE-34 | Every public Infrastructure type is an adapter | `arch` | build | M | Implements a Domain/Application port or a known framework extension point |
+| BE-110 | A command declares whether it persists aggregate state; one that does not uses no key-based idempotency and no outbox | `contract` + `arch` | build | S | Added by A-09. `contract`: the operation registry sweep (as BE-25) finds the declaration on every command, and refuses it on a query and together with an idempotency key. `arch`: no handler of a command declared not to persist references the outbox writer |
+| BE-111 | A command that does not persist stages no database change | `test` | required-test | S | Added by A-09. §14 **Transactions**. The transaction behavior's guard is runtime; the test proves it |
+| BE-34 | Every Infrastructure type is an adapter or a registration entry point, and is `internal` unless the dispatcher's generated code must name it | `arch` | build | M | Implements a Domain/Application port or a framework extension point, or is a registration entry point. Amended by A-09: a public Infrastructure type that is neither a registration entry point nor named by a generated type in `Api` fails. `InternalsVisibleTo` is BE-107's |
 | BE-35 | Infrastructure types live under `Persistence/`, `Queries/`, `Messaging/`, `External/` | `arch` | build | S | Namespace assertion |
 | BE-36 | `Infrastructure/Queries/<Feature>/` mirrors the Application feature folder | `ci` | build | S | Directory comparison |
 | BE-84 | Every integration event type carries its version in its name | `arch` | build | S | Naming assertion over the `Contracts` project |
@@ -127,7 +135,7 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-40 | Repositories MUST NOT expose `IQueryable`, `DbSet`, or EF types | `arch` | build | S | Signature assertion on repository ports |
 | BE-41 | Command handlers write only through the repository | `arch` | build | S | No longer covered by BE-01: `Application` now references `Platform.Application`, where the unit-of-work port is declared. Assert directly - no type in a module `Application` references it |
 | BE-42 | No navigation properties between aggregate roots | `contract` | build | M | Unblocked by P-02. EF model navigation targets, resolved through the root marker |
-| BE-43 | Domain types acquire no public parameterless ctors, public setters, or EF attributes | `arch` | build | S | Extends BE-04 and BE-38 |
+| BE-43 | Domain types acquire no public parameterless ctors, public setters, or EF attributes | `arch` | build | S | Extends BE-04 and BE-38. Skips compiler-generated types, marked with `CompilerGeneratedAttribute`, such as a lambda's closure class. Amended by A-09 |
 | BE-44 | Cache decorators registered explicitly per query, never auto-applied | `contract` | build | M | Container inspection: no open-generic decorator registration over `IQueryHandler<,>` |
 | BE-45 | **Every** cache key includes the acting principal | `arch` | build | S | R-09 applied: unconditional, built by the one key builder |
 | BE-46 | Every cache key embeds its aggregates' version stamps, declared explicitly | `arch` + `contract` | build | M | Cached queries implement a dependency-declaring interface; key builder consumes it |
@@ -157,7 +165,7 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 
 | Id | Rule | Mechanism | Status | Effort | Check |
 |---|---|---|---|---|---|
-| BE-54 | A class is declared once, on the value type; attribute lives in `SharedKernel` | `arch` | build | S | Attribute defined in `SharedKernel`; no redundant redeclaration on DTO properties |
+| BE-54 | A class is declared on the domain value type and on its published `Contracts` twin, and the two agree; attribute lives in `SharedKernel` | `arch` | build | M | Attribute defined in `SharedKernel`. Each `Contracts` type's class equals its `Domain` twin's; a property-level class equals that of the source it names; no other redeclaration on a DTO, message or event property. Amended by A-09 |
 | BE-55 | Every property reachable from an egress boundary resolves to a class | `arch` | build | L | Transitive property-graph walk from each boundary root. **The keystone check** |
 | BE-56 | `Confidential`/`Restricted` types redact in `ToString()`, no implicit string conversion | `arch` | build | S | Overrides `ToString`; declares no `op_Implicit` to `string` |
 | BE-57 | No interpolation of a classified value into a log message template | `roslyn` | build | S | Enable `CA2254` as error, plus a custom rule for classified arguments |
@@ -165,7 +173,7 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-59 | No model-visible DTO contains `Confidential`/`Restricted`, transitively | `arch` | build | M | Reuses BE-55's graph walk |
 | BE-60 | `Restricted` MUST NOT be written to Redis in any form | `arch` | build | M | Reuses BE-55's graph walk over cache value types |
 | BE-61 | Integration events and outbox rows MUST NOT carry `Restricted` | `arch` | build | M | Reuses BE-55's graph walk over contract types |
-| BE-83 | The class is emitted into the OpenAPI document on every Response DTO property | `ci` | build | M | Added by P-03. Emitter fails on a property whose class it cannot resolve |
+| BE-83 | The class is emitted into the OpenAPI document on every Request and Response DTO property and every parameter | `ci` | build | M | Added by P-03, widened by A-08. Emitter fails on a property or parameter whose class it cannot resolve |
 
 ### §8 AI Agents
 
@@ -218,7 +226,7 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-77 | Endpoints MUST NOT reference domain types | `arch` | build | S | Unblocked by P-01 |
 | BE-80 | Every endpoint is a type implementing the shared endpoint abstraction | `arch` | build | S | Added by P-01. No call outside the discovery registrar to any `EndpointRouteBuilderExtensions` overload taking a handler delegate - every verb, not a list of them |
 | BE-81 | Endpoints registered by discovery; hand-registration forbidden | `contract` | build | S | Added by P-01. Container inspection, as BE-62 does for tools |
-| BE-82 | An endpoint references only its DTOs, the dispatcher, and the result translator | `arch` | build | S | Enabled by P-01. The endpoint counterpart of BE-74 |
+| BE-82 | An endpoint references only its DTOs and the types they are composed of, the message it dispatches, the dispatcher, and the result translator | `arch` | build | S | Enabled by P-01. The endpoint counterpart of BE-74. Amended by A-09: the message and the DTOs' own types were missing, so every endpoint failed it. Checks the whole endpoint type, including any method on a DTO it calls to build the message |
 
 ## Rewordings applied
 
@@ -251,6 +259,24 @@ Distinguishing a behaviour-selecting string from a data string is semantic. *App
 **R-12 · BE-74 · "Hubs MUST NOT contain business logic."**
 "Business logic" is not a static property. *Applied:* reword to the shape the rule is really describing - *a hub method MUST map its argument to a message, dispatch it, and return; it MUST NOT reference any type outside DTOs and the dispatcher.* That is an `arch` type-reference check.
 
+## Amendments
+
+A rewording keeps a rule and fixes how it is stated. An amendment changes what the law requires, under core §11 - the law first, the codebase after. A-09 concerns this stack law alone and is kept here. A-08 spans both roles and is in the core inventory, with A-01 to A-05 and A-07; A-06 and A-10 are in `rancho-react`'s.
+
+**A-09 · §2, §3, §4, §5, §7, §13, §15, BE-01, BE-08, BE-15, BE-34, BE-43, BE-54, BE-82 · Rule combinations that left no compliant answer.**
+A consuming project audited its code against the law on 2026-10-30 and found code shaped to pass a check while breaking the rule behind it, nearly always beside a comment arguing it was fine. Most of it was not carelessness: the law left no compliant answer. The audit's items 1 to 4, 6, 9 and 10 concern this stack law, and the owners' review of them found six more conflicts, resolved here in the same change.
+- *`Api` and Application.* §4 puts messages in `<Module>.Application` and §13 has endpoints build them, but the `Api` row forbade that reference, so every endpoint named a type it could not reach. The workarounds were predictable: a transitive reference through Infrastructure, `InternalsVisibleTo` from Application to `Api`, and SDK clients and `DbContext` registrations moved into `Api` because "call into" had no edge. *Applied:* `Api` references `<Module>.Application`. It names only Infrastructure registration entry points - one `Add<Module>Module` per module, one `Add<Feature>` per platform feature, Microsoft's convention for registering a group of services - and never calls into Infrastructure after startup (BE-105, BE-106). Infrastructure types are `internal` (BE-34) and `InternalsVisibleTo` names test assemblies only (BE-107), so the boundary is one the compiler holds. A source generator in `Api` cannot name an `internal` type in another assembly, so a type the dispatcher's generated code must name - a concrete query handler, where the generator names handlers - stays public, and generated code is outside BE-105. The registration entry point is added to BE-34's adapter kinds, which it otherwise failed.
+- *Packages.* No row admitted `Microsoft.Extensions.*.Abstractions`, which dependency injection, options, logging and hosting need, nor `Microsoft.Extensions.Options` and its configuration extensions, which `ValidateOnStart` (§11) and `Bind` live in. The package column also had no check. *Applied:* the rows admit them, Infrastructure admits the SDK of any system it adapts, `Platform.Infrastructure` declares telemetry instrumentation and `Api` the exporters, and BE-01 now checks packages.
+- *Query handler placement.* BE-15 placed the concrete query handler in Infrastructure "because it depends on `DbContext`", which said nothing of a handler that calls an API or reads nothing, and the pure-logic rule then pulled the latter into Application. *Applied:* every concrete query handler is in Infrastructure by convention - one check instead of a judgement per handler - and reads independently of the domain model, as Microsoft's CQRS guidance does: no `Domain` type (BE-108), SQL into the DTO, and a required test against a real database (BE-112), since SQL loses compile-time checking.
+- *Typed ids.* BE-08 forbade a bare `Guid` anywhere in Application, so a message carried a Domain id, and then the endpoint building it broke BE-77 and a query handler reading it broke BE-108. *Applied:* messages and Response DTOs carry the module's `Contracts` ids and no `Domain` type (BE-109); the handler converts. BE-08 narrows to `Domain` and the messages. A module with an endpoint therefore has a `Contracts` project.
+- *Encryption.* §7 put the encryption of `Restricted` columns in the mapping, which SQL into a DTO bypasses. *Applied:* encryption lives in Infrastructure, in the mapping or below it in the driver, and is transparent to every read path.
+- *Exceptions the framework requires.* EF Core signals a concurrency conflict or a unique-key race only by throwing, and the conflict at commit arrives after the handler has returned. A `BackgroundService` whose loop throws stops the host since .NET 6, and a singleton hosted service must create a scope to use scoped services, the pattern Microsoft documents. *Applied:* the adapter that receives the framework's exception translates it, and a conflict at commit becomes a `Result` conflict in the transaction behavior (core §6, A-08); §15 admits a declared fault-isolation boundary and `IServiceScopeFactory` in a hosted service.
+- *A command whose work is an external write.* The transaction behavior wrapped every command, and a handler may not call an external system inside a transaction, so a command such as a blob upload had no legal shape. *Applied:* a command declares whether it persists. One that does not opens no unit of work, stages nothing, and uses neither a key nor the outbox (BE-110, BE-111).
+- *Endpoint references.* BE-82 omitted the message an endpoint must build and its DTOs' own types; a consuming project moved the mapping onto the DTO to escape the check. *Applied:* both are admitted, and the check reads the whole endpoint type.
+- *BE-43* failed every lambda in a value object, through the compiler's closure class. Its check now skips compiler-generated types; the rule is unchanged.
+
+Backend rows go from 104 to 112, and marks from 91 to 95.
+
 ## Prerequisites (all adopted)
 
 Three of the four prerequisites concern this stack law alone, and are kept here. P-03 spans both roles and is in the core inventory.
@@ -267,10 +293,10 @@ Sequenced by value per unit of effort, not by document order.
 
 **First - the cheap ones that fail loudly.** `proj` and `roslyn` checks: BE-02, BE-39, BE-47, BE-57 (`CA2254` is a compiler switch), BE-50's banned `[Authorize]`, BE-98's banned environment types, BE-95's banned environment-variable reads, BE-97's secret scan, plus the §15 Forbidden list as `BannedApiAnalyzers` entries. **Enforced in about a day**, none requiring a decision.
 
-**Second - the reflection sweeps.** One test each, discovering every instance automatically: BE-25 and BE-26 (declared policy, declared idempotency), BE-64, BE-67, BE-70, BE-73, BE-51, BE-96 (every options class validated on start), BE-100 (the external-authority cache lifetime declared and bounded). These are the highest-leverage tests in the suite, because they cover every message that will ever be added, not just today's.
+**Second - the reflection sweeps.** One test each, discovering every instance automatically: BE-25 and BE-26 (declared policy, declared idempotency), BE-64, BE-67, BE-70, BE-73, BE-51, BE-96 (every options class validated on start), BE-100 (the external-authority cache lifetime declared and bounded), BE-107, BE-110. These are the highest-leverage tests in the suite, because they cover every message that will ever be added, not just today's.
 
 **Third - the classification graph.** BE-55 is the keystone: BE-59, BE-60, BE-61, BE-69, and ROOT-16 all reuse its property-graph walk. Write it once. It is the largest single piece of work here and the one that carries the most risk if it is skipped. The same pass emits the class into the OpenAPI document (BE-83), which is what lets a client stack law carry it into its generated types and enforce its data-boundary rules at all.
 
-**Fourth - the structural arch tests.** BE-01, BE-04 through BE-07, BE-10, BE-13 through BE-20, BE-30, BE-33 through BE-38, BE-40, BE-43, BE-46, BE-48, BE-52, BE-53, BE-102, BE-63, BE-76, and BE-78 through BE-82. Individually cheap, collectively the bulk of the row count.
+**Fourth - the structural arch tests.** BE-01, BE-04 through BE-07, BE-10, BE-13 through BE-20, BE-30, BE-33 through BE-38, BE-40, BE-43, BE-46, BE-48, BE-52, BE-53, BE-102, BE-63, BE-76, BE-78 through BE-82, BE-105, BE-106, BE-108 and BE-109. Individually cheap, collectively the bulk of the row count.
 
 **Every decision is settled.** The fifteen rewordings, all four prerequisites, and the badge question are in the law. Every check above can be built against the current text, and nothing in this file is now waiting on an answer - only on the work. Building checks against the current text means building the wrong checks for some of them, and R-09 in particular should change before anything caches anything.

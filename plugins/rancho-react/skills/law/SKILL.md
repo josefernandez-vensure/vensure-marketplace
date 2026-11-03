@@ -95,7 +95,7 @@ tanstackRouter({
 - All request and response types are generated from the server's OpenAPI document into `src/generated/`.
 - `src/generated/` MUST NOT be hand-edited.
 - A response from the generated client MUST NOT be cast, type-asserted, or re-declared by a locally written type. Contract drift must be a compile error, not a runtime surprise.
-- Generated types MUST carry the data class of every property, as emitted into the OpenAPI document (core §8). ⚙ Without it, every data-boundary rule on this side is a hope rather than a check.
+- The generator MUST emit, from the class of every property and parameter in the OpenAPI document (core §8), the set of fields and parameters whose class permits each client boundary in §11 - the URL, browser storage, client telemetry, or any other. ⚙ The lints for those boundaries read that set, and a field or parameter outside it is refused at that boundary. Without it, every data-boundary rule on this side is a hope rather than a check.
 - Regenerate whenever the server's contract changes, and commit the output.
 
 ## 4. Server State - TanStack Query
@@ -158,7 +158,7 @@ The organization's identity provider, through its identity library. Which provid
 - A `403` is a final answer. It MUST be shown as a permission error and MUST NOT trigger a refresh - the token is fine, the permission is not. Retrying a `403` is how a UI turns a clear denial into a hang.
 - What the application requests from the provider - scopes, a service name, or any other grant - MUST be declared in one place and MUST be the narrowest the application needs.
 - Sign-out MUST have the identity library clear its session store, and MUST clear the TanStack Query cache and every store. A previous user's data surviving a sign-out on a shared workstation is a disclosure, and shared workstations are the normal case in this domain.
-- Sign-out MUST also end the identity-provider session, including any upstream session the provider federates to, by calling the provider's end-session endpoint. Clearing local state while a provider session survives means the next sign-in completes silently as the previous user - the disclosure the rule above exists to prevent, reintroduced one step later. The next sign-in MUST prompt. Ending the provider session also signs the user out of other applications that share it; on a shared workstation, that is the intended effect.
+- Sign-out MUST also end the identity-provider session, including any upstream session the provider federates to. A standalone application calls the provider's end-session endpoint itself. An application in a host shell does not own the provider session: it clears its own caches and stores, then delegates sign-out to the shell's sign-out, which MUST end the provider session. Clearing local state while a provider session survives means the next sign-in completes silently as the previous user - the disclosure the rule above exists to prevent, reintroduced one step later. The next sign-in MUST prompt. Ending the provider session also signs the user out of other applications that share it; on a shared workstation, that is the intended effect.
 - The frontend holds no secrets. Everything in the bundle is public: a client id belongs there, a client secret never does.
 
 ## 10. Errors
@@ -187,7 +187,7 @@ Core §8 governs, and its classes apply here unchanged. The browser is inside th
 - MSW for all network mocking. Module-mocking the generated client - `vi.mock`, `vi.doMock`, or any other - is forbidden: it mocks past the contract. ⚙
 - Every form MUST have a test for a validation failure and a test for a server-side failure.
 - **Data boundaries**: telemetry, analytics, and error reporting MUST have a test proving a known classified field is scrubbed from a captured event.
-- **Authentication**: a `401` MUST have a test proving exactly one silent refresh is attempted before interactive sign-in - the provider's sign-in, or the host shell's sign-in page - and a `403` MUST have a test proving no refresh occurs. Sign-out MUST have a test proving the local caches are cleared and the provider's end-session endpoint is called.
+- **Authentication**: a `401` MUST have a test proving exactly one silent refresh is attempted before interactive sign-in - the provider's sign-in, or the host shell's sign-in page - and a `403` MUST have a test proving no refresh occurs. Sign-out MUST have a test proving the local caches are cleared and that the provider's end-session endpoint is called - or, for an application in a host shell, that sign-out is delegated to the shell's sign-out.
 - Playwright for critical user journeys only.
 - Tests MUST NOT assert on class names, DOM structure, or component internals.
 
