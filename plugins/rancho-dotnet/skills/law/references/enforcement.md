@@ -23,7 +23,7 @@ A section an annex holds keeps its number: §8 is in `annex-agents.md`, §5 *Rea
 
 ## Summary
 
-The stack law carries **97 ⚙ marks**, each naming the ids of the rows it marks. Its rules are **114 rows**: 99 `build`, 14 `required-test`, 1 `dropped`, and 0 `retired`. Its role, `server`, carries **15 core rules**, below.
+The stack law carries **97 ⚙ marks**, each naming the ids of the rows it marks. Its rules are **116 rows**: 99 `build`, 16 `required-test`, 1 `dropped`, and 0 `retired`. Its role, `server`, carries **15 core rules**, below.
 
 **Every marked rule can be made to fail the build.** No rule claims an enforcement it cannot deliver. Whether a project has built and reviewed a check is that project's record, in its `ENFORCEMENT-STATUS.md` (core §1).
 
@@ -38,10 +38,10 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | ROOT-01 | No module references another module's Domain/Application/Infrastructure | §3 | `proj` + `arch` | build | Assembly dependency assertion; also expressible as a `ProjectReference` allowlist | — | — |
 | ROOT-02 | Domain events MUST NOT cross a module boundary | §3 | `arch` | build | Canonical: BE-07 | — | — |
 | ROOT-04 | One schema per module; no cross-schema joins, no cross-module FKs | §3 | `contract` | build | EF model inspection: every entity's schema equals the module's; no FK targets outside it | A query handler's SQL (§4) is not in the EF model, so a cross-schema reference there is a known gap, carried by the real-database test (BE-112) and by per-module database permissions where the project grants them | — |
-| ROOT-07 | Endpoints take a Request DTO, return a Response DTO; no domain type reachable from HTTP | §4 | `arch` | build | Canonical: BE-77 | — | — |
+| ROOT-07 | Endpoints take a Request DTO and return a Response DTO, no body, or a declared stream; no domain type reachable from HTTP | §4 | `arch` | build | Canonical: BE-77 | — | — |
 | ROOT-08 | Query results projected directly to Response DTOs | §4 | `arch` | build | Canonical: BE-108 | — | — |
 | ROOT-09 | OpenAPI document generated and committed | §4 | `ci` | build | Regenerate in CI, fail on any diff | — | — |
-| ROOT-11 | Every collection endpoint paginated | §4 | `arch` | build | Canonical: BE-19 | — | — |
+| ROOT-11 | Every collection endpoint not bounded by construction paginated; a bounded one declares `maxItems` | §4 | `arch` | build | Canonical: BE-19 | — | — |
 | ROOT-12 | One page shape across the API | §4 | `arch` | build | Canonical: BE-20 | — | — |
 | ROOT-13 | Every state-changing endpoint declares an idempotency mechanism | §4 | `contract` | build | Canonical: BE-26 | — | — |
 | ROOT-15 | Acting principal explicit; no ambient HTTP context in application or domain | §7 | `arch` | build | Canonical: BE-52 | — | — |
@@ -71,7 +71,7 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-10 | Domain events carry ids and values, never entity references | §3 | `arch` | build | Property types of event types must not be entity types | — | — |
 | BE-78 | An aggregate root is marked as one at the type level | §3 | `arch` | build | Marker interface present on every root | — | — |
 | BE-79 | An aggregate holds another aggregate's id, never a reference | §3 | `arch` | build | No property of a root-marked type is another root-marked type | — | — |
-| BE-11 | Command return type limited to identifier and outcome | §4 | `arch` | build | `ICommand<T>` closed over `Unit` or an id type | — | — |
+| BE-11 | Command return type limited to identifier, outcome, and the new version of the aggregate it changed | §4 | `arch` | build | `ICommand<T>` closed over `Unit`, an id type, a version, or a result carrying an id, a version, or both | — | — |
 | BE-12 | A query handler references no repository port and never calls `SaveChangesAsync` | §4 | `arch` + `roslyn` | build | `arch`: no repository port referenced from query handler types. `roslyn`: `BannedApiAnalyzers` on `SaveChangesAsync`, scoped to query handler types | — | — |
 | BE-13 | Command handlers mutate only through aggregate methods; no `DbContext`/SQL | §4 | `arch` | build | Covered by BE-01: Application cannot reference EF | — | — |
 | BE-14 | Query handlers project straight to DTOs, untracked; no aggregate materialization | §4 | `arch` | build | Covered by BE-108: a handler that references no `Domain` type cannot materialize an aggregate. Read types are keyless, which EF never tracks, and SQL into a DTO is never tracked. Asserted: every read type mapped in a module's model is keyless | — | — |
@@ -82,7 +82,7 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-16 | Query handlers MUST NOT use an aggregate repository | §4 | `arch` | build | Covered by BE-108: a repository port is a `Domain` type | The rule also forbids the concrete repository in `Infrastructure`, which is not a `Domain` type; BE-108 does not reach it. 3.0 stage 7 re-derives this check. | — |
 | BE-17 | `Repository` reserved for the write path; read-side types named `<Feature>Reader` | §4 | `arch` | build | Naming plus interface-origin assertion | — | — |
 | BE-18 | Handlers MUST NOT reference `HttpContext`, `IHttpContextAccessor`, transport types | §4 | `arch` | build | Same check as BE-52 | — | — |
-| BE-19 | Every collection query paginated | §4 | `arch` | build | Query handler return types: `Page<T>` only, never `List<T>`/`IEnumerable<T>` | — | — |
+| BE-19 | Every collection query not bounded by construction paginated; a bounded one declares its bound | §4 | `arch` + `ci` | build | Query handler return types: `Page<T>`, or a collection type whose declared bound the OpenAPI document carries as `maxItems` | A query that returns one item is outside the rule; the check skips non-collection responses. | — |
 | BE-20 | One shared page shape | §4 | `arch` | build | Exactly one generic page type exists solution-wide | — | — |
 | BE-21 | Every paginated query declares a maximum page size | §4 | `arch` | build | Paginated query types must expose `MaxPageSize` | — | — |
 | BE-22 | A request above the maximum is rejected, never clamped | §4 | `contract` | build | Reflection over paginated query types; assert the validator rejects `max + 1` | — | — |
@@ -93,6 +93,7 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-27 | Idempotency record written through the same unit of work; Redis MUST NOT be the store | §4 | `arch` | build | Idempotency store type depends on `DbContext`, never on `IConnectionMultiplexer` | — | — |
 | BE-28 | Unique index on the attempt identity | §4 | `contract` | build | EF model inspection: index exists and `IsUnique` | — | — |
 | BE-29 | Concurrent duplicates resolve as one execution and one replay | §4 | `test` | required-test | §14 **Idempotency** | — | — |
+| BE-116 | The same idempotency key with a different payload is refused with `422` | §4 | `test` | required-test | §14 **Idempotency** | — | https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/ |
 | BE-30 | Idempotency is a pipeline behavior, never per-endpoint | §4 | `arch` | build | Only the behavior may reference the idempotency store | — | — |
 | BE-31 | An agent invocation of a keyed command carries a key derived from run and step | §4 | `arch` | build | By construction: the tool invoker is the only caller, and takes the key as a required argument for a command declaring one | — | — |
 | BE-114 | An agent's re-invocation of a command declaring a client-supplied id carries the same id and writes once | §4 | `test` | required-test | `annex-agents.md` **Testing**, **Idempotency** | — | — |
@@ -140,7 +141,7 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-59 | No model-visible DTO contains `Confidential`/`Restricted`, transitively | §7 | `arch` | build | Reuses BE-55's graph walk | — | — |
 | BE-60 | `Restricted` MUST NOT be written to Redis in any form | §7 | `arch` | build | Reuses BE-55's graph walk over cache value types | — | — |
 | BE-61 | Integration events and outbox rows MUST NOT carry `Restricted` | §7 | `arch` | build | Reuses BE-55's graph walk over contract types | — | — |
-| BE-83 | The class is emitted into the OpenAPI document on every Request and Response DTO property and on every parameter's schema | §7 | `ci` | build | Emitter fails on a property or parameter whose class it cannot resolve. On the parameter's schema, not the Parameter Object, because that is what a client generator's schema transform sees | — | — |
+| BE-83 | The class is emitted into the OpenAPI document on every property of every schema the document contains - Request and Response DTOs, problem details, the page - and on every parameter's schema | §7 | `ci` | build | Emitter fails on a property of any schema, framework schemas included, or a parameter, whose class it cannot resolve. On the parameter's schema, not the Parameter Object, because that is what a client generator's schema transform sees | — | — |
 | BE-62 | Tools projected from the manifest; hand-registration forbidden | §8 | `contract` | build | Container inspection: every tool descriptor originates from the projector | — | — |
 | BE-63 | Run scopes derive from the same manifest | §8 | `arch` | build | No scope literal outside the manifest projection | — | — |
 | BE-64 | Every manifest entry resolves to a real handler with a matching policy | §8 | `contract` | build | Reflection test over manifest entries | — | — |
@@ -154,8 +155,8 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-72 | Exceeding a budget aborts; MUST NOT silently truncate | §9 | `test` | required-test | `annex-agents.md` **Testing**, **Budgets** | — | — |
 | BE-73 | Limits are configuration and fail closed | §9 | `contract` | build | Options `ValidateOnStart`; test proving a missing value denies | — | — |
 | BE-90 | The correlation id is a required constructor parameter of the dispatch context | §10 | `proj` | build | By construction: the context cannot be built without one | — | — |
-| BE-91 | Outbox rows persist the correlation id of the writing transaction | §10 | `contract` | build | EF model: the column exists on the outbox entity | — | — |
-| BE-92 | The dispatcher restores the correlation id on delivery | §10 | `test` | required-test | §14 **Correlation** | — | — |
+| BE-91 | Outbox rows persist the trace context - `traceparent` and `tracestate` - of the writing transaction | §10 | `contract` | build | EF model: the trace context columns exist on the outbox entity | — | — |
+| BE-92 | The dispatcher restores the trace context on delivery | §10 | `test` | required-test | §14 **Correlation** | — | — |
 | BE-93 | A handler MUST NOT reference `ILogger` | §10 | `arch` | build | Dispatch logging belongs to the pipeline behavior alone | — | — |
 | BE-94 | Metric dimensions come from a declared closed set of keys | §10 | `contract` | build | Committed-file inspection of every metric call site: each dimension key is a member of the declared key set, never a literal or a computed string; bounds cardinality by construction. Not `arch`: a declared key is a `const string`, which the compiler inlines, so in IL a declared key and an arbitrary literal are the same `ldstr` and a type-level assertion cannot tell them apart | — | — |
 | BE-95 | Configuration MUST NOT be read from its source outside the composition root | §11 | `arch` + `roslyn` | build | `arch`: type reference assertion on `IConfiguration`, as BE-52 does for `IHttpContextAccessor`. `roslyn`: `BannedApiAnalyzers` on `System.Environment.GetEnvironmentVariable` and `GetEnvironmentVariables`, scoped to allow `Api` and the registration entry points it calls | — | — |
@@ -169,3 +170,4 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | BE-80 | Every endpoint is a type implementing the shared endpoint abstraction | §13 | `arch` | build | No call outside the discovery registrar to any `EndpointRouteBuilderExtensions` overload taking a handler delegate - every verb, not a list of them | — | — |
 | BE-81 | Endpoints registered by discovery; hand-registration forbidden | §13 | `contract` | build | Container inspection, as BE-62 does for tools | — | — |
 | BE-82 | An endpoint references only its DTOs and the types they are composed of, the message it dispatches, the dispatcher, and the result translator | §13 | `arch` | build | The endpoint counterpart of BE-74. Checks the whole endpoint type, including any method on a DTO it calls to build the message | — | — |
+| BE-115 | A versioned write without `If-Match`, or with `If-Match: *`, is refused with `428`, one with a stale version with `412`, and a create-only write for an existing id with `412` | §13 | `test` | required-test | §14 **Concurrency** | — | https://www.rfc-editor.org/rfc/rfc6585#section-3, https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1 |

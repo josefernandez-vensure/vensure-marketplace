@@ -53,10 +53,10 @@ Twelve root rules are **duplicated** by a stack-law rule. One check satisfies ea
 | ROOT-02 | Domain events MUST NOT cross a module boundary | §3 | server | build | — |
 | ROOT-03 | "An event with both audiences is two events" | §3 | server | dropped | — |
 | ROOT-04 | One schema per module; no cross-schema joins, no cross-module FKs | §3 | server | build | — |
-| ROOT-07 | Endpoints take a Request DTO, return a Response DTO; no domain type reachable from HTTP | §4 | server | build | — |
+| ROOT-07 | Endpoints take a Request DTO and return a Response DTO, no body, or a declared stream; no domain type reachable from HTTP | §4 | server | build | — |
 | ROOT-08 | Query results projected directly to Response DTOs | §4 | server | build | — |
 | ROOT-09 | OpenAPI document generated and committed | §4 | server | build | — |
-| ROOT-11 | Every collection endpoint paginated | §4 | server | build | — |
+| ROOT-11 | Every collection endpoint not bounded by construction paginated; a bounded one declares `maxItems` | §4 | server | build | — |
 | ROOT-12 | One page shape across the API | §4 | server | build | — |
 | ROOT-13 | Every state-changing endpoint declares an idempotency mechanism | §4 | server | build | — |
 | ROOT-14 | Deny by default, everywhere | §7 | both | dropped | — |

@@ -127,3 +127,19 @@ Notes taken out of the inventory's Check cells in 3.0 stage 1, word for word exc
 - FE-32: Added by A-06.
 - FE-33: Added by A-10.
 - FE-34: Added by A-10.
+
+## 3.0 stage 3
+
+- §4: a mutation of a versioned resource sends `If-Match`, and a `412` refetches and tells the user rather than retrying. Closes A-18, A-35, NET-A-10.
+- §6: field-level errors are the `errors` member of `ProblemDetails`. Closes A-27, FE-R-12.
+- §10: a server error is mapped by `type` and `status`, `title` and field messages render only for a user-facing type, `detail` never; a shown error offers its `traceId`. Closes A-27, FE-R-12.
+- §9: the token interceptor also sends `traceparent`, and the client attaches the trace id to its telemetry and error reports. Closes C-1, A-36, CORE-19.
+- §3: the class's source in the OpenAPI document is named as `x-data-class`. Closes CORE-17.
+- Core map: the correlation-id gap is closed by the §9 bullet; Gaps: none. Closes C-1, A-36, CORE-19.
+- §13: new **Wire contract** required tests, FE-35 for `traceparent` and FE-36 for a `412`, with their rows; the Summary counts follow. Closes C-1, A-36, CORE-19 and A-18, A-35, NET-A-10.
+- Review fix: §4: "Every list query MUST be paginated" and its server-side-enforcement sentence are replaced: a list query against a paginated endpoint pages with the page shape, and a collection the server bounds by construction arrives whole. FE-21's bullets are unchanged.
+- Review fix: §4: a mutation of a versioned resource sends the `ETag` it read - from the response, or from a list item's `etag` field - as `If-Match`.
+- Review fix: §9: the interceptor sends `tracestate` when present beside `traceparent`, and the client attaches its trace id to its telemetry and error reports.
+- Review fix: Core map: core §9 is also carried by §9 Authentication, whose interceptor sends `traceparent`.
+- Review fix: inventory: FE-35's section is §9 and FE-36's §4, the sections of their rules.
+- Second review fix: §4: a mutation sends the `etag` it read - from the resource's `ETag` or `etag` field, a list item's `etag`, or the last write's response - as `If-Match`, since core now returns the new `etag` in a successful write's body. The representation-variant ETag and `Content-Location` were dropped from core as unowned and against RFC 9110 §8.7 / §13.1.1.
