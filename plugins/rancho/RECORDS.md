@@ -108,3 +108,24 @@ From the note under the inventory's root table: "ROOT-03 is dropped by R-01 and 
 - ROOT-06: Left the root law under A-02; retired. It had no row in the inventory at 3.0 stage 1.
 - ROOT-10: Left the root law under A-02; retired. It had no row in the inventory at 3.0 stage 1.
 - ROOT-14: Dropped by R-03; the rule stands, enforced by review.
+
+## 3.0 stage 3
+
+- §4: RPC-style endpoints admit `POST /<resource>/{id}/<verb>` for a transition of one resource, and are permitted for any operation that is not a plain create, replace, update or delete. Closes CORE-15.
+- §4, ROOT-07: an endpoint returns a Response DTO, no body, or a stream it declares; the inventory row's rule text follows. Closes CORE-14.
+- §4 *Collections*, ROOT-11: only a collection not bounded by construction must be paginated; a bounded one declares `maxItems` and rejects a request that would exceed it. The inventory row's rule text follows. Closes CORE-16, A-15.
+- §4 *Idempotency*: a missing key is `400`, the same key with a different payload `422`, and a duplicate still in progress a replay or `409`, never `500`. Closes CORE-18.
+- §4 *Wire contract*: new subsection stating the formats both trees must agree on - `x-data-class`, the page shape, problem details (`type`, `errors`, `traceId`, `x-problem-types`), concurrency (`ETag`, `If-Match`, `428`, `412`), and `traceparent`. Closes CORE-17.
+- §9: the correlation id is the W3C Trace Context trace id; a server adopts an inside caller's `traceparent` and otherwise starts and links a new trace; metrics join traces through exemplars. Closes C-1, A-36, CORE-19.
+- Review fix: §4 *Wire contract*, Concurrency: the strong `ETag` combines the version with a representation-variant identifier and is compared by its version part; a Response DTO of a versioned resource carries `etag`; `If-Match: *` is refused with `428`; a create naming its own id carries `If-None-Match: *`; a successful write returns the target's new `ETag`, with `Content-Location` for a verb URI.
+- Review fix: §4 *Wire contract*, Problem details: every problem has a declared `type`, never a default per status; `x-problem-types` is a top-level object keyed by type URI carrying `status`, `title` and `userFacing`; the validation type is user-facing; `errors` keys are request-body paths with a stated syntax; `traceId` is the 32-hex-digit trace-id, not a whole `traceparent`.
+- Review fix: §4 *Wire contract*, Data class: every schema the document contains carries `x-data-class`, framework schemas included.
+- Review fix: §4 *Wire contract*, Page: paging is keyset; the cursor is the only position a request may send.
+- Review fix: §4 *Wire contract*: new Stream bullet defining the declared stream ROOT-07 admits - one representation of a declared media type, not a collection, under the export rule of §8.
+- Review fix: §4 *Wire contract*, Trace context: requests carry `tracestate` when present beside `traceparent`.
+- Review fix: §9: a server adopts the caller's `traceparent` only for a caller inside its trust boundary - another service of the same deployment, authenticated as such; for a browser or other external caller it starts and links a new trace, whose id reaches the caller as `traceId` on a problem details response.
+- Second review fix: §4 *Wire contract*, Concurrency: the `ETag` is the version itself, as a strong entity tag; the representation-variant ETag and `Content-Location` are dropped as unowned and against RFC 9110 §8.7 / §13.1.1. A principal-dependent response is sent `Cache-Control: private` or stricter, `If-Match` is evaluated before the write, and a successful write returns the new `etag` in its body.
+- Second review fix: §4 *Wire contract*, Problem details: `errors` keys are paths into the request - the body's JSON property paths, or a query or path parameter's name.
+- Second review fix: §4 *Wire contract*, Data class: every property schema the document contains carries `x-data-class`.
+- Second review fix: §9: a server adopts the caller's `traceparent` only for a request arriving through an edge that only callers inside its trust boundary can reach; trust is decided by the edge, before authentication runs, never by the caller's credentials.
+- Second review fix: §9: the correlation id crosses server to client on every problem details response.

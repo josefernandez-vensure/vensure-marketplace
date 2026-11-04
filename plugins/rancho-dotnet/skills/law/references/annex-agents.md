@@ -8,7 +8,7 @@ This annex is part of the .NET stack law, `../SKILL.md`, and uses its section nu
 
 ### Pagination
 
-- An agent-reachable query MUST declare a lower maximum than the UI's, in the manifest (§8).
+- An agent-reachable paginated query MUST declare a lower maximum page size than the UI's, in the manifest (§8). A collection bounded by construction is returned whole, and its rows count against the run's row budget (§9).
 
 ### Idempotency
 

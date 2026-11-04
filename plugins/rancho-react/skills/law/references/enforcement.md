@@ -19,7 +19,7 @@ Every rule marked ⚙ in the React stack law, every core rule its role carries, 
 
 ## Summary
 
-The stack law carries **31 ⚙ marks**, each naming the ids of the rows it marks. Its rules are **34 rows**: 30 `build`, 3 `required-test`, 1 `dropped`, and 0 `retired`. Its role, `client`, carries **1 core rule**, below.
+The stack law carries **31 ⚙ marks**, each naming the ids of the rows it marks. Its rules are **36 rows**: 30 `build`, 5 `required-test`, 1 `dropped`, and 0 `retired`. Its role, `client`, carries **1 core rule**, below.
 
 **Every marked rule can be made to fail the build.** No rule claims an enforcement it cannot deliver. Whether a project has built and reviewed a check is that project's record, in its `ENFORCEMENT-STATUS.md` (core §1).
 
@@ -68,4 +68,6 @@ Every core rule whose role is `client` or `both` and whose status is `build`. Th
 | FE-34 | No type assertion to a class brand outside generated code | §3 | `eslint` | build | Type-aware rule: an `as` or angle-bracket assertion whose target type is, or contains, a class brand fails outside `src/generated/`. Without it, a brand asserted by the application passes FE-16, FE-23 and FE-33 | — | — |
 | FE-18 | Components MUST NOT subscribe to hubs directly | §12 | `eslint` | build | Path-scoped restriction on the real-time client packages, listed in the project's lint configuration as FE-24's are | — | — |
 | FE-19 | MSW for all mocking; no module mock of the generated client | §13 | `eslint` | build | `no-restricted-syntax` on any `vi` module-mocking call with a generated-path argument | — | — |
+| FE-35 | Every call to the server carries `traceparent` | §9 | `test` | required-test | frontend §13 **Wire contract** | — | https://www.w3.org/TR/trace-context/ |
+| FE-36 | A `412` on a mutation refetches the resource and does not retry the write | §4 | `test` | required-test | frontend §13 **Wire contract** | — | https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1 |
 | FE-20 | `pnpm lint && pnpm typecheck && pnpm test` gate every change | §14 | `ci` | build | CI pipeline | — | — |

@@ -171,7 +171,7 @@ public <Outcome> <Operation>(<Args> args)
 
 ### Commands and Queries
 
-- A Command mutates. A Query reads. A Command MUST NOT return data beyond an identifier and its outcome. ⚙ BE-11
+- A Command mutates. A Query reads. A Command MUST NOT return data beyond an identifier, its outcome, and the new version of the aggregate it changed (core §4 *Wire contract*). ⚙ BE-11
 - A Query MUST NOT mutate: a query handler MUST NOT reference a repository port, and MUST NOT call `SaveChangesAsync`. ⚙ BE-12
 - Command handlers MUST mutate state only by loading an aggregate and calling its methods. Writing through `DbContext` or SQL from a command handler is forbidden. ⚙ BE-13
 - Query handlers MUST bypass the domain and project straight to Response DTOs, untracked. Materializing an aggregate in a query handler is forbidden - a read returns the fields the caller needs, never a whole aggregate. ⚙ BE-14
@@ -196,12 +196,12 @@ Non-exhaustive switches fail the build, so adding a domain outcome forces every 
 
 ### Pagination
 
-- Every query returning a collection MUST be paginated. A handler returning an unbounded `List<T>` or `IEnumerable<T>` is a defect. ⚙ BE-19
+- Every query returning a collection whose size is not bounded by construction MUST be paginated, and one bounded by construction declares its bound (core §4). A handler returning an unbounded collection, such as a `List<T>` or an `IEnumerable<T>`, is a defect. ⚙ BE-19 A declared stream (core §4 *Wire contract*) is not a collection.
 - One shared page shape for the whole solution. A per-feature paging envelope is a defect. ⚙ BE-20
 - Every paginated query MUST declare a maximum page size, under a solution-wide ceiling. A request above the maximum MUST be rejected by the validation behavior. Silent clamping is forbidden: a caller that asked for 500, received 100, and was told nothing will conclude it has every row. ⚙ BE-21, BE-22
 - Omitting the page size MUST yield the operation's declared default, never "all".
 - Ordering MUST be deterministic. A paginated query MUST declare its ordering as a descriptor whose last term is a unique key, rather than expressing it only as an `OrderBy` chain. ⚙ BE-23
-- Keyset (cursor) paging is the default for unbounded and agent-reachable collections. Offset paging MAY be used for UI grids over bounded sets, and MUST still enforce the maximum and the tiebreaker.
+- Keyset (cursor) paging is the only paging (core §4 *Wire contract*). A bounded set a UI grid shows in full is a collection bounded by construction only where it declares its bound and rejects a request beyond it.
 - A total count MUST be opt-in per operation.
 - One cursor type solution-wide, whose payload is exactly the sort key and the id. ⚙ BE-24 A cursor therefore cannot carry a filter, a sort, or a principal: a client that could edit those would otherwise widen its own read.
 - Cursors are opaque to the client and MUST be validated server-side.
@@ -216,16 +216,16 @@ Fixed order. Changing it requires written justification.
 2. **Authorization** - resolves the message's declared policy and evaluates it against the explicit principal. A message with no declared policy MUST fail to dispatch. ⚙ BE-25
 3. **Validation** - FluentValidation. Failures short-circuit to a `Result` failure; the handler is never invoked.
 4. **Idempotency** - commands only. Resolves the attempt identity and short-circuits a replay to its recorded result before the handler runs.
-5. **Transaction** - commands only. For a command that persists aggregate state, it opens the unit of work, commits on success, and rolls back on any failure or exception. A concurrency conflict or unique-key violation at commit comes back from the unit of work as an outcome, which this behavior returns as a `Result` conflict (core §6). The outcome names the index a unique-key violation hit, so the idempotency behavior can tell a violation of its own record from a business conflict. The idempotency record is written through this unit of work, so the state change and the record proving it happened are one commit. For a command that does not persist, it opens nothing, and after the handler returns it fails the dispatch if the module's context holds a staged change.
+5. **Transaction** - commands only. For a command that persists aggregate state, it opens the unit of work, commits on success, and rolls back on any failure or exception. A concurrency conflict or unique-key violation at commit comes back from the unit of work as an outcome, which this behavior returns as a `Result` conflict (core §6) - or, for a stale expected version or a create-only unique-index violation, a precondition failure (§13). The outcome names the index a unique-key violation hit, so the idempotency behavior can tell a violation of its own record from a business conflict. The idempotency record is written through this unit of work, so the state change and the record proving it happened are one commit. For a command that does not persist, it opens nothing, and after the handler returns it fails the dispatch if the module's context holds a staged change.
 
 ### Idempotency
 
 A command that executes twice on a retry is a defect in the command, not in the caller.
 
 - Every command MUST declare its idempotency mechanism in its operation declaration (§6): naturally idempotent, client-supplied id, or idempotency key. An undeclared command MUST fail to dispatch, exactly as an undeclared policy does. ⚙ BE-26
-- Where a key is used, the identity of an attempt is `(principal, operation, key)`. A replay MUST return the originally recorded result without re-executing the handler. The same key with a different payload MUST fail as a conflict, never overwrite.
+- Where a key is used, the identity of an attempt is `(principal, operation, key)`. A replay MUST return the originally recorded result without re-executing the handler. The same key with a different payload MUST fail with `422`, never overwrite (core §4).
 - The idempotency record MUST be written through the same unit of work as the state change. Redis MUST NOT be the store - an expired cache entry must never make a command executable a second time (§5). ⚙ BE-27
-- The store MUST carry a unique index on the attempt identity. ⚙ BE-28 A violation of that index at commit means a concurrent attempt executed first: the idempotency behavior answers with that attempt's recorded result, as a replay, never as a conflict.
+- The store MUST carry a unique index on the attempt identity. ⚙ BE-28 The idempotency record stores a fingerprint of the request payload: an HMAC under a server key, never a plain hash, and its class is `internal`. A violation of that index at commit means a concurrent attempt executed first: the idempotency behavior compares fingerprints, and answers with that attempt's recorded result as a replay when they match, or `422` when they differ (core §4) - never as a conflict. After any commit conflict or precondition failure, the idempotency behavior looks up the attempt identity before it answers: a recorded attempt is answered as a replay, or `422` when the fingerprints differ.
 - Two concurrent attempts with the same key MUST resolve as one execution and one replay, never as a `500`.
 - Records MUST be retained longer than the longest caller retry window, and swept afterwards.
 - Idempotency is a pipeline behavior. A per-endpoint or per-handler check is a defect - it will be forgotten on exactly the endpoint that needed it. ⚙ BE-30
@@ -286,7 +286,7 @@ An implementation that is pure logic MUST live in `Application`, except a concre
 - Mapping MUST live in `IEntityTypeConfiguration<T>` classes in Infrastructure. Mapping attributes on domain types are forbidden - the domain MUST NOT know it is persisted. ⚙ BE-38
 - Lazy loading MUST be disabled.
 - Integration tests run against real SQL Server via Testcontainers. No other provider may stand in for it - the EF InMemory provider, SQLite in memory, or any other. ⚙ BE-39
-- Aggregates MUST carry a row version. A concurrency conflict or a unique-key violation MUST surface as an outcome, never as an exception above the persistence adapter: the repository or unit of work that receives `DbUpdateConcurrencyException`, or the provider's unique-key error, catches that exception and nothing else, where it is raised, and translates it (core §6). A conflict raised at commit becomes a `Result` conflict in the transaction behavior (§4).
+- Every aggregate MUST carry an application-managed version, which the aggregate increments on every change to itself or to anything inside it, mapped as its concurrency token; a database row version protects one row, not the aggregate. A concurrency conflict or a unique-key violation MUST surface as an outcome, never as an exception above the persistence adapter: the repository or unit of work that receives `DbUpdateConcurrencyException`, or the provider's unique-key error, catches that exception and nothing else, where it is raised, and translates it (core §6). A conflict raised at commit becomes a `Result` conflict in the transaction behavior (§4) - or, for a stale expected version or a create-only unique-index violation, a precondition failure (§13).
 - SQL Server is the default store. A second store requires a documented reason in the module's README.
 
 ### Migrations
@@ -367,7 +367,7 @@ Core §8 defines the classes and the boundaries. This section is the mechanism.
 
 - A class is declared on the type that carries the value - the Value Object or the strongly-typed id in `Domain` - and on the module's published type for the same concept in `Contracts`. `Domain` and `Contracts` are peers (§2), so neither can inherit the other's declaration, and an architecture test MUST prove the two agree. Every other type that carries the value - a Response DTO, a message, a log event - inherits the class of the type it carries and MUST NOT redeclare it. A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, a field of a `Platform` type, or a value projected from a classified source - declares its class on the property. Where it is projected from a classified source, such as a column a query handler reads into a `string`, the declaration names that source, and the same test proves the two agree. The attribute lives in `SharedKernel`, so `Domain` can carry it without acquiring a framework dependency. ⚙ BE-54
 - An architecture test MUST assert that every property reachable from an egress boundary resolves to a class. A property whose type carries no declaration is `Restricted`, and fails at the boundary. ⚙ BE-55
-- The class MUST be emitted into the OpenAPI document as a vendor extension on every property of every Request and Response DTO, and on the schema of every parameter, so it reaches every client with the contract. The emitter MUST fail rather than emit a property whose class it cannot resolve. ⚙ BE-83
+- The class MUST be emitted into the OpenAPI document as `x-data-class` (core §4 *Wire contract*) on every property of every schema the document contains - Request and Response DTOs, problem details, the page - and on the schema of every parameter, so it reaches every client with the contract. The emitter MUST fail rather than emit a property whose class it cannot resolve. ⚙ BE-83
 
 ```csharp
 // Illustrative.
@@ -428,11 +428,12 @@ Core §9 governs. This is the mechanism. What may be emitted is §7's business, 
 
 ### Correlation
 
-- The correlation id MUST live in the dispatch context beside the principal, as a required constructor parameter. ⚙ BE-90
-- An inbound request adopts the caller's correlation id when it carries one and mints one otherwise. Every response returns it.
-- An outbox row MUST persist the correlation id of the transaction that wrote it. ⚙ BE-91
-- The dispatcher MUST restore that correlation id when delivering.
-- A background job MUST mint a correlation id per execution and log it once at start.
+- The correlation id MUST live in the dispatch context beside the principal, as a required constructor parameter. ⚙ BE-90 Its value is the current `Activity`'s trace id; the dispatch context and the `Activity` are one source, not two.
+- An inbound request adopts or starts its trace as core §9 states. Every problem details response carries the trace id as `traceId`, written from `Activity.Current.TraceId`, not from ASP.NET Core's default (`Activity.Id` or `TraceIdentifier`) (core §4 *Wire contract*).
+- Where requests from outside the trust boundary reach the application directly, with no ingress in front of it that strips the caller's `traceparent`, the application adopts no caller's: the composition root installs a `DistributedContextPropagator` that starts every request's trace, and the caller's `traceparent` is recorded as a link.
+- An outbox row MUST persist the trace context - `traceparent` and `tracestate` - of the transaction that wrote it. ⚙ BE-91
+- The dispatcher MUST restore that trace context when delivering.
+- A background job MUST start a trace per execution and log its trace id once at start.
 
 The agent rule of this subsection is in `references/annex-agents.md`, which binds once the tree meets its trigger: the first code that sends data to a model or exposes an operation to one as a tool - an agent manifest, `Microsoft.Agents.AI`, an MCP server, Semantic Kernel, a direct model client, or any other.
 
@@ -449,6 +450,7 @@ The agent rule of this subsection is in `references/annex-agents.md`, which bind
 - Every pipeline behavior MUST emit a span. Authorization, validation, and handler time MUST be separable in a trace: "the request was slow" is not a finding anyone can act on.
 - Metrics MUST cover dispatch count and duration per message type, authorization denials, validation failures, outbox depth and delivery lag, cache hit rate, limit and budget rejections (§9), and agent run duration and spend.
 - Metric dimensions MUST come from a declared closed set of keys. ⚙ BE-94
+- Metrics are exported with exemplars, sampled by the trace (`ExemplarFilterType.TraceBased`); the SDK's default is off.
 - Liveness MUST NOT depend on a downstream - a failing dependency restarts nothing. Readiness MUST check the database and the outbox dispatcher.
 
 ## 11. Configuration and Secrets
@@ -471,7 +473,10 @@ The agent rule of this subsection is in `references/annex-agents.md`, which bind
 - Endpoints are registered by discovery over those types at the composition root. Hand-registering one is a defect. ⚙ BE-81
 - An endpoint MUST map its Request DTO to a message, dispatch it, and translate `Result` to HTTP. It MUST NOT reference any type other than its DTOs, the Application message it dispatches, and every type those are composed of; the shared endpoint abstraction; the dispatcher and the `Result` it returns; the result translator; and the framework's primitives, such as `Task`, `CancellationToken`, and HTTP result types. ⚙ BE-82 An endpoint branching on business state is a defect.
 - Endpoints MUST NOT reference domain types. ⚙ BE-77
-- Success shapes: `200` with a Response DTO, `201` with a location, `204` for no content. Failures are `ProblemDetails`.
+- Success shapes: `200` with a Response DTO, `201` with a location, `204` for no content - except a write to a versioned resource, which returns a body carrying the new `etag` - or a stream the endpoint declares. A write to a versioned resource follows core §4 *Wire contract*: `If-Match` required, `428` and `412`, and the target resource's new `etag` in the body. Failures are `ProblemDetails`.
+- An endpoint maps `If-Match` to the message's expected version, and `If-None-Match: *` to the message's create-only flag, as it maps any other request field. The repository's load reports a stale expected version as an outcome, which the handler translates to a `Result` precondition failure before it acts. The repository also uses the expected version as the concurrency token's original value, so a version that changes between load and commit surfaces when the unit of work commits. For a create-only message, a violation of the aggregate id's unique index at commit is a precondition failure, not a conflict. The transaction behavior returns a commit-time precondition failure as a `Result` precondition failure, distinct from a business conflict, and the result translator maps every precondition failure to `412`.
+- Every problem type a module returns is a URI the module declares, with its status, title and whether it is user-facing; the OpenAPI document's `x-problem-types` is generated from those declarations (core §4 *Wire contract*). Validation errors are keyed by request paths (core §4 *Wire contract*); the result translator maps each validation failure's message path to the request path it came from: a message property keeps its request path unless the endpoint's mapping declares a different one. `Platform` declares the problem types the pipeline and the framework return - validation, authorization, idempotency, preconditions, rate limits, unsupported media, and any other - and overrides ASP.NET Core's per-status defaults with them through `CustomizeProblemDetails`.
+- Where the client is on another origin, the CORS policy admits the request headers the wire contract uses - `traceparent`, `tracestate`, `If-Match`, `If-None-Match`, `Idempotency-Key`, or any other it adds - and exposes the response headers a client reads, such as `ETag`, `Location` and `Retry-After`.
 - A change to a Request or Response DTO that does not regenerate and commit the OpenAPI document is incomplete.
 
 ## 14. Testing
@@ -486,8 +491,9 @@ A rule no build check can reach is carried by a named required test below, where
 - **Architecture**: ArchUnitNET tests are first-class and MUST NOT be skipped or marked inconclusive to unblock a change.
 - **Authorization**: every external authority MUST have a test proving that an unreachable, a timing-out, and an erroring authority each deny, and that an expired cache entry is not served while the authority is unreachable (BE-99). Every token validation that reads a claim before the signature is checked MUST have a test proving that a token whose selecting claims disagree with its validated issuer or endpoint is refused, and that no claim read before validation reaches the principal (BE-104). Every policy MUST have a test proving an in-process dispatch with no HTTP context receives the same decision as the HTTP path (BE-101).
 - **Pagination**: every paginated query MUST have a test proving a request above its maximum is rejected, and a test proving no row is skipped or repeated across a page boundary.
-- **Idempotency**: every command declaring a key MUST have a test proving a replayed key returns the recorded result without executing twice, and a test proving two concurrent attempts under one key resolve as one execution and one replay rather than an error (BE-29).
-- **Correlation**: the outbox MUST have a test proving a correlation id survives the round trip - written with the transaction, restored on delivery, present on the consumer's log line (BE-92).
+- **Idempotency**: every command declaring a key MUST have a test proving a replayed key returns the recorded result without executing twice, and a test proving two concurrent attempts under one key resolve as one execution and one replay rather than an error (BE-29), and a test proving the same key with a different payload is refused with `422` (BE-116).
+- **Concurrency**: every versioned write MUST have a test proving a write without `If-Match` is refused with `428`, and one with a stale version with `412`, that `If-Match: *` is refused with `428`, and that a create with `If-None-Match: *` for an existing id is refused with `412`. (BE-115)
+- **Correlation**: the outbox MUST have a test proving the trace context survives the round trip - written with the transaction, restored on delivery, present on the consumer's log line (BE-92).
 - **Migrations**: every migration MUST be applied to a Testcontainers database in CI and proven to run clean twice. A destructive migration MUST additionally have a test proving the previous application version still serves against the new schema (BE-89).
 - **Classification**: every `Confidential` and `Restricted` type MUST have a test proving it redacts in `ToString()` and in a serialized log event.
 - Test names state the rule: `<Operation>_Returns<Rejection>_When<Condition>`.

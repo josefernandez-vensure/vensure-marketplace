@@ -29,10 +29,10 @@ If `/rancho:law` is not available in the session, stop and say so. This file alo
 | §6 Error Contract | §10 Errors · §6 Forms and Validation |
 | §7 Security Baseline | §8 Routing · §9 Authentication |
 | §8 Data Boundaries | §3 API Types · §11 Data Boundaries |
-| §9 Observability | §11 Data Boundaries, for what telemetry may carry |
+| §9 Observability | §11 Data Boundaries, for what telemetry may carry · §9 Authentication (the interceptor sends `traceparent`) |
 | §10 Verification | §13 Testing · §14 Verification · `references/enforcement.md` |
 
-Gaps: core §9 requires the correlation id to cross the server-to-client boundary. How a client carries it - adopting the id a response returns, and attaching it to its own telemetry and error reports - is not yet stated here.
+Gaps: none.
 
 ## 1. Stack
 
@@ -97,7 +97,7 @@ tanstackRouter({
 - All request and response types are generated from the server's OpenAPI document into `src/generated/`. ⚙ FE-05
 - `src/generated/` MUST NOT be hand-edited. ⚙ FE-06
 - A response from the generated client MUST NOT be cast, type-asserted, or re-declared by a locally written type. Contract drift must be a compile error, not a runtime surprise. ⚙ FE-07
-- Generated types MUST carry the class of every property and parameter in the OpenAPI document (core §8) in a form the type checker can read, such as a branded type per class. ⚙ FE-22 The lints for the boundaries §11 names - the URL, browser storage, and client telemetry - read that type at the call that crosses the boundary, and refuse a value whose class the boundary does not permit. ⚙ FE-33, FE-16, FE-23 A value the user enters takes its brand only by being parsed through a schema the generator emits for the field or parameter it fills - a Zod schema, for example, whose output carries the class brand. ⚙ FE-22 A type assertion to a class brand outside generated code is forbidden: it is a brand the application asserts for itself. ⚙ FE-34 A value with no brand - one rebuilt with string operations, or client-only state such as a selected tab - is not reached by the lint: that gap is inventoried, and review carries it.
+- Generated types MUST carry the class of every property and parameter in the OpenAPI document (`x-data-class`, core §4 *Wire contract*; core §8) in a form the type checker can read, such as a branded type per class. ⚙ FE-22 The lints for the boundaries §11 names - the URL, browser storage, and client telemetry - read that type at the call that crosses the boundary, and refuse a value whose class the boundary does not permit. ⚙ FE-33, FE-16, FE-23 A value the user enters takes its brand only by being parsed through a schema the generator emits for the field or parameter it fills - a Zod schema, for example, whose output carries the class brand. ⚙ FE-22 A type assertion to a class brand outside generated code is forbidden: it is a brand the application asserts for itself. ⚙ FE-34 A value with no brand - one rebuilt with string operations, or client-only state such as a selected tab - is not reached by the lint: that gap is inventoried, and review carries it.
 - Regenerate whenever the server's contract changes, and commit the output.
 
 ## 4. Server State - TanStack Query
@@ -107,10 +107,11 @@ tanstackRouter({
 - Query keys MUST come from a per-feature factory. Inline array literals as keys are forbidden - they make invalidation unauditable. ⚙ FE-09
 - Mutations MUST declare their invalidations explicitly. A mutation that leaves stale data on screen is incomplete.
 - Loading, error, and empty states MUST each be handled. A component that renders only the success path is incomplete.
-- Every list query MUST be paginated. Enforcement is server-side (core §4) - the client cannot verify it, and MUST NOT work around it.
+- A list query against a paginated endpoint pages with the page shape (core §4 *Wire contract*); a collection the server bounds by construction arrives whole.
 - A loop that exhausts `fetchNextPage` to assemble a whole collection is forbidden. ⚙ FE-21
 - Cursor-paged lists use `useInfiniteQuery`. Looping pages to reassemble a complete client-side collection is forbidden; if a screen needs a total or an aggregate, the server computes it.
 - A mutation MUST NOT be retried automatically unless it carries an idempotency key. The key is generated once per user intent and reused across every retry of that intent - regenerating it per attempt defeats the mechanism completely.
+- A mutation of a versioned resource sends the `etag` it read - from the resource's `ETag` or `etag` field, from the item's `etag` field when it came from a list, or from the last write's response - as `If-Match`. A `412` refetches the resource and tells the user it changed; it MUST NOT be retried as it was.
 - A `429` MUST be respected: honour `Retry-After`, back off, and never retry in a tight loop. The UI MUST show that it is throttled rather than appearing to hang.
 
 ## 5. Client State - Zustand
@@ -127,7 +128,7 @@ Client state is UI state the server does not own: selections, wizard step, panel
 - Every form MUST have a Zod schema. Ad-hoc validation inside handlers is forbidden.
 - Schemas MUST mirror the server's Request DTO constraints. Where they diverge, the server is right.
 - Server errors MUST still be handled and displayed - a `ProblemDetails` 400 is an expected outcome, not an edge case. (core §5)
-- Field-level errors from `ProblemDetails` MUST be mapped back onto the corresponding form fields, not shown only as a banner.
+- Field-level errors - the `errors` member of `ProblemDetails` (core §4 *Wire contract*) - MUST be mapped back onto the corresponding form fields, not shown only as a banner.
 
 ## 7. Components
 
@@ -157,6 +158,7 @@ The organization's identity provider, through its identity library. Which provid
 - A token is opaque to the application. Its claims MAY be read for display within the user's own session and MUST NOT be used for any other purpose. The same holds for the signed-in user's profile as the identity library returns it.
 - A credential nested inside a token - an embedded access or refresh token - MUST NOT be extracted, stored, forwarded, or logged. ⚙ FE-30 The claim names to flag live in the project's lint configuration, not here.
 - The token is attached by exactly one interceptor on the generated client. A hand-written `Authorization` header is a defect. ⚙ FE-26
+- The same interceptor sends `traceparent`, and `tracestate` when present, on every call to the server, and the client attaches its trace id to its own telemetry and error reports.
 - A `401` MUST trigger one silent refresh, then an interactive sign-in. In a host shell both are the shell's: the application asks the identity library once and never refreshes a token itself, so applications sharing one session do not race to refresh it, and the interactive step is the shell's sign-in page. It MUST NOT produce a retry loop and MUST NOT surface as a generic error.
 - A `403` is a final answer. It MUST be shown as a permission error and MUST NOT trigger a refresh - the token is fine, the permission is not.
 - What the application requests from the provider - scopes, a service name, or any other grant - MUST be declared in one place and MUST be the narrowest the application needs. In a host shell the shell requests the grant: the application declares what it needs to the shell's owners, in that one place, and requests nothing itself.
@@ -167,7 +169,8 @@ The organization's identity provider, through its identity library. Which provid
 ## 10. Errors
 
 - `ProblemDetails` is the error shape. Exactly one parser lives in `shared/lib/` and is the only place that shape is read. ⚙ FE-15
-- A raw server error object or message MUST NOT be rendered to the user unmapped.
+- A server error is mapped by its `type` and `status`. The UI MAY render a problem's `title` and its field messages only for a type the OpenAPI document marks user-facing, and MUST NOT render `detail`, or anything of a type it does not recognise, unmapped.
+- An error shown to the user offers its `traceId`, so a report can be joined to the server's trace.
 - The root route MUST declare an `errorComponent`, and a route SHOULD declare its own wherever a failure should not take down more than that screen. An unhandled render error MUST NOT blank the app.
 
 ## 11. Data Boundaries
@@ -190,6 +193,7 @@ Core §8 governs, and its classes apply here unchanged. The browser is inside th
 - Every form MUST have a test for a validation failure and a test for a server-side failure.
 - **Data boundaries**: telemetry, analytics, and error reporting MUST have a test proving a known classified field is scrubbed from a captured event (FE-17).
 - **Authentication**: a `401` MUST have a test proving exactly one silent refresh is attempted before interactive sign-in - the provider's sign-in, or the host shell's sign-in page - and a `403` MUST have a test proving no refresh occurs (FE-27). Sign-out MUST have a test proving the local caches are cleared and that the provider's end-session endpoint is called - or, for an application in a host shell, that sign-out is delegated to the shell's sign-out (FE-29).
+- **Wire contract**: the client MUST have a test proving every call to the server carries `traceparent` (FE-35), and a test proving a `412` on a mutation refetches the resource and does not retry the write (FE-36).
 - Playwright for critical user journeys only.
 - Tests MUST NOT assert on class names, DOM structure, or component internals.
 

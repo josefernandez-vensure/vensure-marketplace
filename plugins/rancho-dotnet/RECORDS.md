@@ -367,3 +367,36 @@ Notes taken out of the inventory's Check cells in 3.0 stage 1, word for word.
 - BE-80: Added by P-01.
 - BE-81: Added by P-01.
 - BE-82: Enabled by P-01. Amended by A-09: the message and the DTOs' own types were missing, so every endpoint failed it.
+
+## 3.0 stage 3
+
+- §4, BE-11: a Command may also return the new version of the aggregate it changed; the row's rule text and check follow. Closes A-18, A-35, NET-A-10.
+- §4 *Pagination*, BE-19: only a query whose collection is not bounded by construction must be paginated, and a bounded one declares its bound; the row's rule text, check and gap follow. Closes CORE-16, A-15.
+- §4 *Idempotency*: the same key with a different payload fails with `422`. Closes CORE-18.
+- §5: every aggregate carries an application-managed version mapped as its concurrency token, replacing the row version. Closes A-18, A-35, NET-A-10.
+- §10 *Correlation*: an inbound request adopts or starts its trace as core §9 states, and every problem details response carries `traceId`. Closes C-1, A-36, CORE-19.
+- §13: success shapes admit a declared stream; a versioned write follows core §4 *Wire contract*; a new bullet sets the CORS headers for `traceparent`, `If-Match` and `ETag`. Closes A-18, A-35, NET-A-10.
+- §7, BE-83: the class is emitted as `x-data-class`. Closes CORE-17.
+- §14: new **Concurrency** required test (BE-115) and an extended **Idempotency** required test for `422` (BE-116), with their rows; the Summary counts follow. Closes A-18, A-35, NET-A-10 and CORE-18.
+- Core rules carried: ROOT-07 and ROOT-11's rule text follows core §4. Closes CORE-14, CORE-16, A-15.
+- Review fix: §4 *Pagination*: the sentence permitting offset paging for UI grids over bounded sets is removed, deliberately - keyset (cursor) paging is the only paging (core §4 *Wire contract*), and a bounded set a UI grid shows in full is a collection bounded by construction.
+- Review fix: `annex-agents.md` §4 *Pagination*: an agent-reachable paginated query declares a lower maximum page size than the UI's, and a collection bounded by construction is returned whole and counts against the run's row budget.
+- Review fix: §13 maps `If-Match` to the message's expected version, a stale version surfacing at commit as a `Result` precondition failure that the result translator maps to `412`; §4 *Pipeline behaviors* (Transaction) and §5 name the precondition failure beside the conflict.
+- Review fix: §4 *Idempotency*: the idempotency record stores a payload fingerprint, and a concurrent attempt's index violation is answered as a replay when the fingerprints match, or `422` when they differ.
+- Review fix: §10 *Correlation*: `traceId` is written from `Activity.Current.TraceId`, not from ASP.NET Core's default (`Activity.Id` or `TraceIdentifier`).
+- Review fix: §10 *Correlation*: the dispatch context's correlation id is the current `Activity`'s trace id; an outbox row persists the trace context (`traceparent` and `tracestate`), which the dispatcher restores; a background job starts a trace per execution. BE-91's rule text and check, and BE-92's rule text, follow.
+- Review fix: §10 *Metrics and traces*: metrics are exported with exemplars, sampled by the trace (`ExemplarFilterType.TraceBased`).
+- Review fix: §13: every problem type a module returns is a declared URI with its status, title and user-facing flag, from which `x-problem-types` is generated; validation errors are keyed by the request's JSON property paths.
+- Review fix: §7, BE-83: `x-data-class` is emitted on every property of every schema the document contains, problem details and the page included; the row's rule text and check follow.
+- Review fix: §4 *Pagination*, BE-19: a declared stream is not a collection.
+- Review fix: §13: the CORS bullet admits every request header the wire contract uses and exposes every response header a client reads.
+- Review fix: inventory: BE-19's mechanism is `arch` + `ci`; BE-115's section is §13 and BE-116's §4, the sections of their rules.
+- Review fix: stage 3 removed "Every response returns it" - the correlation id on success responses - from §10 *Correlation*, deliberately: an external caller's trace is linked rather than adopted (core §9), so the server's trace id is not the caller's, and it reaches the caller as `traceId` on a problem details response.
+- Second review fix: §13: `If-None-Match: *` maps to the message's create-only flag; the repository's load reports a stale expected version as an outcome the handler translates to a precondition failure before it acts, a version changing between load and commit surfaces at commit, a create-only message's id-index violation is a precondition failure, and every precondition failure maps to `412`.
+- Second review fix: §13: a versioned write returns the new `etag` in the body, and `Content-Location` is removed from the CORS exposed headers. The representation-variant ETag and `Content-Location` were dropped as unowned and against RFC 9110 §8.7 / §13.1.1.
+- Second review fix: §4 *Idempotency*, BE-28: the payload fingerprint is an HMAC under a server key, never a plain hash, classed `internal`; after any commit conflict or precondition failure the idempotency behavior looks up the attempt identity and answers a recorded attempt as a replay, or `422` when the fingerprints differ.
+- Second review fix: §10 *Correlation*: where outside requests reach the application directly with no ingress stripping `traceparent`, the composition root installs a `DistributedContextPropagator` that starts every request's trace and records the caller's as a link.
+- Second review fix: §13: the result translator maps each validation failure's message path to its request path; `Platform` declares the pipeline's and the framework's problem types and overrides ASP.NET Core's per-status defaults through `CustomizeProblemDetails`.
+- Second review fix: §4 *Pagination*: a bounded set a UI grid shows in full is bounded by construction only where it declares its bound and rejects a request beyond it.
+- Second review fix: inventory, BE-11: the check admits `ICommand<T>` closed over a version, or a result carrying an id, a version, or both.
+- Second review fix: §14 **Concurrency** (BE-115): the test also proves `If-Match: *` is refused with `428`, and a create with `If-None-Match: *` for an existing id with `412`.
