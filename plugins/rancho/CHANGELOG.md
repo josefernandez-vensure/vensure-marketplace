@@ -14,7 +14,8 @@
 - §8: a class is declared on the domain type and on its published contract
   type, and a check proves the two agree. Every other carrier inherits it. A
   property whose type carries no class of its own - a page size, a cursor, a
-  field of a platform type, a projected value - declares one on the property. The OpenAPI document now carries the class of request properties and
+  field of a platform type, a projected value - declares one on the property.
+  The agreement check is marked and inventoried as ROOT-20, server role. The OpenAPI document now carries the class of request properties and
   parameters as well as response properties (ROOT-18), and the client
   enforces it at its own boundaries.
 - Released with `rancho-dotnet` 1.1.0 and `rancho-react` 1.1.0, which carry

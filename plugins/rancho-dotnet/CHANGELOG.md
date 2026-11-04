@@ -55,8 +55,12 @@
   types (BE-82). §15 admits a declared fault-isolation boundary and
   `IServiceScopeFactory` in a hosted service. BE-43's check skips
   compiler-generated types.
-- Rows go from 104 to 113, and marks from 90 to 95 (the summary had counted
-  91).
+- Infrastructure types the project maps or binds - entities, read types,
+  options classes - are an adapter kind (BE-34). The registration entry point
+  sits at the project root (BE-35). An agent's client-supplied id has a
+  required test (BE-114).
+- Rows go from 104 to 114, and marks from 90 to 95 (the summary had counted
+  91). The role carries 15 core rules, with ROOT-20.
 
 ## 1.0.0
 

@@ -9,8 +9,9 @@
   type the checker reads, such as a brand per class (FE-22). Type-aware lints
   at the URL, storage and telemetry calls read it (FE-16, FE-23), and the
   telemetry lint (FE-33) supports FE-17's required test. User input takes its
-  brand where a Zod schema built from the generated type parses it; a value
-  with no brand passes, a gap recorded in FE-16. **Each consumer regenerates against a server that emits
+  brand only by parsing through a schema the generator emits; asserting a
+  brand outside generated code is forbidden (FE-34). A value with no brand
+  passes, a gap recorded in FE-16. **Each consumer regenerates against a server that emits
   request classes** (`rancho-dotnet` 1.1.0, BE-83).
 - §9: an application in a host shell clears its own caches and stores and
   delegates sign-out to the shell's sign-out, which MUST end the provider
@@ -18,7 +19,7 @@
   §13's sign-out test follows (FE-29). In a host shell, the refresh after a
   `401`, the session store and the grant request are the shell's too
   (FE-27).
-- Rows go from 32 to 33.
+- Rows go from 32 to 34.
 
 ## 1.0.0
 
