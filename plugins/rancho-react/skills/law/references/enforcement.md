@@ -2,7 +2,7 @@
 
 Every rule marked ⚙ in the React stack law, every core rule its role carries, and the mechanism that enforces each.
 
-`../SKILL.md` is the stack law, and `annex-realtime.md`, beside this file, holds its §12. The core law is `/rancho:law`. Core §1 defines ⚙ as **"machine-checked. Violating one is a build failure, not a review comment."** This file is the audit of that claim for this stack law: every rule still carrying a mark can be made to fail the build. A ⚙ with no entry here is unaccounted for and MUST be added. This stack law's records and row history are in `../../../RECORDS.md`.
+`../SKILL.md` is the stack law, and `annex-realtime.md`, beside this file, holds its §12. The core law is `/rancho:law`. Core §1 defines ⚙ as **"can be made to fail the build."** This file names, for this stack law, the check that can make each marked rule do so. A ⚙ with no entry here is unaccounted for and MUST be added. This stack law's records and row history are in `../../../RECORDS.md`.
 
 ## How to read this
 
@@ -21,7 +21,7 @@ Every rule marked ⚙ in the React stack law, every core rule its role carries, 
 
 The stack law carries **31 ⚙ marks**, each naming the ids of the rows it marks. Its rules are **34 rows**: 30 `build`, 3 `required-test`, 1 `dropped`, and 0 `retired`. Its role, `client`, carries **1 core rule**, below.
 
-**Every marked rule can be made to fail the build.** No rule claims an enforcement it cannot deliver. Nothing is enforced yet, though - `build` means the check is buildable, not built.
+**Every marked rule can be made to fail the build.** No rule claims an enforcement it cannot deliver. Whether a project has built and reviewed a check is that project's record, in its `ENFORCEMENT-STATUS.md` (core §1).
 
 ## Core rules carried
 
@@ -36,7 +36,7 @@ Every core rule whose role is `client` or `both` and whose status is `build`. Th
 | Id | Rule | Section | Mechanism | Status | Check | Gap | Source |
 |---|---|---|---|---|---|---|---|
 | FE-01 | `strict` on; no `any`; no type-checker suppression but a justified `@ts-expect-error` | §1 | `proj` + `eslint` | build | `tsconfig`; `no-explicit-any`; `ban-ts-comment` with every directive banned and `ts-expect-error` set to `allow-with-description` | — | — |
-| FE-02 | `@ts-expect-error` requires a reason and an issue reference | §1 | `eslint` | build | `ban-ts-comment` with `descriptionFormat` | — | — |
+| FE-02 | `@ts-expect-error` requires a reason and an issue reference, or the register entry's id where it suppresses a check of a rule of the law | §1 | `eslint` | build | `ban-ts-comment` with a `descriptionFormat` accepting an issue reference or an `EXC-<n>` id | — | — |
 | FE-03 | A feature MUST NOT import from another feature | §2 | `eslint` | build | `eslint-plugin-boundaries` | — | — |
 | FE-04 | Dependency direction `shared` -> `features` -> `app`; no layer imports upward | §2 | `eslint` | build | `eslint-plugin-boundaries`, one `rules` entry per layer | — | — |
 | FE-28 | Every feature is declared in `src/features/REGISTRY.md` | §2 | `ci` | build | Listing of `src/features/` compared against the registry. No backend input | — | — |

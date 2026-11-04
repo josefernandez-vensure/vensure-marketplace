@@ -12,9 +12,9 @@ This document is the **law**. The codebase is the **idiom**.
 - The law defines what MUST be true. It is not advisory.
 - The codebase defines how the law is expressed here: naming, layout, ordering, phrasing. Before writing code, read the nearest existing implementation of the same kind and match it.
 - **When the codebase contradicts the law, the law wins.** Report the contradiction as a defect. Existing code is never permission to repeat a violation.
-- When the law is silent, follow the codebase. When both are silent, ask.
-
-Never generalize a rule from a single example. Confirm against a second occurrence first.
+- When the law is silent, follow the codebase's nearest precedent, confirmed by a second occurrence: never generalize a rule from a single example. With fewer than two, or when both are silent, ask.
+- **When two rules of the law, or a rule and a decision recorded in the project's `DECISIONS.md`, leave no compliant answer, stop and ask.** Do not resolve the conflict by wording around it, by placing code where a rule's check does not look, or by an exemption this document does not provide.
+- A code comment arguing that a rule of the law does not apply is a defect, not an exemption. Comments explain behaviour. A rule id in a comment is a cross-reference, never a justification; the one exemption is an entry in the exceptions register (§11).
 
 ## 1. Rule Language
 
@@ -22,21 +22,22 @@ Never generalize a rule from a single example. Confirm against a second occurren
 - **SHOULD / SHOULD NOT** - default. Deviation requires a one-line justification in the PR.
 - **MAY** - permitted, no justification needed.
 
-Silence is not permission. If a decision is uncovered, match the nearest precedent in the codebase.
+Silence is not permission: an uncovered decision follows §0.
 
-Rules marked `⚙` are machine-checked. Violating one is a build failure, not a review comment.
+A rule marked `⚙` can be made to fail the build. The mark is a claim about the rule, not about any one project: these plugins ship no checks, and each project builds its own. Each project's maintainers MUST keep an `ENFORCEMENT-STATUS.md` at its repository root, listing every marked rule its trees bind, the check that enforces it, whether that check is built, and whether it has been reviewed against the rule's wording. A marked rule missing from it counts as unbuilt. When the plugins add a marked rule, the project adds it to the file at upgrade. Until a project has built and reviewed a rule's check, the rule is verified by the reviewer who approves each change in that project, and a green build says nothing about it.
 
 What a mechanism actually reaches is recorded in an enforcement inventory (§10), where a shortfall is a known gap rather than a permission.
 
-A rule no build check can reach carries no mark. It is carried instead by a named required test, listed in the Testing section of the law that owns it - equally binding, differently caught. The enforcement inventories map every mark and every required test to its mechanism.
+A rule no build check can reach carries no mark. Where a test can prove it, it is carried by a named required test, listed in the Testing section of the law that owns it - equally binding, differently caught. Otherwise it is reached by review, and is no less binding. The enforcement inventories map every mark and every required test to its mechanism.
 
 ## 2. Stack Laws
 
 This document is the **core law**: what MUST be true in every tree, whatever it is built with. A **stack law** states how one technology satisfies it. Each stack law is its own plugin, carrying a `law` skill - such as `/rancho-dotnet:law` or `/rancho-react:law` - and a project enables the stack laws it builds with.
 
-- Every tree that holds code MUST be bound to exactly one stack law. The binding is one line in the `CLAUDE.md` at the root of that tree: `Stack law: /<plugin>:law`. A repository that is a single tree binds it in its root `CLAUDE.md`.
-- The tree a file belongs to is the nearest directory at or above it whose `CLAUDE.md` names a stack law.
-- Before writing, placing, or reviewing code in a tree, read this document and then that tree's stack law **in full**. This document alone is not sufficient to write compliant code in any tree.
+- Every tree that holds code MUST be bound to exactly one stack law, or to none as below. The binding is one line in the `CLAUDE.md` at the root of that tree: `Stack law: /<plugin>:law`. A repository that is a single tree binds it in its root `CLAUDE.md`.
+- A stack law governs code written with a technology its Stack section names. A tree whose code no stack law governs - such as infrastructure-as-code or CI scripts - is bound instead with `Stack law: none - <reason>`, and only this document binds it. Its `CLAUDE.md` MUST name its verification commands. A tree MUST NOT be bound to none when a stack law governs any of its code.
+- The tree a file belongs to is the nearest directory at or above it whose `CLAUDE.md` holds a `Stack law:` line.
+- Before writing, placing, or reviewing code in a tree bound to a stack law, read this document and then that stack law **in full**. This document alone is not sufficient to write compliant code in such a tree.
 - A tree with no binding, a binding to a stack law that is not available in the session, or two bindings for one tree is a defect in the repository. Stop and say so. A stack law MUST NOT be chosen by guessing from file extensions or folder names.
 
 Every stack law declares one **role**:
@@ -127,7 +128,7 @@ Classification is a property of the **data**, not of the endpoint that happens t
 | `Public` | Already published outside the authenticated boundary, deliberately | No restriction. |
 | `Internal` | Not secret, but not for publication: how the organization is arranged and how it operates | Stays inside the authenticated boundary. |
 | `Confidential` | Attributable to a person or a counterparty, and disclosing something they would expect to control | Crosses a boundary only where the operation's policy grants that field. |
-| `Restricted` | Regulated by statute or contract, or sufficient on its own to impersonate, defraud, or discriminate against its subject | MUST NOT cross any egress boundary below without a named, reviewed exception declared at that boundary. |
+| `Restricted` | Regulated by statute or contract, or sufficient on its own to impersonate, defraud, or discriminate against its subject | MUST NOT cross any egress boundary below without a named, reviewed exception declared at that boundary that names its entry in the exceptions register (§11). |
 
 The test decides the class. The following illustrate it and do not enumerate it: `Public` - a published listing, marketing copy. `Internal` - org structure, site locations, operational metrics. `Confidential` - contact details, pay, performance, hours worked. `Restricted` - government identifiers, date of birth, bank and payment details, health and medical, protected-class attributes. A field this codebase holds that no example names is still classified, by the test.
 
@@ -147,6 +148,8 @@ Each boundary has exactly one owner. There is no other path across it.
 | Cache entry | Cache decorator | `Restricted` MUST NOT be cached. `Confidential` only under a principal-scoped key. |
 | Payload to a third-party integration | Infrastructure adapter | A per-integration allowlist of fields, declared and reviewed. |
 | Export, report, or file handed to a user | Export endpoint | The same policy as the equivalent read, and the egress is audited. |
+
+A boundary whose own rule forbids `Restricted` outright - a model's context, a cache entry, a log line, an integration event - admits no exception.
 
 - A model's context is egress in **both** directions: tool arguments, tool output, system and user prompts, retrieved documents, and retained conversation history. All of it leaves the boundary.
 - Egress to a model is not reversible. Once a value is sent it is disclosed; the response is notification and rotation, not deletion.
@@ -168,10 +171,18 @@ Mechanism in the server stack law.
 
 ## 10. Verification
 
-Every stack law names its verification commands. Before a change is complete, the commands of every stack law whose tree the change touches MUST pass. Never report work as done on unverified code.
+Every stack law names its verification commands. Before a change is complete, the verification commands of every tree the change touches MUST pass: its stack law's, or for a tree bound to none, those its `CLAUDE.md` names (§2). Never report work as done on unverified code.
 
-A check stricter than its rule is the same defect facing the other way. The check will be read as the rule, and the next reader of the rule is entitled to approve what the check refuses. A check and its rule MUST cover the same ground: widen the rule or narrow the check, in the same change.
+A check MUST NOT be stricter than its rule: the check will be read as the rule, and the next reader of the rule is entitled to approve what the check refuses. Narrow the check, or ask for the rule to be widened (§11). A check narrower than its rule is a known gap, recorded where the check is listed - in the plugin's enforcement inventory for a check the law describes, in the project's `ENFORCEMENT-STATUS.md` for one the project builds; it never makes the rest of the rule optional.
 
-## 11. Changing the Law
+## 11. Changing the Law, and Exceptions
 
-How the law changes, and what a stack law must carry, is in `AUTHORING.md` at the plugin root.
+The law changes only in its plugins; how, and what a stack law must carry, is in `AUTHORING.md` at the plugin root. A project cannot change the law, so it records its exceptions to the law in one register:
+
+- Each repository keeps one exceptions register, `LAW-EXCEPTIONS.md` at its root. An entry MUST be recorded there before the code that relies on it is merged. Every entry has a permanent id, `EXC-<n>`, never reused.
+- An agent that finds a case for an entry proposes the entry and stops (§0). A maintainer of the project adds it.
+- A **conflict** entry records a case the law leaves no compliant answer for, or a rule the project's maintainers decide must yield until the law changes. It carries the rule id, the paths it covers, the justification, the upstream amendment request, and an expiry. A conflict entry past its expiry is a defect.
+- A **boundary** entry records a `Restricted` field an egress boundary admits by exception (§8). It carries the boundary, the fields, the justification, and a review date. It needs no amendment request.
+- No other form of exemption from a rule of the law is valid. A limit a rule's own text sets - a marker, a folder, a documented reason it names - is part of the rule, not an exemption. A check MAY read the register, and only the register, to exempt a path.
+- Where code suppresses a check to apply an entry - such as a .NET suppression or a TypeScript `@ts-expect-error` - the suppression names the entry's id. A suppression of a warning that enforces no rule of the law is the stack law's alone.
+- A SHOULD deviation is not an exemption: it needs only its PR justification (§1).

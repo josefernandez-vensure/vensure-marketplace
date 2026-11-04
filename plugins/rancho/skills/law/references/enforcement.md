@@ -2,7 +2,7 @@
 
 Every rule marked ⚙ in the core law, and the role whose stack laws carry it.
 
-`../SKILL.md` §1 defines ⚙ as **"machine-checked. Violating one is a build failure, not a review comment."** This file is the audit of that claim for the core law. A check is written in a technology, so a core rule's check lives in a stack law: this file names the role each rule binds, and every stack law of that role lists the rule, with its mechanism and check, under **Core rules carried** in its own inventory (core §10, in `AUTHORING.md` at the plugin root). A ⚙ with no entry here is unaccounted for and MUST be added.
+`../SKILL.md` §1 defines ⚙ as **"can be made to fail the build."** A check is written in a technology, so a core rule's check lives in a stack law: this file names the role each rule binds, and every stack law of that role lists the rule, with its mechanism and check, under **Core rules carried** in its own inventory (core §10, in `AUTHORING.md` at the plugin root). A ⚙ with no entry here is unaccounted for and MUST be added.
 
 The records of how the law came to read as it does - rewordings, amendments, prerequisites, and the history of each row - are in `RECORDS.md` at the plugin root.
 

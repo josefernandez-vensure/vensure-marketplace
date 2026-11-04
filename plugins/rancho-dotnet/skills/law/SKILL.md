@@ -5,7 +5,7 @@ description: The .NET server stack law - project references, domain and applicat
 
 # .NET Stack Law
 
-The core law, `/rancho:law`, governs: read it first. This is a stack law under core §2. It adds the .NET rules, and it carries the core law's mechanism in every tree bound to it. Core §N is §N of the core law. `⚙` = machine-checked. Every `⚙` here, and every core rule this role carries, is inventoried in `references/enforcement.md`, beside this file: consult it by rule id rather than reading it whole.
+The core law, `/rancho:law`, governs: read it first. This is a stack law under core §2. It adds the .NET rules, and it carries the core law's mechanism in every tree bound to it. Core §N is §N of the core law. `⚙` = can be made to fail the build (core §1). Every `⚙` here, and every core rule this role carries, is inventoried in `references/enforcement.md`, beside this file: consult it by rule id rather than reading it whole.
 
 Three annexes, beside the inventory in `references/`, hold rules that bind a tree only once the tree meets the annex's trigger: `annex-agents.md`, `annex-caching.md` and `annex-realtime.md`. Each is named, with its trigger, where its rules would otherwise stand. Once the tree meets a trigger, the annex binds the whole tree, exactly as this file does.
 
@@ -58,7 +58,7 @@ tests/
 
 .NET 10 (LTS) · EF Core · SQL Server · Redis · SignalR · Mediator 3.x, source-generated · FluentValidation · Serilog · OpenTelemetry · Azure Key Vault · xUnit v3 · NSubstitute · Shouldly · Testcontainers · ArchUnitNET
 
-`TreatWarningsAsErrors` and `Nullable` are enabled solution-wide and MUST stay enabled. Suppressing a warning requires a comment naming the rule and the reason.
+`TreatWarningsAsErrors` and `Nullable` are enabled solution-wide and MUST stay enabled. Suppressing a warning requires a comment naming the rule and the reason; where the warning enforces a rule of the law, the reason is its exceptions-register entry's id (core §11).
 
 Verify third-party licenses before pinning. MediatR and FluentAssertions moved to commercial licensing; the picks above avoid that.
 
@@ -89,7 +89,7 @@ A test project MUST NOT be referenced by a project of any other kind. A fixture 
 
 The table is an allowlist over **direct** `ProjectReference` entries, not over the transitive closure. A project MAY declare a reference it could also reach transitively; it MUST NOT declare one its row omits. ⚙ BE-01
 
-The Domain project MUST NOT reference EF Core, Mediator, ASP.NET, `IHttpContextAccessor`, or any application type. ⚙ BE-02 Enforced by `.csproj` and by an architecture test.
+The Domain project MUST NOT reference EF Core, Mediator, ASP.NET, `IHttpContextAccessor`, or any application type. ⚙ BE-02 Checkable by `.csproj` and by an architecture test.
 
 **`SharedKernel` and the two `Platform.*` projects are shared, not modules.** `Platform.*` carries the dispatch pipeline - `Result`, the message abstractions, the solution-wide page shape and cursor type, and the behaviors. A platform project that names a module has stopped being platform, by fact 1.
 
@@ -476,7 +476,7 @@ The agent rule of this subsection is in `references/annex-agents.md`, which bind
 
 ## 14. Testing
 
-A rule no build check can reach is carried by a named required test below rather than by a `⚙` it cannot honour. A missing required test is a defect exactly as a violated rule is. The required tests of a rule in an annex are in that annex's own Testing section.
+A rule no build check can reach is carried by a named required test below, where a test can prove it, rather than by a `⚙` it cannot honour; otherwise review carries it (core §1). A missing required test is a defect exactly as a violated rule is. The required tests of a rule in an annex are in that annex's own Testing section.
 
 - **Domain**: pure unit tests, no substitutes, no I/O. Every invariant and every domain outcome MUST have a test.
 - **Application**: handler tests with substituted infrastructure. Every declared policy MUST have a test proving *denial*, not only one proving success.
