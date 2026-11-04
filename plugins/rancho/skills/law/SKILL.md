@@ -24,9 +24,9 @@ Never generalize a rule from a single example. Confirm against a second occurren
 
 Silence is not permission. If a decision is uncovered, match the nearest precedent in the codebase.
 
-Rules marked ⚙ are machine-checked. Violating one is a build failure, not a review comment.
+Rules marked `⚙` are machine-checked. Violating one is a build failure, not a review comment.
 
-A rule states the class of thing it governs, never a list of that class's members. Members MAY be named, as illustrations written as such - "such as", "for example", "or any other" - and never as the boundary. This binds hardest on a ⚙ rule: a machine-checked rule is read as exhaustive, so one that enumerates grants every member it forgot to name, and its check then certifies that reading. What a mechanism actually reaches is recorded in an enforcement inventory (§10), where a shortfall is a known gap rather than a permission.
+A rule states the class of thing it governs, never a list of that class's members. Members MAY be named, as illustrations written as such - "such as", "for example", "or any other" - and never as the boundary. This binds hardest on a `⚙` rule: a machine-checked rule is read as exhaustive, so one that enumerates grants every member it forgot to name, and its check then certifies that reading. What a mechanism actually reaches is recorded in an enforcement inventory (§10), where a shortfall is a known gap rather than a permission.
 
 A rule no build check can reach carries no mark. It is carried instead by a named required test, listed in the Testing section of the law that owns it - equally binding, differently caught. The enforcement inventories map every mark and every required test to its mechanism.
 
@@ -52,7 +52,7 @@ The core law states obligations that bind every tree, or that span the boundary 
 - **Stack**: the technologies it governs.
 - **Testing**: the required tests that carry its unmarked rules (§1).
 - **Verification**: the commands that MUST pass before a change in its tree is complete (§10).
-- An enforcement inventory, `references/enforcement.md` in its own skill, listing every ⚙ it carries and every core rule its role binds.
+- An enforcement inventory, `references/enforcement.md` in its own skill, listing every `⚙` it carries and every core rule its role binds.
 
 A stack law MAY add rules. It MUST NOT weaken one stated here. A stack law that contradicts this document is the defect, exactly as code that contradicts it is.
 
@@ -62,31 +62,31 @@ A stack law MUST NOT depend on another stack law. The two trees of a project sha
 
 This section governs server modules. Client boundaries are a different decomposition, stated by the client stack law.
 
-- A module MUST NOT reference another module's internals - its domain model, its use cases, or its adapters. Only its published contracts. ⚙
+- A module MUST NOT reference another module's internals - its domain model, its use cases, or its adapters. Only its published contracts. ⚙ ROOT-01
 - Cross-module **writes** MUST be asynchronous: publish an integration event, committed with the state change through the outbox. Calling another module's write path inline is forbidden.
 - Cross-module **reads** MAY be synchronous through the other module's published query contract.
-- Domain events MUST NOT cross a module boundary. Integration events always do. ⚙
+- Domain events MUST NOT cross a module boundary. Integration events always do. ⚙ ROOT-02
 - An event with both audiences is two events, not one shared type.
-- One database schema per module. Cross-schema joins and cross-module foreign keys are forbidden. References across modules are by id only. ⚙
+- One database schema per module. Cross-schema joins and cross-module foreign keys are forbidden. References across modules are by id only. ⚙ ROOT-04
 
 ## 4. API Contract
 
 - REST by default. RPC-style endpoints (`POST /<resource>/<verb>`) are permitted when the operation is not a resource mutation. GraphQL is forbidden.
-- Every endpoint MUST accept a Request DTO and return a Response DTO. Domain types MUST NOT appear in any signature reachable from HTTP. ⚙
+- Every endpoint MUST accept a Request DTO and return a Response DTO. Domain types MUST NOT appear in any signature reachable from HTTP. ⚙ ROOT-07
 - Request DTOs MUST map to a Command or Query. Endpoints map, dispatch, and translate. They contain no business logic.
-- Query results MUST be projected directly to Response DTOs. Loading an aggregate to build a read model is forbidden. ⚙
-- The OpenAPI document is generated and committed. ⚙
+- Query results MUST be projected directly to Response DTOs. Loading an aggregate to build a read model is forbidden. ⚙ ROOT-08
+- The OpenAPI document is generated and committed. ⚙ ROOT-09
 - Client API types are generated from that document, never hand-written. How a client consumes them - and that contract drift surfaces as a compile error rather than a runtime surprise - is the client stack law's.
 
 ### Collections
 
-- Every endpoint returning a collection MUST be paginated. An unbounded list response is a defect - with agents in the system it is also an exfiltration path and a cost incident. ⚙
-- One page shape across the whole API. A per-feature paging envelope is a defect. ⚙
+- Every endpoint returning a collection MUST be paginated. An unbounded list response is a defect - with agents in the system it is also an exfiltration path and a cost incident. ⚙ ROOT-11
+- One page shape across the whole API. A per-feature paging envelope is a defect. ⚙ ROOT-12
 - The maximum page size is enforced by the server. A request above it MUST be rejected, never silently truncated.
 
 ### Idempotency
 
-- Every state-changing endpoint MUST declare how it is idempotent: naturally, by client-supplied id, or by idempotency key. Undeclared is a defect. ⚙
+- Every state-changing endpoint MUST declare how it is idempotent: naturally, by client-supplied id, or by idempotency key. Undeclared is a defect. ⚙ ROOT-13
 - Where a key is used it travels as the `Idempotency-Key` header, and a replay MUST return the original response rather than executing again.
 - Callers retry. Clients time out and resubmit, jobs re-run, and agents retry by default - a duplicate request is the normal case, not the edge case.
 
@@ -123,7 +123,7 @@ Four translation boundaries. Each is owned by exactly one layer. No layer may sk
 
 - Deny by default, everywhere. Authorized-by-omission is a defect, never a default. The principle is not itself checkable; the rules that implement it are, and each carries its own mark.
 - Authorization attaches to the **message** (Command/Query), not the transport. HTTP and in-process callers get identical checks.
-- The acting principal MUST be explicit in the dispatch context. Reading ambient HTTP context from application or domain code is forbidden. ⚙
+- The acting principal MUST be explicit in the dispatch context. Reading ambient HTTP context from application or domain code is forbidden. ⚙ ROOT-15
 - AI agents MUST hold a strict narrowing of the calling user's permissions - never equal, never wider. Full rules in the server stack law.
 - Secrets MUST NOT appear in source, config files, or logs.
 
@@ -140,9 +140,9 @@ Classification is a property of the **data**, not of the endpoint that happens t
 
 The test decides the class. The following illustrate it and do not enumerate it: `Public` - a published listing, marketing copy. `Internal` - org structure, site locations, operational metrics. `Confidential` - contact details, pay, performance, hours worked. `Restricted` - government identifiers, date of birth, bank and payment details, health and medical, protected-class attributes. A field this codebase holds that no example names is still classified, by the test.
 
-- **Unclassified is `Restricted`.** Deny by default applies to data, not only to operations. ⚙
-- A class is declared on the domain value object or id that carries it, and on the module's published contract type for the same concept. A check MUST prove the two agree: two declarations of one fact drift unless something holds them together. ⚙ Every other type that carries a classified value inherits its class, and MUST NOT redeclare it - not per DTO, per log call, or per endpoint. A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, a field of a shared platform type, or a value projected from a classified source - declares its class on the property. Where it is projected from a classified source, the same check proves the two agree. Mechanism in the server stack law.
-- A field's class MUST travel with its contract: the OpenAPI document carries the class of every property of every request and response, and of every parameter. ⚙ The client receives each class from the contract and enforces it at its own boundaries; the mechanism is the client stack law's. A boundary rule the client cannot evaluate is not a rule.
+- **Unclassified is `Restricted`.** Deny by default applies to data, not only to operations. ⚙ ROOT-16
+- A class is declared on the domain value object or id that carries it, and on the module's published contract type for the same concept. A check MUST prove the two agree: two declarations of one fact drift unless something holds them together. ⚙ ROOT-20 Every other type that carries a classified value inherits its class, and MUST NOT redeclare it - not per DTO, per log call, or per endpoint. A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, a field of a shared platform type, or a value projected from a classified source - declares its class on the property. Where it is projected from a classified source, the same check proves the two agree. Mechanism in the server stack law.
+- A field's class MUST travel with its contract: the OpenAPI document carries the class of every property of every request and response, and of every parameter. The client receives each class from the contract and enforces it at its own boundaries; the mechanism is the client stack law's. ⚙ ROOT-18 A boundary rule the client cannot evaluate is not a rule.
 
 ### Egress boundaries
 
@@ -160,13 +160,13 @@ Each boundary has exactly one owner. There is no other path across it.
 - A model's context is egress in **both** directions: tool arguments, tool output, system and user prompts, retrieved documents, and retained conversation history. All of it leaves the boundary.
 - Egress to a model is not reversible. Once a value is sent it is disclosed; the response is notification and rotation, not deletion.
 - Agents reference sensitive records **by id**. The id is resolved to values by an authorized read in the user's own session, not by widening what the model may see. This is what makes agents usable over regulated personal data at all.
-- Integration events MUST NOT carry `Restricted` payloads. They are persisted in the outbox, replayed, and read by operators - reference by id. ⚙
+- Integration events MUST NOT carry `Restricted` payloads. They are persisted in the outbox, replayed, and read by operators - reference by id. ⚙ ROOT-17
 
 ## 9. Observability
 
 Every request, message, job, and agent run MUST be attributable end to end. A log line that cannot be tied to the work that produced it is noise with a timestamp.
 
-- Every unit of work MUST carry a correlation id: an HTTP request, a dispatched message, an outbox delivery, a background job, an agent run and each of its steps. ⚙
+- Every unit of work MUST carry a correlation id: an HTTP request, a dispatched message, an outbox delivery, a background job, an agent run and each of its steps. ⚙ ROOT-19
 - The correlation id MUST cross every boundary the work crosses - module to module through the outbox, user to agent, server to client. A boundary that drops it breaks the trace at the exact point where a trace earns its keep.
 - Logs, metrics, and traces MUST share that one identity. Three signals that cannot be joined are three tools, not one system.
 - An agent run MUST be reconstructable from telemetry alone: which user, which operations, which rows, what it cost. An agent whose actions cannot be replayed after the fact is not auditable, and an unauditable agent is not deployable.
@@ -179,7 +179,7 @@ Mechanism in the server stack law.
 
 Every stack law names its verification commands. Before a change is complete, the commands of every stack law whose tree the change touches MUST pass. Never report work as done on unverified code.
 
-Every ⚙ rule and the mechanism that enforces it is inventoried. The core law's rules are in `references/enforcement.md`, in this skill's own directory; each stack law's are in its own. A ⚙ with no entry is unaccounted for and MUST be added. An entry whose check is not yet built is a known gap in enforcement - it does not make the rule optional.
+Every `⚙` rule and the mechanism that enforces it is inventoried. The core law's rules are in `references/enforcement.md`, in this skill's own directory; each stack law's are in its own. A `⚙` with no entry is unaccounted for and MUST be added. An entry whose check is not yet built is a known gap in enforcement - it does not make the rule optional.
 
 A core rule binds every stack law of the role it names, and each of them MUST carry the rule's check in its own inventory. A stack law that cannot is not compliant with this document, and the rule does not become optional in its trees.
 

@@ -32,7 +32,7 @@ Every rule marked ⚙ in the .NET stack law, every core rule its role carries, a
 
 ## Summary
 
-The stack law carries **95 ⚙ marks**. One sits on a section heading, §2, and covers everything beneath it. Its rules are **114 rows**: 99 `build`, 14 `required-test`, and 1 `dropped`. Its role, `server`, carries **15 core rules**, below.
+The stack law carries **97 ⚙ marks**, each naming the ids of the rows it marks. Its rules are **114 rows**: 99 `build`, 14 `required-test`, and 1 `dropped`. Its role, `server`, carries **15 core rules**, below.
 
 **Every marked rule can be made to fail the build.** No rule claims an enforcement it cannot deliver. Nothing is enforced yet, though - `build` means the check is buildable, not built.
 
