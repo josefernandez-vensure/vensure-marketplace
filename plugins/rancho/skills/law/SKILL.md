@@ -119,7 +119,7 @@ Four translation boundaries. Each is owned by exactly one layer. No layer may sk
 
 - The pipeline's own steps - such as authorization, validation, and idempotency - return result values of their own, without reaching the handler. They are outcomes, not translations, and need no boundary.
 - Expected business outcomes MUST be return values. Exceptions MUST NOT be control flow, except where an adapter translates its framework's exceptions (below).
-- An exception escaping a handler means an invariant was breached, i.e. an upstream guard failed. It is a defect: log with full context, return 500. Never catch a domain exception to convert it into a 4xx - add the missing guard instead.
+- An exception escaping a handler means an invariant was breached, i.e. an upstream guard failed. It is a defect: log with full context within §8's telemetry rule, return 500. Never catch a domain exception to convert it into a 4xx - add the missing guard instead.
 - An adapter MAY catch the exceptions its framework or SDK uses to signal an expected outcome - such as a concurrency conflict, a unique-key violation, or an unreachable or failing remote service - and MUST translate them into an outcome at that adapter. Nothing above the adapter catches them. Where the framework raises them at commit, the adapter is the unit of work, and its outcome is translated by the step that commits.
 - Error payloads MUST NOT leak exception messages, stack traces, SQL, or internal type names.
 
@@ -127,9 +127,18 @@ Four translation boundaries. Each is owned by exactly one layer. No layer may sk
 
 - Deny by default, everywhere. Authorized-by-omission is a defect, never a default. The principle is not itself checkable; the rules that implement it are, and each carries its own mark.
 - Authorization attaches to the **message** (Command/Query), not the transport. HTTP and in-process callers get identical checks.
+- Authorization has two parts, and both are required. The message's policy decides whether the principal may perform the operation at all. An object check decides whether it may perform it on the records it names: an operation that acts on a record the caller identifies MUST check that the principal may act on that record, unless its policy grants every record. A query MUST return only the records the principal may see, filtered where the records are read, never after.
 - The acting principal MUST be explicit in the dispatch context. Reading ambient HTTP context from application or domain code is forbidden. ⚙ ROOT-15
 - AI agents MUST hold a strict narrowing of the calling user's permissions - never equal, never wider. Full rules in the server stack law.
 - Secrets MUST NOT appear in source, config files, or logs.
+
+### File uploads
+
+- Only a principal whose policy grants the upload may send one. The server enforces a maximum size and an allowlist of file types before it stores anything.
+- The server validates a file's type from its content, never from its name or `Content-Type` alone, and never by a signature check alone.
+- A file is stored under a name the server generates or derives, never one the client chose, outside any path the server serves, where it cannot execute.
+- A file is held in quarantine until a malware scan passes. Where its type allows, its content is disarmed and reconstructed before release.
+- The operation that accepts a file declares its class (§8); a file whose class is not declared is `Restricted`. It is returned only by an operation whose policy grants that class, under §8's export rule.
 
 ## 8. Data Boundaries
 
@@ -154,14 +163,16 @@ Each boundary has exactly one owner. There is no other path across it.
 
 | Boundary | Owner | Rule |
 |---|---|---|
-| Response DTO to an HTTP or real-time client | API endpoint / real-time hub | `Confidential` and above require the operation's policy to grant that field. |
+| Response DTO to an HTTP or real-time client | API endpoint / real-time hub | `Confidential` and above require the operation's policy to grant that field. An HTTP response carrying `Confidential` or `Restricted` data is sent `Cache-Control: no-store`. |
 | Anything placed in a model's context | Agent tool projection | The model vendor is an external processor. `Restricted` MUST NOT cross. |
-| Log, metric, trace, or error report | Logging behavior | `Confidential` and above MUST NOT be written. Log the id, never the value. |
+| Log, metric, trace, or error report | The telemetry pipeline: the logging behavior, and the processors and exporters every signal passes through, automatic instrumentation included | `Confidential` and above MUST NOT be written. Log the id, never the value. |
 | Cache entry | Cache decorator | `Restricted` MUST NOT be cached. `Confidential` only under a principal-scoped key. |
 | Payload to a third-party integration | Infrastructure adapter | A per-integration allowlist of fields, declared and reviewed. |
 | Export, report, or file handed to a user | Export endpoint | The same policy as the equivalent read, and the egress is audited. |
 
 A boundary whose own rule forbids `Restricted` outright - a model's context, a cache entry, a log line, an integration event - admits no exception.
+
+- An exception's type and stack trace MAY be recorded in telemetry. Its message MAY be recorded only where our code wrote it, and a message our code writes MUST NOT contain a classified value. A message from code we do not control - a framework, a driver, a vendor SDK - is dropped or scrubbed before it is exported: such messages routinely carry the values that caused them.
 
 - A model's context is egress in **both** directions: tool arguments, tool output, system and user prompts, retrieved documents, and retained conversation history. All of it leaves the boundary.
 - Egress to a model is not reversible. Once a value is sent it is disclosed; the response is notification and rotation, not deletion.
@@ -181,6 +192,10 @@ Every request, message, job, and agent run MUST be attributable end to end.
 - What may be emitted is governed by §8. Classification applies to every log line, metric label, and trace attribute, not only to responses.
 
 Mechanism in the server stack law.
+
+### Audit trail
+
+Every failed authorization, every executed command, and every read of `Restricted` data MUST be recorded in an audit trail: the principal, and the agent when one acts; the operation; the ids of the records it named or returned; the time; and the outcome. A read of `Confidential` data SHOULD be. The trail holds ids, never values (§8). It is separate from telemetry: never sampled, append-only, and kept for as long as the project's `DECISIONS.md` declares. Where this document says that something is audited, this is the record it means.
 
 ## 10. Verification
 

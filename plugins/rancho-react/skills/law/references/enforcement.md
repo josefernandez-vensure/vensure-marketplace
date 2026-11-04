@@ -19,7 +19,7 @@ Every rule marked ⚙ in the React stack law, every core rule its role carries, 
 
 ## Summary
 
-The stack law carries **31 ⚙ marks**, each naming the ids of the rows it marks. Its rules are **36 rows**: 30 `build`, 5 `required-test`, 1 `dropped`, and 0 `retired`. Its role, `client`, carries **1 core rule**, below.
+The stack law carries **31 ⚙ marks**, each naming the ids of the rows it marks. Its rules are **37 rows**: 30 `build`, 6 `required-test`, 1 `dropped`, and 0 `retired`. Its role, `client`, carries **1 core rule**, below.
 
 **Every marked rule can be made to fail the build.** No rule claims an enforcement it cannot deliver. Whether a project has built and reviewed a check is that project's record, in its `ENFORCEMENT-STATUS.md` (core §1).
 
@@ -70,4 +70,5 @@ Every core rule whose role is `client` or `both` and whose status is `build`. Th
 | FE-19 | MSW for all mocking; no module mock of the generated client | §13 | `eslint` | build | `no-restricted-syntax` on any `vi` module-mocking call with a generated-path argument | — | — |
 | FE-35 | Every call to the server carries `traceparent` | §9 | `test` | required-test | frontend §13 **Wire contract** | — | https://www.w3.org/TR/trace-context/ |
 | FE-36 | A `412` on a mutation refetches the resource and does not retry the write | §4 | `test` | required-test | frontend §13 **Wire contract** | — | https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1 |
+| FE-37 | The query client never retries a `4xx` except `408` and `429`, and honours `Retry-After` | §4 | `test` | required-test | frontend §13 **Retries** | — | https://tanstack.com/query/latest/docs/framework/react/guides/important-defaults |
 | FE-20 | `pnpm lint && pnpm typecheck && pnpm test` gate every change | §14 | `ci` | build | CI pipeline | — | — |

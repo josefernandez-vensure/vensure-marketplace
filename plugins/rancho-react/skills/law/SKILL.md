@@ -113,6 +113,7 @@ tanstackRouter({
 - A mutation MUST NOT be retried automatically unless it carries an idempotency key. The key is generated once per user intent and reused across every retry of that intent - regenerating it per attempt defeats the mechanism completely.
 - A mutation of a versioned resource sends the `etag` it read - from the resource's `ETag` or `etag` field, from the item's `etag` field when it came from a list, or from the last write's response - as `If-Match`. A `412` refetches the resource and tells the user it changed; it MUST NOT be retried as it was.
 - A `429` MUST be respected: honour `Retry-After`, back off, and never retry in a tight loop. The UI MUST show that it is throttled rather than appearing to hang.
+- One client-wide retry rule governs every query: it never retries a `4xx` except `408` and `429`, and its delay honours `Retry-After`. The interceptor's one replay after a silent refresh (§9), and a mutation's replay under its idempotency key, are not retries under this rule. TanStack Query's default retries every failure three times, so the rule is configured once, on the query client.
 
 ## 5. Client State - Zustand
 
@@ -194,6 +195,7 @@ Core §8 governs, and its classes apply here unchanged. The browser is inside th
 - **Data boundaries**: telemetry, analytics, and error reporting MUST have a test proving a known classified field is scrubbed from a captured event (FE-17).
 - **Authentication**: a `401` MUST have a test proving exactly one silent refresh is attempted before interactive sign-in - the provider's sign-in, or the host shell's sign-in page - and a `403` MUST have a test proving no refresh occurs (FE-27). Sign-out MUST have a test proving the local caches are cleared and that the provider's end-session endpoint is called - or, for an application in a host shell, that sign-out is delegated to the shell's sign-out (FE-29).
 - **Wire contract**: the client MUST have a test proving every call to the server carries `traceparent` (FE-35), and a test proving a `412` on a mutation refetches the resource and does not retry the write (FE-36).
+- **Retries**: the query client MUST have a test proving a `403` is not retried and a `429` waits for its `Retry-After` before retrying. (FE-37)
 - Playwright for critical user journeys only.
 - Tests MUST NOT assert on class names, DOM structure, or component internals.
 

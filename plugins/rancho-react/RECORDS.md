@@ -143,3 +143,8 @@ Notes taken out of the inventory's Check cells in 3.0 stage 1, word for word exc
 - Review fix: Core map: core §9 is also carried by §9 Authentication, whose interceptor sends `traceparent`.
 - Review fix: inventory: FE-35's section is §9 and FE-36's §4, the sections of their rules.
 - Second review fix: §4: a mutation sends the `etag` it read - from the resource's `ETag` or `etag` field, a list item's `etag`, or the last write's response - as `If-Match`, since core now returns the new `etag` in a successful write's body. The representation-variant ETag and `Content-Location` were dropped from core as unowned and against RFC 9110 §8.7 / §13.1.1.
+
+## 3.0 stage 4
+
+- §4: one client-wide retry rule on the query client - never retry a `4xx` except `408` and `429`, and honour `Retry-After` - replacing TanStack Query's default of three retries for every failure. §13 gains **Retries** (FE-37), with its row; the Summary counts follow (37 rows, 6 `required-test`). Closes S-8, FE-R-11.
+- Review fix: §4: the interceptor's one replay after a silent refresh (§9), and a mutation's replay under its idempotency key, are not retries under the client-wide retry rule.

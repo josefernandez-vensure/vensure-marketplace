@@ -129,3 +129,13 @@ From the note under the inventory's root table: "ROOT-03 is dropped by R-01 and 
 - Second review fix: §4 *Wire contract*, Data class: every property schema the document contains carries `x-data-class`.
 - Second review fix: §9: a server adopts the caller's `traceparent` only for a request arriving through an edge that only callers inside its trust boundary can reach; trust is decided by the edge, before authentication runs, never by the caller's credentials.
 - Second review fix: §9: the correlation id crosses server to client on every problem details response.
+
+## 3.0 stage 4
+
+- §7: authorization has two parts - the message's policy, and an object check on the records an operation names; a query returns only the records the principal may see, filtered where they are read. Closes S-1, A-32, CORE-7.
+- §7 *File uploads*: new subsection - upload policy, server-enforced size and type allowlist, content-based type validation, server-generated storage name outside any served path, quarantine until a malware scan passes, and a declared class (undeclared is `Restricted`). Closes S-6, A-33.
+- §8 egress table, Response DTO row: a response carrying `Confidential` or `Restricted` data is sent `Cache-Control: no-store`. Closes S-4, CORE-12.
+- §8 egress table, telemetry row: the owner is the telemetry pipeline - the logging behavior and every processor and exporter, automatic instrumentation included; a new bullet admits an exception's type and stack trace, its message only where our code wrote it, and drops or scrubs a message from code we do not control. §6: "log with full context" is bounded by §8's telemetry rule. Closes S-5, A-28, CORE-13.
+- §9 *Audit trail*: new subsection - every failed authorization, executed command and read of `Restricted` data is audited (principal, agent, operation, record ids, time, outcome), separate from telemetry, never sampled, append-only, retained as `DECISIONS.md` declares. Closes S-3, A-34.
+- Review fix: §8 egress table, Response DTO row: `Cache-Control: no-store` applies to an HTTP response.
+- Review fix: §7 *File uploads*: a file is stored under a name the server generates or derives, never one the client chose.
