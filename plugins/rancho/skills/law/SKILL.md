@@ -26,7 +26,7 @@ Silence is not permission. If a decision is uncovered, match the nearest precede
 
 Rules marked `⚙` are machine-checked. Violating one is a build failure, not a review comment.
 
-A rule states the class of thing it governs, never a list of that class's members. Members MAY be named, as illustrations written as such - "such as", "for example", "or any other" - and never as the boundary. This binds hardest on a `⚙` rule: a machine-checked rule is read as exhaustive, so one that enumerates grants every member it forgot to name, and its check then certifies that reading. What a mechanism actually reaches is recorded in an enforcement inventory (§10), where a shortfall is a known gap rather than a permission.
+What a mechanism actually reaches is recorded in an enforcement inventory (§10), where a shortfall is a known gap rather than a permission.
 
 A rule no build check can reach carries no mark. It is carried instead by a named required test, listed in the Testing section of the law that owns it - equally binding, differently caught. The enforcement inventories map every mark and every required test to its mechanism.
 
@@ -46,17 +46,9 @@ Every stack law declares one **role**:
 | `server` | Publishes it: owns modules, endpoints, persistence, and every egress boundary in §8. |
 | `client` | Consumes it: generates its types from the published document, and owns what reaches the user's device. |
 
-The core law states obligations that bind every tree, or that span the boundary between a server and a client. A stack law states what is internal to its own tree. Every stack law MUST carry:
-
-- **Role** and **Core map**, at the top: for each section of this document, the section of the stack law that carries its mechanism. A section the stack law cannot yet carry is listed as a gap. A gap is a defect in the stack law, never an exemption from the core.
-- **Stack**: the technologies it governs.
-- **Testing**: the required tests that carry its unmarked rules (§1).
-- **Verification**: the commands that MUST pass before a change in its tree is complete (§10).
-- An enforcement inventory, `references/enforcement.md` in its own skill, listing every `⚙` it carries and every core rule its role binds.
+The core law states obligations that bind every tree, or that span the boundary between a server and a client. A stack law states what is internal to its own tree. What every stack law must carry is in `AUTHORING.md` at the plugin root.
 
 A stack law MAY add rules. It MUST NOT weaken one stated here. A stack law that contradicts this document is the defect, exactly as code that contradicts it is.
-
-A stack law MUST NOT depend on another stack law. The two trees of a project share only what this document states - the API contract, the data classes, and the correlation id - so either can be replaced without touching the other.
 
 ## 3. Module Boundary Law
 
@@ -88,7 +80,6 @@ This section governs server modules. Client boundaries are a different decomposi
 
 - Every state-changing endpoint MUST declare how it is idempotent: naturally, by client-supplied id, or by idempotency key. Undeclared is a defect. ⚙ ROOT-13
 - Where a key is used it travels as the `Idempotency-Key` header, and a replay MUST return the original response rather than executing again.
-- Callers retry. Clients time out and resubmit, jobs re-run, and agents retry by default - a duplicate request is the normal case, not the edge case.
 
 ### Limits
 
@@ -142,7 +133,7 @@ The test decides the class. The following illustrate it and do not enumerate it:
 
 - **Unclassified is `Restricted`.** Deny by default applies to data, not only to operations. ⚙ ROOT-16
 - A class is declared on the domain value object or id that carries it, and on the module's published contract type for the same concept. A check MUST prove the two agree: two declarations of one fact drift unless something holds them together. ⚙ ROOT-20 Every other type that carries a classified value inherits its class, and MUST NOT redeclare it - not per DTO, per log call, or per endpoint. A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, a field of a shared platform type, or a value projected from a classified source - declares its class on the property. Where it is projected from a classified source, the same check proves the two agree. Mechanism in the server stack law.
-- A field's class MUST travel with its contract: the OpenAPI document carries the class of every property of every request and response, and of every parameter. The client receives each class from the contract and enforces it at its own boundaries; the mechanism is the client stack law's. ⚙ ROOT-18 A boundary rule the client cannot evaluate is not a rule.
+- A field's class MUST travel with its contract: the OpenAPI document carries the class of every property of every request and response, and of every parameter. The client receives each class from the contract and enforces it at its own boundaries; the mechanism is the client stack law's. ⚙ ROOT-18
 
 ### Egress boundaries
 
@@ -159,17 +150,17 @@ Each boundary has exactly one owner. There is no other path across it.
 
 - A model's context is egress in **both** directions: tool arguments, tool output, system and user prompts, retrieved documents, and retained conversation history. All of it leaves the boundary.
 - Egress to a model is not reversible. Once a value is sent it is disclosed; the response is notification and rotation, not deletion.
-- Agents reference sensitive records **by id**. The id is resolved to values by an authorized read in the user's own session, not by widening what the model may see. This is what makes agents usable over regulated personal data at all.
+- Agents reference sensitive records **by id**. The id is resolved to values by an authorized read in the user's own session, not by widening what the model may see.
 - Integration events MUST NOT carry `Restricted` payloads. They are persisted in the outbox, replayed, and read by operators - reference by id. ⚙ ROOT-17
 
 ## 9. Observability
 
-Every request, message, job, and agent run MUST be attributable end to end. A log line that cannot be tied to the work that produced it is noise with a timestamp.
+Every request, message, job, and agent run MUST be attributable end to end.
 
 - Every unit of work MUST carry a correlation id: an HTTP request, a dispatched message, an outbox delivery, a background job, an agent run and each of its steps. ⚙ ROOT-19
-- The correlation id MUST cross every boundary the work crosses - module to module through the outbox, user to agent, server to client. A boundary that drops it breaks the trace at the exact point where a trace earns its keep.
-- Logs, metrics, and traces MUST share that one identity. Three signals that cannot be joined are three tools, not one system.
-- An agent run MUST be reconstructable from telemetry alone: which user, which operations, which rows, what it cost. An agent whose actions cannot be replayed after the fact is not auditable, and an unauditable agent is not deployable.
+- The correlation id MUST cross every boundary the work crosses - module to module through the outbox, user to agent, server to client.
+- Logs, metrics, and traces MUST share that one identity.
+- An agent run MUST be reconstructable from telemetry alone: which user, which operations, which rows, what it cost.
 - Telemetry MUST NOT be optional per environment. Sampling rates MAY differ; emission MUST NOT.
 - What may be emitted is governed by §8. Classification applies to every log line, metric label, and trace attribute, not only to responses.
 
@@ -179,14 +170,8 @@ Mechanism in the server stack law.
 
 Every stack law names its verification commands. Before a change is complete, the commands of every stack law whose tree the change touches MUST pass. Never report work as done on unverified code.
 
-Every `⚙` rule and the mechanism that enforces it is inventoried. The core law's rules are in `references/enforcement.md`, in this skill's own directory; each stack law's are in its own. A `⚙` with no entry is unaccounted for and MUST be added. An entry whose check is not yet built is a known gap in enforcement - it does not make the rule optional.
-
-A core rule binds every stack law of the role it names, and each of them MUST carry the rule's check in its own inventory. A stack law that cannot is not compliant with this document, and the rule does not become optional in its trees.
-
 A check stricter than its rule is the same defect facing the other way. The check will be read as the rule, and the next reader of the rule is entitled to approve what the check refuses. A check and its rule MUST cover the same ground: widen the rule or narrow the check, in the same change.
 
 ## 11. Changing the Law
 
-This document is not edited to accommodate code that violates it. To change a rule: change it here first, then bring the codebase into compliance in the same change. Until the law says otherwise, a rule the codebase no longer satisfies is a defect in the codebase.
-
-A stack law is changed the same way, in its own plugin. A rule that one stack law needs and every stack law of its role would need too belongs here, not in the stack law that found it.
+How the law changes, and what a stack law must carry, is in `AUTHORING.md` at the plugin root.
