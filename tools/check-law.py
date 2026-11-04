@@ -105,9 +105,11 @@ def summary_numbers(text):
     m = re.search(r"carries \*\*(\d+) %s marks\*\*" % GEAR, text)
     if m:
         s["marks"] = int(m.group(1))
-    m = re.search(r"\*\*(\d+) rows\*\*: (\d+) `build`, (\d+) `required-test`, and (\d+) `dropped`", text)
+    m = re.search(r"\*\*(\d+) rows\*\*:([^.]*)", text)
     if m:
-        s["rows"], s["build"], s["required-test"], s["dropped"] = map(int, m.groups())
+        s["rows"] = int(m.group(1))
+        for n, status in re.findall(r"(\d+) `([\w-]+)`", m.group(2)):
+            s[status] = int(n)
     m = re.search(r"carries \*\*(\d+) core rules?\*\*", text)
     if m:
         s["core"] = int(m.group(1))
@@ -162,12 +164,12 @@ def main():
 
         # canonical and covered-by pointers
         for (i, _), r in rows.items():
-            for kind, target in re.findall(r"(Canonical|Covered by):?\s+(%s)" % ID, " ".join(r["cells"])):
+            for kind, target in re.findall(r"(Canonical|Covered by|Merged into):?\s+(%s)" % ID, " ".join(r["cells"])):
                 tgt = own.get(target)
                 if tgt is None and target.startswith(prefix + "-"):
                     fail(f"{inv_path}:{r['line']}", f"{i} points to {target}, which has no row")
                 elif kind == "Canonical" and tgt is not None:
-                    if re.match(r"Covered by", tgt["cells"][-1]):
+                    if any(c.startswith(("Covered by", "Merged into")) for c in tgt["cells"][1:]):
                         fail(f"{inv_path}:{r['line']}", f"{i}'s canonical row {target} is only covered by another")
 
         # summary counts
@@ -176,7 +178,8 @@ def main():
         counted = {"marks": n_marks, "rows": len(own),
                    "build": sum(r["status"] == "build" for r in own.values()),
                    "required-test": sum(r["status"] == "required-test" for r in own.values()),
-                   "dropped": sum(r["status"] == "dropped" for r in own.values())}
+                   "dropped": sum(r["status"] == "dropped" for r in own.values()),
+                   "retired": sum(r["status"] == "retired" for r in own.values())}
         if prefix != "ROOT":
             counted["core"] = sum(1 for k in rows if k[1])
         for k, v in s.items():

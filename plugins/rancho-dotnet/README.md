@@ -13,9 +13,23 @@ needs `rancho` installed beside it.
 ```
 rancho-dotnet/
 ├── .claude-plugin/plugin.json
+├── RECORDS.md                   rationale and history the law no longer carries
 └── skills/law/
-    ├── SKILL.md                 the stack law: role server, core map, §1–§16
+    ├── SKILL.md                 the stack law: role server, §1–§16
     └── references/
+        ├── annex-agents.md      agent rules; binds once the tree meets its trigger:
+        │                        the first code that sends data to a model or exposes
+        │                        an operation to one as a tool - an agent manifest,
+        │                        `Microsoft.Agents.AI`, an MCP server, Semantic Kernel,
+        │                        a direct model client, or any other
+        ├── annex-caching.md     caching rules; binds once the tree meets its trigger:
+        │                        the first code that reads or writes a cache - a cache
+        │                        decorator, `IMemoryCache`, `IDistributedCache`,
+        │                        `HybridCache`, output caching, Redis, or any other
+        ├── annex-realtime.md    §12; binds once the tree meets its trigger: the first
+        │                        code that pushes messages to a client over a persistent
+        │                        connection - a SignalR hub, server-sent events, a raw
+        │                        WebSocket, or any other
         └── enforcement.md       every ⚙ here, and the core rules this role carries
 ```
 

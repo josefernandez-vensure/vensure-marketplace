@@ -10,17 +10,22 @@ This repository is governed by an engineering law. It is not advisory.
 - When the law is silent, follow the codebase. When both are silent, ask.
 - MUST / MUST NOT is absolute. SHOULD / SHOULD NOT is the default and a
   deviation requires a one-line justification. MAY needs no justification.
-  Silence is not permission.
-- Rules marked with the gear glyph are machine-checked: violating one is a
-  build failure, not a review comment.
+  Silence is not permission. What a rule marked with the gear glyph means is
+  stated in core §1.
 
 **Before writing, placing, or reviewing any code in this repository, read the
 full core law via the `/rancho:law` skill** - and then, in full, the stack law
 bound to the tree you are working in. The nearest `CLAUDE.md` at or above the
-files names it, as `Stack law: /<plugin>:law`. A tree with no binding, or one
-naming a stack law this session does not have, is a defect: stop and say so,
-and never choose a stack law by guessing from the files. Do not rely on this
-summary; it states that the law binds you, not what it requires.
+files names it, as `Stack law: /<plugin>:law`. Then read each annex of that
+stack law whose trigger the tree already meets, or the work would meet:
+annexes are the `references/annex-*.md` files beside the stack law's
+`SKILL.md`, and each names its trigger at its top and in the stack law. Consult an enforcement
+inventory (`references/enforcement.md`) only by rule id, never whole.
+
+A tree with no binding, or one naming a stack law this session does not have,
+is a defect: stop and say so, and never choose a stack law by guessing from
+the files. Do not rely on this summary; it states that the law binds you, not
+what it requires.
 
 ## The installed plugins are read-only
 

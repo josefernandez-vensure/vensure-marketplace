@@ -14,9 +14,13 @@ it reads only the OpenAPI document the server publishes.
 ```
 rancho-react/
 ├── .claude-plugin/plugin.json
+├── RECORDS.md                   rationale and history the law no longer carries
 └── skills/law/
-    ├── SKILL.md                 the stack law: role client, core map, §1–§14
+    ├── SKILL.md                 the stack law: role client, §1–§14
     └── references/
+        ├── annex-realtime.md    §12; binds once the tree meets its trigger: the first
+        │                        real-time channel the client opens - SignalR,
+        │                        `WebSocket`, `EventSource`, or any other
         └── enforcement.md       every ⚙ here, and the core rules this role carries
 ```
 

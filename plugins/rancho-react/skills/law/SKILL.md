@@ -76,7 +76,7 @@ Dependencies flow one way: `shared` -> `features` -> `app`.
 ### Feature names
 
 - Every feature MUST be declared in `src/features/REGISTRY.md`: the folder name and one line saying what capability it covers. ⚙ FE-28 An undeclared feature folder is a defect. The check reads `src/features/` and the registry and nothing else - it does not reach into the server tree.
-- Where a feature covers the same concept as a server module, it SHOULD reuse that module's name. Shared vocabulary is worth having. A build check that crosses into the other tree to enforce it is not, and a naming convention is not worth coupling two trees over.
+- Where a feature covers the same concept as a server module, it SHOULD reuse that module's name.
 - The two trees share vocabulary, not shape. A server module MAY have no feature. A feature MAY read several modules' contracts, and a UI-only feature - a dashboard, onboarding, global search - MAY map to none. A server module is a consistency boundary; a feature is a user capability. They are not the same decomposition and MUST NOT be forced into one.
 
 ### Routing
@@ -95,7 +95,7 @@ tanstackRouter({
 - All request and response types are generated from the server's OpenAPI document into `src/generated/`. ⚙ FE-05
 - `src/generated/` MUST NOT be hand-edited. ⚙ FE-06
 - A response from the generated client MUST NOT be cast, type-asserted, or re-declared by a locally written type. Contract drift must be a compile error, not a runtime surprise. ⚙ FE-07
-- Generated types MUST carry the class of every property and parameter in the OpenAPI document (core §8) in a form the type checker can read, such as a branded type per class. ⚙ FE-22 The lints for the boundaries §11 names - the URL, browser storage, and client telemetry - read that type at the call that crosses the boundary, and refuse a value whose class the boundary does not permit. ⚙ FE-33, FE-16, FE-23 A value the user enters takes its brand only by being parsed through a schema the generator emits for the field or parameter it fills - a Zod schema, for example, whose output carries the class brand. ⚙ FE-22 A type assertion to a class brand outside generated code is forbidden: it is a brand the application asserts for itself. ⚙ FE-34 A value with no brand - one rebuilt with string operations, or client-only state such as a selected tab - is not reached by the lint: that gap is inventoried, and review carries it. Without the class in the types, every data-boundary rule on this side is a hope rather than a check.
+- Generated types MUST carry the class of every property and parameter in the OpenAPI document (core §8) in a form the type checker can read, such as a branded type per class. ⚙ FE-22 The lints for the boundaries §11 names - the URL, browser storage, and client telemetry - read that type at the call that crosses the boundary, and refuse a value whose class the boundary does not permit. ⚙ FE-33, FE-16, FE-23 A value the user enters takes its brand only by being parsed through a schema the generator emits for the field or parameter it fills - a Zod schema, for example, whose output carries the class brand. ⚙ FE-22 A type assertion to a class brand outside generated code is forbidden: it is a brand the application asserts for itself. ⚙ FE-34 A value with no brand - one rebuilt with string operations, or client-only state such as a selected tab - is not reached by the lint: that gap is inventoried, and review carries it.
 - Regenerate whenever the server's contract changes, and commit the output.
 
 ## 4. Server State - TanStack Query
@@ -106,7 +106,7 @@ tanstackRouter({
 - Mutations MUST declare their invalidations explicitly. A mutation that leaves stale data on screen is incomplete.
 - Loading, error, and empty states MUST each be handled. A component that renders only the success path is incomplete.
 - Every list query MUST be paginated. Enforcement is server-side (core §4) - the client cannot verify it, and MUST NOT work around it.
-- A loop that exhausts `fetchNextPage` to assemble a whole collection is forbidden. ⚙ FE-21 The page you were handed is not the data set, and treating it as one produces a UI that is quietly wrong at scale.
+- A loop that exhausts `fetchNextPage` to assemble a whole collection is forbidden. ⚙ FE-21
 - Cursor-paged lists use `useInfiniteQuery`. Looping pages to reassemble a complete client-side collection is forbidden; if a screen needs a total or an aggregate, the server computes it.
 - A mutation MUST NOT be retried automatically unless it carries an idempotency key. The key is generated once per user intent and reused across every retry of that intent - regenerating it per attempt defeats the mechanism completely.
 - A `429` MUST be respected: honour `Retry-After`, back off, and never retry in a tight loop. The UI MUST show that it is throttled rather than appearing to hang.
@@ -124,7 +124,7 @@ Client state is UI state the server does not own: selections, wizard step, panel
 - React Hook Form + Zod. A UI-library input is bound in the feature with React Hook Form's `Controller`, and receives its error text through the input's own error property. No other form library, and no validation through the UI library's own validator. ⚙ FE-12
 - Every form MUST have a Zod schema. Ad-hoc validation inside handlers is forbidden.
 - Schemas MUST mirror the server's Request DTO constraints. Where they diverge, the server is right.
-- Client validation is UX. Server errors MUST still be handled and displayed - a `ProblemDetails` 400 is an expected outcome, not an edge case.
+- Server errors MUST still be handled and displayed - a `ProblemDetails` 400 is an expected outcome, not an edge case. (core §5)
 - Field-level errors from `ProblemDetails` MUST be mapped back onto the corresponding form fields, not shown only as a banner.
 
 ## 7. Components
@@ -146,19 +146,19 @@ Client state is UI state the server does not own: selections, wizard step, panel
 
 ## 9. Authentication
 
-The organization's identity provider, through its identity library. Which provider and which library are recorded in `DECISIONS.md`. The browser proves who the user is. It decides nothing about what they may do - that is the server's answer, every time (core §7).
+The organization's identity provider, through its identity library. Which provider and which library are recorded in `DECISIONS.md`. The browser proves who the user is.
 
-- An application mounted in a host shell uses the shell's session through the identity library and MUST NOT run a sign-in flow of its own. A second flow is a second session: sign-out in one would leave the other signed in.
+- An application mounted in a host shell uses the shell's session through the identity library and MUST NOT run a sign-in flow of its own.
 - Token acquisition MUST live in exactly one place in `shared/lib/`. No component, hook, or query calls the identity library, or reads or writes its session store, directly. ⚙ FE-24
 - A token is obtained from the identity library per request and MUST NOT be retained by the application beyond that request - not in browser storage of any kind, such as `localStorage`, `sessionStorage`, IndexedDB, or a cookie, not in a store, and not in a module-level cache. ⚙ FE-25 The identity library's own session store is the one place a token may live. Where the library offers a choice of store, a standalone application MUST configure the shortest-lived one it supports; an application in a host shell uses the store the shell configures.
 - A token is opaque to the application. Its claims MAY be read for display within the user's own session and MUST NOT be used for any other purpose. The same holds for the signed-in user's profile as the identity library returns it.
-- A credential nested inside a token - an embedded access or refresh token - MUST NOT be extracted, stored, forwarded, or logged. ⚙ FE-30 A refresh token is a long-lived credential; reusing one found inside another token creates a credential-handling path nothing else in this section governs. The claim names to flag live in the project's lint configuration, not here.
+- A credential nested inside a token - an embedded access or refresh token - MUST NOT be extracted, stored, forwarded, or logged. ⚙ FE-30 The claim names to flag live in the project's lint configuration, not here.
 - The token is attached by exactly one interceptor on the generated client. A hand-written `Authorization` header is a defect. ⚙ FE-26
 - A `401` MUST trigger one silent refresh, then an interactive sign-in. In a host shell both are the shell's: the application asks the identity library once and never refreshes a token itself, so applications sharing one session do not race to refresh it, and the interactive step is the shell's sign-in page. It MUST NOT produce a retry loop and MUST NOT surface as a generic error.
-- A `403` is a final answer. It MUST be shown as a permission error and MUST NOT trigger a refresh - the token is fine, the permission is not. Retrying a `403` is how a UI turns a clear denial into a hang.
+- A `403` is a final answer. It MUST be shown as a permission error and MUST NOT trigger a refresh - the token is fine, the permission is not.
 - What the application requests from the provider - scopes, a service name, or any other grant - MUST be declared in one place and MUST be the narrowest the application needs. In a host shell the shell requests the grant: the application declares what it needs to the shell's owners, in that one place, and requests nothing itself.
-- Sign-out MUST have the identity library clear its session store - in a host shell, through the shell's sign-out (below) - and MUST clear the TanStack Query cache and every store. A previous user's data surviving a sign-out on a shared workstation is a disclosure, and shared workstations are the normal case in this domain.
-- Sign-out MUST also end the identity-provider session, including any upstream session the provider federates to. A standalone application calls the provider's end-session endpoint itself. An application in a host shell does not own the provider session: it clears its own caches and stores, then delegates sign-out to the shell's sign-out, which MUST end the provider session. Clearing local state while a provider session survives means the next sign-in completes silently as the previous user - the disclosure the rule above exists to prevent, reintroduced one step later. The next sign-in MUST prompt. Ending the provider session also signs the user out of other applications that share it; on a shared workstation, that is the intended effect.
+- Sign-out MUST have the identity library clear its session store - in a host shell, through the shell's sign-out (below) - and MUST clear the TanStack Query cache and every store.
+- Sign-out MUST also end the identity-provider session, including any upstream session the provider federates to. A standalone application calls the provider's end-session endpoint itself. An application in a host shell does not own the provider session: it clears its own caches and stores, then delegates sign-out to the shell's sign-out, which MUST end the provider session. The next sign-in MUST prompt. Ending the provider session also signs the user out of other applications that share it; on a shared workstation, that is the intended effect.
 - The frontend holds no secrets. Everything in the bundle is public: a client id belongs there, a client secret never does.
 
 ## 10. Errors
@@ -171,15 +171,14 @@ The organization's identity provider, through its identity library. Which provid
 
 Core §8 governs, and its classes apply here unchanged. The browser is inside the authenticated boundary. Everything listed below is outside it.
 
-- `Confidential` and `Restricted` values MUST NOT appear in any part of a URL - path, query string, fragment, route param, or search param. ⚙ FE-16 They land in browser history, server access logs, and `Referer` headers sent to third parties.
+- `Confidential` and `Restricted` values MUST NOT appear in any part of a URL - path, query string, fragment, route param, or search param. ⚙ FE-16
 - They MUST NOT be written to browser storage of any kind - such as `localStorage`, `sessionStorage`, IndexedDB, Cache Storage, or a cookie. ⚙ FE-23 Server data belongs in the TanStack Query cache, which is memory-only and dies with the tab. The identity library's session store (§9) MAY hold the signed-in user's own profile as the provider returns it. The application MUST NOT write to that store.
 - Analytics, telemetry, session replay, and error reporting MUST scrub them. Breadcrumbs, form-field capture, and unredacted request bodies are the usual leak, and the default configuration of every one of these tools is wrong for this domain.
-- The client MUST NOT assemble an export of sensitive data out of paged reads. An export comes from a server endpoint carrying the same policy as the read, and is audited (core §8).
+- The client MUST NOT assemble an export of sensitive data out of paged reads. (core §8)
 
 ## 12. Real-time
 
-- Real-time messages - over SignalR, or any other channel the server offers - update the TanStack Query cache. Components MUST NOT subscribe to hubs directly. ⚙ FE-18 The real-time client packages to flag live in the project's lint configuration, not here.
-- The UI MUST be correct if no real-time message ever arrives. Real-time is an optimization over refetch, never the only path to a state.
+§12 is in `references/annex-realtime.md`, which binds once the tree meets its trigger: the first real-time channel the client opens - SignalR, `WebSocket`, `EventSource`, or any other.
 
 ## 13. Testing
 
