@@ -97,6 +97,7 @@ github: (will be set on sync)
 **Key constraints:**
 - Aim for ≤10 tasks total — prefer simplicity over completeness.
 - Look for ways to leverage existing functionality before creating new code.
+- Consumer first: a platform mechanism - an outbox consumer, a background dispatcher, column encryption, or any other shared machinery - SHOULD NOT be planned without a consumer in the same epic or the next one already planned. Work that only makes existing code easier to change is not a mechanism. A domain event is part of its aggregate's model, decided with the aggregate, not by who listens to it. A deviation is justified in the epic's Architecture Decisions.
 - Identify parallelization opportunities in the task breakdown preview.
 
 **After creation**: Confirm "✅ Epic created: `.claude/epics/<name>/epic.md`" and suggest: "Ready to decompose into tasks? Say: decompose the <name> epic"

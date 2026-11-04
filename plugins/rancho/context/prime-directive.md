@@ -7,7 +7,13 @@ This repository is governed by an engineering law. It is not advisory.
 - **When the codebase contradicts the law, the law wins.** Report the
   contradiction as a defect. Existing code is never permission to repeat a
   violation.
-- When the law is silent, follow the codebase. When both are silent, ask.
+- When the law is silent, follow the codebase's nearest precedent, confirmed
+  by a second occurrence: never generalize a rule from a single example. With
+  fewer than two, or when both are silent, ask.
+- **When two rules, or a rule and a recorded decision, leave no compliant
+  answer, stop and ask.** A comment arguing that a rule does not apply is a
+  defect, never an exemption; the one exemption is an entry in
+  `LAW-EXCEPTIONS.md` (core §0, §11).
 - MUST / MUST NOT is absolute. SHOULD / SHOULD NOT is the default and a
   deviation requires a one-line justification. MAY needs no justification.
   Silence is not permission. What a rule marked with the gear glyph means is
@@ -16,7 +22,9 @@ This repository is governed by an engineering law. It is not advisory.
 **Before writing, placing, or reviewing any code in this repository, read the
 full core law via the `/rancho:law` skill** - and then, in full, the stack law
 bound to the tree you are working in. The nearest `CLAUDE.md` at or above the
-files names it, as `Stack law: /<plugin>:law`. Then read each annex of that
+files names it, as `Stack law: /<plugin>:law`. A tree bound as
+`Stack law: none - <reason>` is not a defect: only the core law binds it, so
+read only the core law there. Otherwise, read each annex of that
 stack law whose trigger the tree already meets, or the work would meet:
 annexes are the `references/annex-*.md` files beside the stack law's
 `SKILL.md`, and each names its trigger at its top and in the stack law. Consult an enforcement

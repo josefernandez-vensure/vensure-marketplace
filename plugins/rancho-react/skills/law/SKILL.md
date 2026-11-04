@@ -5,7 +5,7 @@ description: The React client stack law - structure and feature boundaries, gene
 
 # React Stack Law
 
-The core law, `/rancho:law`, governs: read it first. This is a stack law under core §2. It adds the React rules, and it carries the core law's mechanism in every tree bound to it. Core §N is §N of the core law. `⚙` = machine-checked. Every `⚙` here, and every core rule this role carries, is inventoried in `references/enforcement.md`, beside this file: consult it by rule id rather than reading it whole.
+The core law, `/rancho:law`, governs: read it first. This is a stack law under core §2. It adds the React rules, and it carries the core law's mechanism in every tree bound to it. Core §N is §N of the core law. `⚙` = can be made to fail the build (core §1). Every `⚙` here, and every core rule this role carries, is inventoried in `references/enforcement.md`, beside this file: consult it by rule id rather than reading it whole.
 
 A tree is bound to this stack law by one line in the `CLAUDE.md` at its root:
 
@@ -40,7 +40,9 @@ React · Vite · TypeScript (strict) · the organization's UI library and the co
 
 A UI-class package - one whose purpose is presentation, such as a component, styling, icon, animation or class-name package, or any other - is a dependency only if the UI library depends on it. Application code imports no UI-class package but the UI library and the component library it is built on. ⚙ FE-32
 
-TypeScript `strict` MUST stay on. `any` is forbidden; use `unknown` and narrow. Suppressing the type checker is forbidden - `@ts-ignore`, `@ts-nocheck`, or any other directive - except `@ts-expect-error`, which is permitted only with a reason comment and an issue reference. ⚙ FE-01, FE-02
+TypeScript `strict` MUST stay on. `any` is forbidden; use `unknown` and narrow. Suppressing the type checker is forbidden - `@ts-ignore`, `@ts-nocheck`, or any other directive - except `@ts-expect-error`, which is permitted only with a reason comment and an issue reference - or, where it suppresses a check of a rule of the law, the register entry's id (core §11). ⚙ FE-01, FE-02
+
+Suppressing a lint rule requires a comment naming the rule and the reason; where the lint rule enforces a rule of the law, the reason is its register entry's id (core §11).
 
 ## 2. Structure
 
@@ -130,6 +132,7 @@ Client state is UI state the server does not own: selections, wizard step, panel
 ## 7. Components
 
 - Features and `app/` use the UI library and the component library it is built on directly. `shared/` MUST NOT import either. A module that re-exports, wraps, adapts or restyles a UI-library component is forbidden, wherever it lives. ⚙ FE-31
+- A gap in the UI library - a component, variant or behaviour it lacks - that FE-31's wrapper rule or FE-14's styling rule would leave unfilled is a conflict entry in the exceptions register against that rule, and the upstream issue is its amendment request (core §11). Until the library fills the gap, the feature composes the library's public components and tokens. It MUST NOT reach into the library's internals, such as its private classes or undocumented exports.
 - Components MUST NOT call `fetch` or the generated client directly. Data access goes through a hook in the feature's `api/`. ⚙ FE-13
 - Presentational components MUST NOT contain data fetching or business rules.
 - Prefer composition over configuration. A component with more than roughly seven props, or with boolean props that change layout, SHOULD be split.
@@ -182,7 +185,7 @@ Core §8 governs, and its classes apply here unchanged. The browser is inside th
 
 ## 13. Testing
 
-- Vitest + React Testing Library. Query by role and accessible name. `data-testid` is a last resort and requires a comment explaining why.
+- Vitest + React Testing Library. Query by role and accessible name. `data-testid` is a last resort, and requires a comment stating which element has no usable role or accessible name.
 - MSW for all network mocking. Module-mocking the generated client - `vi.mock`, `vi.doMock`, or any other - is forbidden: it mocks past the contract. ⚙ FE-19
 - Every form MUST have a test for a validation failure and a test for a server-side failure.
 - **Data boundaries**: telemetry, analytics, and error reporting MUST have a test proving a known classified field is scrubbed from a captured event (FE-17).
@@ -192,6 +195,6 @@ Core §8 governs, and its classes apply here unchanged. The browser is inside th
 
 ## 14. Verification
 
-- `eslint-plugin-boundaries` enforces §2's dependency direction. A cross-feature or upward import fails the build.
+- `eslint-plugin-boundaries` enforces §2's dependency direction. Once built, its check fails the build on a cross-feature or upward import.
 - `typescript-eslint` runs type-aware.
 - `pnpm lint && pnpm typecheck && pnpm test` MUST pass before a change is complete. ⚙ FE-20

@@ -2,7 +2,7 @@
 
 Every rule marked ⚙ in the .NET stack law, every core rule its role carries, and the mechanism that enforces each.
 
-`../SKILL.md` is the stack law, and `annex-agents.md`, `annex-caching.md` and `annex-realtime.md`, beside this file, are its annexes. The core law is `/rancho:law`. Core §1 defines ⚙ as **"machine-checked. Violating one is a build failure, not a review comment."** This file is the audit of that claim for this stack law: every rule still carrying a mark can be made to fail the build. A ⚙ with no entry here is unaccounted for and MUST be added. This stack law's records and row history are in `../../../RECORDS.md`.
+`../SKILL.md` is the stack law, and `annex-agents.md`, `annex-caching.md` and `annex-realtime.md`, beside this file, are its annexes. The core law is `/rancho:law`. Core §1 defines ⚙ as **"can be made to fail the build."** This file names, for this stack law, the check that can make each marked rule do so. A ⚙ with no entry here is unaccounted for and MUST be added. This stack law's records and row history are in `../../../RECORDS.md`.
 
 A section an annex holds keeps its number: §8 is in `annex-agents.md`, §5 *Read-side caching* in `annex-caching.md`, and §12 in `annex-realtime.md`.
 
@@ -25,7 +25,7 @@ A section an annex holds keeps its number: §8 is in `annex-agents.md`, §5 *Rea
 
 The stack law carries **97 ⚙ marks**, each naming the ids of the rows it marks. Its rules are **114 rows**: 99 `build`, 14 `required-test`, 1 `dropped`, and 0 `retired`. Its role, `server`, carries **15 core rules**, below.
 
-**Every marked rule can be made to fail the build.** No rule claims an enforcement it cannot deliver. Nothing is enforced yet, though - `build` means the check is buildable, not built.
+**Every marked rule can be made to fail the build.** No rule claims an enforcement it cannot deliver. Whether a project has built and reviewed a check is that project's record, in its `ENFORCEMENT-STATUS.md` (core §1).
 
 Five rules restate another rule in this file, and twelve core rules restate one. One check satisfies each pair; the canonical id is noted and the duplicate points at it.
 
