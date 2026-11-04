@@ -30,7 +30,7 @@ Every rule marked ⚙ in the React stack law, every core rule its role carries, 
 
 ## Summary
 
-The stack law carries **26 ⚙ marks**. Two sit on a section heading, §3 and §14, and cover everything beneath them. Its rules are **34 rows**: 30 `build`, 3 `required-test`, and 1 `dropped`. Its role, `client`, carries **1 core rule**, below.
+The stack law carries **31 ⚙ marks**, each naming the ids of the rows it marks. Its rules are **34 rows**: 30 `build`, 3 `required-test`, and 1 `dropped`. Its role, `client`, carries **1 core rule**, below.
 
 **Every marked rule can be made to fail the build.** No rule claims an enforcement it cannot deliver. Nothing is enforced yet, though - `build` means the check is buildable, not built.
 
