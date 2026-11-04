@@ -54,7 +54,7 @@ tests/
 
 ## 1. Stack
 
-.NET 10 (LTS) · EF Core · SQL Server · Redis · SignalR · source-generated Mediator · FluentValidation · Serilog · OpenTelemetry · Azure Key Vault · xUnit v3 · NSubstitute · Shouldly · Testcontainers · ArchUnitNET
+.NET 10 (LTS) · EF Core · SQL Server · Redis · SignalR · Mediator 3.x, source-generated · FluentValidation · Serilog · OpenTelemetry · Azure Key Vault · xUnit v3 · NSubstitute · Shouldly · Testcontainers · ArchUnitNET
 
 `TreatWarningsAsErrors` and `Nullable` are enabled solution-wide and MUST stay enabled. Suppressing a warning requires a comment naming the rule and the reason.
 
@@ -78,7 +78,7 @@ Four facts decide every reference. The table below is their consequence, not a s
 | `<Module>.Application` | own Domain + Contracts, other modules' Contracts, `Platform.Application` | validation; `Microsoft.Extensions.*.Abstractions` |
 | `Platform.Infrastructure` | `SharedKernel`, `Platform.Application` | EF Core, messaging, telemetry instrumentation, the SDK of any external system it adapts; `Microsoft.Extensions.*.Abstractions`; `Microsoft.Extensions.Options` with its configuration extensions |
 | `<Module>.Infrastructure` | own Application, Domain, Contracts, `Platform.Infrastructure` | EF Core, messaging, the SDK of any external system it adapts; `Microsoft.Extensions.*.Abstractions`; `Microsoft.Extensions.Options` with its configuration extensions |
-| `Api` | any `*.Contracts`, any `<Module>.Application`, any `<Module>.Infrastructure`, `Platform.Infrastructure`, `Platform.Application`, `SharedKernel` | ASP.NET Core, hosting, OpenAPI, the dispatcher's source generator, telemetry exporters - never a package an Infrastructure project declares |
+| `Api` | any `*.Contracts`, any `<Module>.Application`, any `<Module>.Infrastructure`, `Platform.Infrastructure`, `Platform.Application`, `SharedKernel` | ASP.NET Core, hosting, OpenAPI, the dispatcher's source generator, telemetry exporters, EF Core's design-time tooling as a private asset - never a package an Infrastructure project declares |
 | `<Anything>.Tests` | any project | test packages |
 
 Every project MUST declare its kind as an MSBuild property whose value is one of the rows above. A project whose kind is missing, misspelled, or absent from the table may reference nothing and be referenced by nothing: adding a kind of project means adding a row, derived from the four facts. Kind is declared rather than inferred from the assembly name because `Platform.Application` and `<Module>.Application` are different rows that no name-suffix rule separates, and because a rule that guesses has no answer for a project it has never seen.
@@ -95,7 +95,9 @@ The Domain project MUST NOT reference EF Core, Mediator, ASP.NET, `IHttpContextA
 
 `Contracts` references `Platform.Application` because a published query message MUST name both its `Result` response and the abstraction it is dispatched by. That is the only reason for the reference: nothing else from `Platform.Application` may appear in a contract's public surface, so the committed contract snapshot (§4) is coupled to the message abstraction and to nothing else.
 
-`Api` names only the registration entry points of Infrastructure projects. Each module's Infrastructure exposes exactly one, `Add<Module>Module(IServiceCollection, IConfiguration)`. `Platform.Infrastructure` exposes one `Add<Feature>` extension per platform feature, such as the outbox or correlation logging. `Api` MUST NOT name any other Infrastructure type - no client, credential, `DbContext`, repository, adapter, SDK type, or any other - and MUST NOT call into Infrastructure after startup. Each Infrastructure project builds and registers its own clients, including its `DbContext`. ⚙ Code the dispatcher's source generator emits into `Api` is written by the generator, not in `Api`, and is outside this rule.
+`Api` names only the registration entry points of Infrastructure projects. Each module's Infrastructure exposes exactly one, `Add<Module>Module(IServiceCollection, IConfiguration)`. `Platform.Infrastructure` exposes one `Add<Feature>` extension per platform feature, such as the outbox or correlation logging. `Api` MUST NOT name any other Infrastructure type - no client, credential, `DbContext`, repository, adapter, SDK type, or any other - and after startup MUST NOT name or invoke an Infrastructure type directly - dispatch reaches an Infrastructure handler through the dispatcher, not through `Api`. Each Infrastructure project builds and registers its own clients, including its `DbContext`. ⚙ Code the dispatcher's source generator emits into `Api` is written by the generator, not in `Api`, and is outside this rule.
+
+The **composition root** is `Api` together with the registration entry points it calls. Wherever this law confines something to the composition root - reading configuration (§11), learning the environment (§11), resolving services from the container (§15), or registering decorators (§5) - both are admitted, and nothing else is.
 
 `Api` references `<Module>.Application` because an endpoint constructs the message it dispatches (§13). It uses `SharedKernel` and `Platform.Application` directly at the two boundaries the law assigns it - `Result` to `ProblemDetails` (core §6) and the correlation id (§10).
 
@@ -149,7 +151,7 @@ public <Outcome> <Operation>(<Args> args)
 - Value Objects MUST be immutable, MUST validate in their constructor, and MUST have structural equality.
 - A Value Object MUST be impossible to construct in an invalid state.
 - Every identifier MUST be a strongly-typed id - passing the wrong id must not compile.
-- No public member of `Domain`, or of a command or query message, exposes a bare `Guid`. ⚙ `int` stays permitted for counts and quantities, so an `int` pressed into service as an identifier is caught in review rather than by the check.
+- No public member of `Domain`, or of a command or query message, exposes a bare `Guid`, except a strongly-typed id's own constructor and value member - they are how the id is built from, and read as, the wire value its `Contracts` twin carries. ⚙ `int` stays permitted for counts and quantities, so an `int` pressed into service as an identifier is caught in review rather than by the check.
 - A command or query message, and a Response DTO, MUST NOT reference a `Domain` type. ⚙ An id they carry is the module's published id type from `Contracts`, which is the one wire id for that concept; the handler converts it, and any other wire value, into domain values. This is what lets an endpoint construct the message it dispatches (§13) and a query handler read without the domain model (§4). A module with an endpoint therefore has a `Contracts` project.
 
 ### Entities and Domain Events
@@ -174,7 +176,8 @@ public <Outcome> <Operation>(<Args> args)
 - Command handlers MUST mutate state only by loading an aggregate and calling its methods. Writing through `DbContext` or SQL from a command handler is forbidden. ⚙
 - Query handlers MUST bypass the domain and project straight to Response DTOs, untracked. Materializing an aggregate in a query handler is forbidden - a read returns the fields the caller needs, never a whole aggregate. ⚙
 - The query message, its Response DTO, and the `IQueryHandler<,>` abstraction live in `Application`. **Every concrete query handler lives in `Infrastructure`, by convention.** A query reads from outside the process - a database, a third-party API, a file store, or any other source - and that dependency is an Infrastructure concern. A query handler that is pure computation is rare, and follows the same convention, so a handler's placement never depends on inspecting what it calls. Commands do not split this way: a command handler needs only the repository port declared in `Domain`, so it stays in `Application`. ⚙
-- A query handler reads and projects straight into its Response DTO, independent of the domain model: it MUST NOT reference a `Domain` type. ⚙ A handler that reads a relational database MUST do so with SQL projected straight into the DTO, such as EF Core's `Database.SqlQuery<T>`, and is covered by a test against a real database (§14). SQL is not checked against the model at compile time, so that test is what catches a renamed column.
+- A query handler reads and projects straight into its Response DTO, independent of the domain model: it MUST NOT reference a `Domain` type. ⚙ It reads a relational database through keyless entity types its module's Infrastructure maps for reading, over a table or a view and queried with LINQ - EF never tracks a keyless type - or with parameterized SQL projected into the DTO, such as EF Core's `Database.SqlQuery<T>` with an interpolated string. A read type carries the module's global query filters, such as a tenant or soft-delete filter; SQL bypasses them and MUST apply them itself. A handler that reads with SQL is covered by a test against a real database (§14): SQL is not checked against the model at compile time, so that test is what catches a renamed column.
+- SQL MUST NOT be built from input by any means but the parameterized form. The raw-string APIs - `SqlQueryRaw`, `FromSqlRaw`, `ExecuteSqlRaw`, or any other - MUST NOT be used in a module. ⚙ A migration's SQL (§5) is written, not built from input, and is outside this rule.
 - This split does not weaken the pipeline. Dispatch is by message type, so authorization, validation, and logging behaviors run identically wherever the handler is compiled.
 - A query handler MUST NOT use an aggregate repository. Repositories serve the write path only; reads project directly. ⚙
 - `Repository` is reserved for the aggregate write path. A read-side type that returns DTOs MUST NOT be called a repository - name it `<Feature>Reader`. Usually the query handler is the read data access and no separate type is warranted. ⚙
@@ -219,14 +222,14 @@ Fixed order. Changing it requires written justification.
 
 Callers retry. A client times out and resubmits, a job re-runs, an agent re-invokes a tool it believes failed. A command that executes twice on a retry is a defect in the command, not in the caller.
 
-- Every command MUST declare its idempotency mechanism in its operation declaration (§6): naturally idempotent, client-supplied aggregate id, or idempotency key. An undeclared command MUST fail to dispatch, exactly as an undeclared policy does. ⚙
+- Every command MUST declare its idempotency mechanism in its operation declaration (§6): naturally idempotent, client-supplied id, or idempotency key. An undeclared command MUST fail to dispatch, exactly as an undeclared policy does. ⚙
 - Where a key is used, the identity of an attempt is `(principal, operation, key)`. A replay MUST return the originally recorded result without re-executing the handler. The same key with a different payload MUST fail as a conflict, never overwrite.
 - The idempotency record MUST be written through the same unit of work as the state change. Redis MUST NOT be the store - an expired cache entry must never make a command executable a second time (§5). ⚙
-- The store MUST carry a unique index on the attempt identity. ⚙
+- The store MUST carry a unique index on the attempt identity. ⚙ A violation of that index at commit means a concurrent attempt executed first: the idempotency behavior answers with that attempt's recorded result, as a replay, never as a conflict.
 - Two concurrent attempts with the same key MUST resolve as one execution and one replay, never as a `500`.
 - Records MUST be retained longer than the longest caller retry window, and swept afterwards.
 - Idempotency is a pipeline behavior. A per-endpoint or per-handler check is a defect - it will be forgotten on exactly the endpoint that needed it. ⚙
-- Agent tool invocations MUST carry a key derived from the run and the step. An agent that re-invokes a tool after a timeout MUST NOT produce a second write. ⚙
+- An agent tool invocation of a command that declares a key MUST carry a key derived from the run and the step. One that declares a client-supplied id carries the same id on every attempt, and a naturally idempotent one carries none. An agent that re-invokes a tool after a timeout MUST NOT produce a second write. ⚙
 
 ### Transactions and consistency
 
@@ -235,7 +238,8 @@ Callers retry. A client times out and resubmits, a job re-runs, an agent re-invo
 - Integration events MUST be written to the outbox in the same transaction as the state change that caused them. Publishing directly from a handler is forbidden. ⚙
 - Every integration event handler MUST be idempotent. Delivery is at-least-once; assume redelivery.
 - Handlers MUST NOT call external systems inside a transaction.
-- A command declares, in its operation declaration (§6), whether it persists aggregate state. Only a command that does opens the unit of work. A command whose effect is an external write runs without a transaction, MUST NOT stage a database change, and MUST NOT use a key-based idempotency mechanism or the outbox - the idempotency record and the outbox row are written through the unit of work it does not have. ⚙ It MAY load an aggregate to decide whether the write may proceed. Recording the result of the write is a separate command that persists.
+- A command declares, in its operation declaration (§6), whether it persists aggregate state. Only a command that does opens the unit of work. A command whose effect is an external write runs without a transaction, and MUST NOT use a key-based idempotency mechanism or the outbox - the idempotency record and the outbox row are written through the unit of work it does not have. ⚙ It MUST NOT stage a database change; the transaction behavior refuses one (§14). It is idempotent naturally or by a client-supplied id, such as a blob name derived from the aggregate id, so a retry repeats the same write rather than adding a second. It MAY load an aggregate to decide whether the write may proceed. Recording the result of the write is a separate command that persists.
+- An external effect that a repeat would duplicate - such as sending an email or taking a payment - is not such a command. A command that persists records the intent and writes an outbox row, and the outbox delivery performs the effect, passing an idempotency key derived from the row wherever the external system accepts one.
 
 ### Integration event contracts
 
@@ -270,7 +274,7 @@ An implementation that is pure logic MUST live in `Application`, except a concre
 
 **Only one direction of this error is caught by the compiler.** Infrastructure logic in `Application` fails to build - the reference is not there. Application logic in `Infrastructure` builds cleanly, because `Infrastructure` references `Application`. That direction is invisible to the build and MUST be caught in review.
 
-- Every Infrastructure type MUST be an adapter: it implements a port declared in `Domain` or `Application`, or a framework extension point such as `IEntityTypeConfiguration<T>`, `IHostedService` or `DbContext`, or it is a registration entry point (§2). A free-standing Infrastructure service belonging to none of these is a defect. Infrastructure types are `internal`, except the registration entry points and any type the dispatcher's generated code in `Api` must name - such as a concrete query handler, where the generator names handlers rather than resolving them through their interface. Where the generator resolves a handler through its interface, the handler is `internal`, and its module's registration entry point registers it. `InternalsVisibleTo` names test assemblies only. ⚙
+- Every Infrastructure type MUST be an adapter: it implements a port declared in `Domain` or `Application`, or a framework extension point such as `IEntityTypeConfiguration<T>`, `IHostedService` or `DbContext`, or it is a registration entry point (§2). A free-standing Infrastructure service belonging to none of these is a defect. Infrastructure types are `internal`, except the registration entry points, any type the dispatcher's generated code in `Api` must name, and the types a public constructor among them takes - such as the module's `DbContext` and its read types. The source-generated dispatcher names each concrete handler in its generated registration, so every concrete query handler is public. Where the compiler no longer holds the boundary for a public type, BE-105's check holds it. `InternalsVisibleTo` names test assemblies only. ⚙
 - Infrastructure types MUST live under `Persistence/`, `Queries/`, `Messaging/`, or `External/`. A new top-level folder there requires justification. ⚙
 - `Infrastructure/Queries/<Feature>/` MUST mirror the feature folder name used in `Application`, so the two halves of a read slice are findable from each other. ⚙
 
@@ -361,10 +365,10 @@ public static readonly AgentOperation <Operation> = new(
 - Policies are evaluated by the authorization behavior via `IAuthorizationService`, against the explicit principal from the dispatch context.
 - A transport-level authorization filter - `[Authorize(<policy>)]`, middleware, or a vendor package's equivalent - MAY enforce in addition, but MUST NOT be the only enforcement point. Every operation's decision MUST be reachable from the authorization behavior, so a caller that bypasses HTTP receives the identical answer (core §7).
 - The acting principal MUST travel in the dispatch context. `IHttpContextAccessor` MUST NOT be referenced outside the composition root. ⚙ Violating this silently replaces an agent's narrowed principal with the full user token and voids every agent restriction below.
-- Identity-provider claims and externally-sourced permissions are mapped to policies at the composition root. Application and domain code MUST NOT read raw claims. ⚙
+- Identity-provider claims are mapped to policies at the composition root, and externally-sourced permissions in the adapter that wraps the authority (below). Application and domain code MUST NOT read raw claims. ⚙
 - A claim read from a token before its signature is validated MAY select how the token is validated - such as which issuer's keys, or which remote validation endpoint - and MUST NOT be trusted for anything else: not identity, not tenancy, not a permission lookup. Once the token is validated, the claim that made the selection MUST agree with the validated token, or the token is refused.
 - Where permissions come from - a token claim, a directory, a remote authorization service - is a composition-root concern. Application and domain code name a policy, never a permission source or a role literal.
-- An external authority's permission codes MUST be translated to the application's policy vocabulary at the composition root. The external authority's types and codes MUST NOT be referenced outside `Api`. ⚙ This is what keeps the authority replaceable.
+- An external authority is reached through one Infrastructure adapter, behind a port, which wraps the authority's client and declares its SDK. The adapter translates the authority's permission codes to the application's policy vocabulary, and translates its failures into outcomes (core §6). The authority's types and codes MUST NOT be referenced outside that adapter's project. ⚙ This is what keeps the authority replaceable.
 
 ### External authorities
 
@@ -381,7 +385,7 @@ Core §8 defines the classes and the boundaries. This section is the mechanism.
 
 ### Declaring a class
 
-- A class is declared on the type that carries the value - the Value Object or the strongly-typed id in `Domain` - and on the module's published type for the same concept in `Contracts`. `Domain` and `Contracts` are peers (§2), so neither can inherit the other's declaration, and an architecture test MUST prove the two agree. Every other type that carries the value - a Response DTO, a message, a log event - inherits the class of the type it carries and MUST NOT redeclare it. A property projected from a classified source, such as a column a query handler's SQL reads into a `string`, MAY carry a property-level class naming that source, and the same test proves the two agree. The attribute lives in `SharedKernel`, so `Domain` can carry it without acquiring a framework dependency. ⚙
+- A class is declared on the type that carries the value - the Value Object or the strongly-typed id in `Domain` - and on the module's published type for the same concept in `Contracts`. `Domain` and `Contracts` are peers (§2), so neither can inherit the other's declaration, and an architecture test MUST prove the two agree. Every other type that carries the value - a Response DTO, a message, a log event - inherits the class of the type it carries and MUST NOT redeclare it. A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, a field of a `Platform` type, or a value projected from a classified source - declares its class on the property. Where it is projected from a classified source, such as a column a query handler reads into a `string`, the declaration names that source, and the same test proves the two agree. The attribute lives in `SharedKernel`, so `Domain` can carry it without acquiring a framework dependency. ⚙
 - An architecture test MUST assert that every property reachable from an egress boundary resolves to a class. A property whose type carries no declaration is `Restricted`, and fails at the boundary. ⚙
 - The class MUST be emitted into the OpenAPI document as a vendor extension on every property of every Request and Response DTO, and on every parameter, so it reaches every client with the contract. The emitter MUST fail rather than emit a property whose class it cannot resolve. ⚙
 - This is what §3's Value Object rule buys. A `string` holding a government identifier cannot be classified and fails the test; a `NationalId` value object carries its class into every DTO, log line, and cache key it ever reaches.
@@ -418,7 +422,7 @@ public sealed record NationalId
 - `Restricted` MUST NOT be written to Redis in any form, including inside a serialized DTO. ⚙
 - A classified value MUST NOT appear in a cache key in cleartext. Keys derive from ids, never from values.
 - Integration events and outbox rows MUST NOT carry `Restricted` payloads. The outbox is durable, replayable, and operator-readable. Reference by id. ⚙
-- `Restricted` columns MUST be encrypted at rest. The encryption MUST live in Infrastructure - in the mapping, or below it in the database driver, such as SQL Server Always Encrypted - and MUST be transparent to every path that reads the column. Encryption in the mapping does not reach a query handler's SQL (§4), so a column such a query reads is encrypted below the mapping. The domain type MUST NOT know it is encrypted, for the same reason it MUST NOT know it is persisted (§5).
+- `Restricted` columns MUST be encrypted at rest. The encryption MUST live in Infrastructure - in the mapping, or below it in the database driver, such as SQL Server Always Encrypted - and MUST be transparent to every path that reads the column. A read type that maps an encrypted column carries the same converter, and SQL (§4) MUST NOT read a column encrypted in the mapping. Driver-level encryption limits what the database can do with the column - deterministic encryption allows equality only, randomized encryption allows nothing, and range, pattern and sort operations need a secure enclave - so a column a query sorts on or matches by pattern MUST NOT use it without one. The domain type MUST NOT know it is encrypted, for the same reason it MUST NOT know it is persisted (§5).
 
 ## 8. AI Agents
 
@@ -445,7 +449,7 @@ effective = user's permissions  ∩  agent manifest  ∩  operations not marked 
 
 ### Tool shape
 
-- Tool parameters MUST be typed domain values.
+- Tool parameters MUST be typed wire values - `Contracts` types and the declared wrapper types below - never a `Domain` type (§3).
 - A tool parameter MUST NOT be a bare `string`. Every string-valued parameter is a declared wrapper type - `SearchTerm`, `CommentBody` - so that admitting a new kind of free text is a deliberate, reviewable act. ⚙
 - No wrapper type may be declared for a URL, route, endpoint name, table name, column name, or query text. Anything that selects behavior is not data.
 - Agent reads MUST go through the same query handlers as the UI. An agent-only data path is forbidden; it is where every control above gets bypassed.
@@ -471,7 +475,7 @@ Limits attach to the caller and to the run, not to the transport. HTTP rate limi
 - Exceeding a budget MUST abort the run with a stated reason. It MUST NOT silently truncate: a partial read that looks complete is how a model reaches a confident wrong answer, and the caller cannot tell the difference.
 - Commands already committed when a run aborts stay committed. The run outcome MUST report which operations completed.
 - An autonomous run MUST have its own budget, declared with its own manifest (§8) and never inherited from the human-initiated one.
-- Agent retries MUST be bounded and MUST reuse the original idempotency key (§4). An unbounded retry loop is indistinguishable from an attack, and with a fresh key per attempt it is also a duplicate-write bug.
+- Agent retries MUST be bounded and MUST reuse the original idempotency identity (§4). An unbounded retry loop is indistinguishable from an attack, and with a fresh key per attempt it is also a duplicate-write bug.
 
 ### Configuration
 
@@ -529,7 +533,7 @@ Core §9 governs. This is the mechanism. What may be emitted is §7's business, 
 
 - Every endpoint MUST be a type implementing the shared endpoint abstraction, with its Request and Response DTOs as type arguments. A route handler passed as a lambda or method group to a minimal-API route builder - `MapGet`, `MapPost`, `MapMethods`, or any other - is forbidden. ⚙ A lambda has no type to inspect, so every rule about an endpoint's signature is unenforceable against one.
 - Endpoints are registered by discovery over those types at the composition root. Hand-registering one is a defect. ⚙
-- An endpoint MUST map its Request DTO to a message, dispatch it, and translate `Result` to HTTP. It MUST NOT reference any type other than its DTOs and every type they are composed of, the Application message it dispatches, the dispatcher, and the result translator. ⚙ An endpoint branching on business state is a defect.
+- An endpoint MUST map its Request DTO to a message, dispatch it, and translate `Result` to HTTP. It MUST NOT reference any type other than its DTOs, the Application message it dispatches, and every type those are composed of; the shared endpoint abstraction; the dispatcher and the `Result` it returns; the result translator; and the framework's primitives, such as `Task`, `CancellationToken`, and HTTP result types. ⚙ An endpoint branching on business state is a defect.
 - Endpoints MUST NOT reference domain types. ⚙
 - Success shapes: `200` with a Response DTO, `201` with a location, `204` for no content. Failures are `ProblemDetails`.
 - A change to a Request or Response DTO that does not regenerate and commit the OpenAPI document is incomplete.
@@ -541,7 +545,7 @@ A rule no build check can reach is carried by a named required test below rather
 - **Domain**: pure unit tests, no substitutes, no I/O. Every invariant and every domain outcome MUST have a test.
 - **Application**: handler tests with substituted infrastructure. Every declared policy MUST have a test proving *denial*, not only one proving success.
 - **Integration**: real SQL Server via Testcontainers, real pipeline behaviors.
-- **Queries**: every query handler that reads a relational database MUST have a test against real SQL Server proving its SQL projects into its Response DTO.
+- **Queries**: every query handler that reads with SQL MUST have a test against real SQL Server proving its SQL projects into its Response DTO and applies the module's query filters.
 - **Transactions**: a command that runs without a transaction MUST have a test proving that a staged database change fails the dispatch and is never committed.
 - **Architecture**: ArchUnitNET tests are first-class and MUST NOT be skipped or marked inconclusive to unblock a change.
 - **Authorization**: every external authority MUST have a test proving that an unreachable, a timing-out, and an erroring authority each deny, and that an expired cache entry is not served while the authority is unreachable. Every token validation that reads a claim before the signature is checked MUST have a test proving that a token whose selecting claims disagree with its validated issuer or endpoint is refused, and that no claim read before validation reaches the principal. Every policy MUST have a test proving an in-process dispatch with no HTTP context receives the same decision as the HTTP path. An agent-actor principal MUST have a test proving an operation the user holds but the manifest omits is denied when permissions come from the external authority.

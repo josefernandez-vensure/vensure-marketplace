@@ -6,13 +6,15 @@
   (items 3 and 5), with the owners' review of it. Records in
   `enforcement.md`.
 - §6 gains a fourth translation boundary: commit outcome to result value,
-  owned by the one pipeline step that commits. A persistence adapter MAY
-  catch the exceptions its framework uses to signal a concurrency conflict or
-  a unique-key violation, and MUST translate them where they are raised.
+  owned by the one pipeline step that commits; the pipeline's own steps
+  return result values without one. An adapter MAY catch the exceptions its
+  framework or SDK uses to signal an expected outcome - such as a concurrency
+  conflict, a unique-key violation, or an unreachable remote service - and
+  MUST translate them where they are raised.
 - §8: a class is declared on the domain type and on its published contract
   type, and a check proves the two agree. Every other carrier inherits it. A
-  property projected from a classified source MAY carry a property-level
-  class. The OpenAPI document now carries the class of request properties and
+  property whose type carries no class of its own - a page size, a cursor, a
+  field of a platform type, a projected value - declares one on the property. The OpenAPI document now carries the class of request properties and
   parameters as well as response properties (ROOT-18), and the client
   enforces it at its own boundaries.
 - Released with `rancho-dotnet` 1.1.0 and `rancho-react` 1.1.0, which carry

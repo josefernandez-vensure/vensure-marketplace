@@ -109,13 +109,14 @@ Four translation boundaries. Each is owned by exactly one layer. No layer may sk
 | Boundary | Owner | Rule |
 |---|---|---|
 | Domain outcome to result value | Application handler | The domain speaks in domain vocabulary and MUST NOT reference the result type. |
-| Commit outcome to result value | The one pipeline step that commits the unit of work | A conflict detected when the unit of work commits - after the handler has returned - is a result value, never an exception. It is the only result value an Application handler does not produce. |
+| Commit outcome to result value | The one pipeline step that commits the unit of work | A conflict detected when the unit of work commits - after the handler has returned - is a result value, never an exception. |
 | Result value to problem details | API endpoint | Every failure response is RFC 9457 problem details (`ProblemDetails`). |
 | Exception to 500 | Global middleware | Exceptions signal bugs, never business outcomes. |
 
-- Expected business outcomes MUST be return values. Exceptions MUST NOT be control flow.
+- The pipeline's own steps - such as authorization, validation, and idempotency - return result values of their own, without reaching the handler. They are outcomes, not translations, and need no boundary.
+- Expected business outcomes MUST be return values. Exceptions MUST NOT be control flow, except where an adapter translates its framework's exceptions (below).
 - An exception escaping a handler means an invariant was breached, i.e. an upstream guard failed. It is a defect: log with full context, return 500. Never catch a domain exception to convert it into a 4xx - add the missing guard instead.
-- A persistence adapter MAY catch the exceptions its framework uses to signal a concurrency conflict or a unique-key violation, and MUST translate them into an outcome at that adapter. Nothing above the adapter catches them. Where the framework raises them at commit, the adapter is the unit of work, and its outcome is translated by the step that commits.
+- An adapter MAY catch the exceptions its framework or SDK uses to signal an expected outcome - such as a concurrency conflict, a unique-key violation, or an unreachable or failing remote service - and MUST translate them into an outcome at that adapter. Nothing above the adapter catches them. Where the framework raises them at commit, the adapter is the unit of work, and its outcome is translated by the step that commits.
 - Error payloads MUST NOT leak exception messages, stack traces, SQL, or internal type names.
 
 ## 7. Security Baseline
@@ -140,7 +141,7 @@ Classification is a property of the **data**, not of the endpoint that happens t
 The test decides the class. The following illustrate it and do not enumerate it: `Public` - a published listing, marketing copy. `Internal` - org structure, site locations, operational metrics. `Confidential` - contact details, pay, performance, hours worked. `Restricted` - government identifiers, date of birth, bank and payment details, health and medical, protected-class attributes. A field this codebase holds that no example names is still classified, by the test.
 
 - **Unclassified is `Restricted`.** Deny by default applies to data, not only to operations. ⚙
-- A class is declared on the domain value object or id that carries it, and on the module's published contract type for the same concept. A check MUST prove the two agree: two declarations of one fact drift unless something holds them together. Every other type that carries the value inherits the class of the published type it carries, and MUST NOT redeclare it - not per DTO, per log call, or per endpoint. A property projected from a classified source MAY carry a property-level class, which the same check proves agrees with its source. Mechanism in the server stack law.
+- A class is declared on the domain value object or id that carries it, and on the module's published contract type for the same concept. A check MUST prove the two agree: two declarations of one fact drift unless something holds them together. Every other type that carries a classified value inherits its class, and MUST NOT redeclare it - not per DTO, per log call, or per endpoint. A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, a field of a shared platform type, or a value projected from a classified source - declares its class on the property. Where it is projected from a classified source, the same check proves the two agree. Mechanism in the server stack law.
 - A field's class MUST travel with its contract: the OpenAPI document carries the class of every property of every request and response, and of every parameter. ⚙ The client receives each class from the contract and enforces it at its own boundaries; the mechanism is the client stack law's. A boundary rule the client cannot evaluate is not a rule.
 
 ### Egress boundaries

@@ -5,16 +5,20 @@
 - Amendment A-10, from a consuming project's compliance audit of 2026-10-30
   (items 5 and 8). Record in `references/enforcement.md`. Carries the core
   law's 2.1.0 (A-08).
-- §3: the generator emits, from the contract, the set of fields and
-  parameters each client boundary permits (FE-22). The URL and storage lints
-  read those sets (FE-16, FE-23), and a telemetry lint supports FE-17's
-  required test. **Each consumer regenerates against a server that emits
+- §3: generated types carry the class of every property and parameter as a
+  type the checker reads, such as a brand per class (FE-22). Type-aware lints
+  at the URL, storage and telemetry calls read it (FE-16, FE-23), and the
+  telemetry lint (FE-33) supports FE-17's required test. User input takes its
+  brand where a Zod schema built from the generated type parses it; a value
+  with no brand passes, a gap recorded in FE-16. **Each consumer regenerates against a server that emits
   request classes** (`rancho-dotnet` 1.1.0, BE-83).
 - §9: an application in a host shell clears its own caches and stores and
   delegates sign-out to the shell's sign-out, which MUST end the provider
   session. A standalone application calls the end-session endpoint itself.
-  §13's sign-out test follows (FE-29).
-- Rows stay at 32.
+  §13's sign-out test follows (FE-29). In a host shell, the refresh after a
+  `401`, the session store and the grant request are the shell's too
+  (FE-27).
+- Rows go from 32 to 33.
 
 ## 1.0.0
 
