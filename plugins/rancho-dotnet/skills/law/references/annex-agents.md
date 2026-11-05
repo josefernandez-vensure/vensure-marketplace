@@ -48,11 +48,14 @@ An agent is a caller with a fixed toolset. Its limits are enforced by code. **Pr
 effective = user's permissions  ∩  agent manifest  ∩  operations not marked HumanRequirement.Required
 ```
 
-- An agent principal is a strict narrowing of the calling user's: never equal, never wider (core §7).
+For an autonomous run, the service principal's permissions stand in for the user's.
+
+- An agent principal holds a subset of the calling user's permissions - or, for an autonomous run, of its service principal's - never wider - and always carries the actor claim that identifies the agent (core §7).
 - Human-initiated runs use on-behalf-of: the agent carries a down-scoped principal derived from the caller's token.
 - The principal MUST carry an actor claim identifying the agent. Writes audit the agent, not only the user.
 - An agent-actor principal MUST NOT start another agent run. That is the recursion cap.
 - Autonomous runs require a separately declared manifest. It MUST NOT be inherited from the human-initiated one and MUST NOT contain any operation marked `HumanRequirement.Required`. ⚙ BE-67
+- An autonomous run acts as a service principal declared for its manifest, holding exactly the manifest's operations and no user's permissions.
 
 ### Tool shape
 
@@ -69,7 +72,7 @@ Verify Microsoft Agent Framework API specifics against official Microsoft docume
 ### Agent runs
 
 - Every agent run MUST carry a budget fixed when the run starts: maximum tool invocations, maximum rows returned across the whole run, maximum wall-clock duration, and maximum model spend. ⚙ BE-71
-- Budgets MUST be enforced in the dispatch pipeline. A tool MUST NOT be trusted to count its own calls, and a model MUST NOT be asked to respect a limit stated in a prompt.
+- Budgets MUST be enforced by the agent runtime's middleware - Microsoft Agent Framework's agent-run and function-invocation middleware, or the `IChatClient` pipeline; function-invocation middleware reaches an agent only where it invokes tools through `FunctionInvokingChatClient` - for invocations, wall-clock time and model spend, and by the dispatch pipeline for rows returned. A tool MUST NOT be trusted to count its own calls, and a model MUST NOT be asked to respect a limit stated in a prompt.
 - Exceeding a budget MUST abort the run with a stated reason. It MUST NOT silently truncate: a partial read that looks complete is how a model reaches a confident wrong answer, and the caller cannot tell the difference.
 - Commands already committed when a run aborts stay committed. The run outcome MUST report which operations completed.
 - An autonomous run MUST have its own budget, declared with its own manifest (§8) and never inherited from the human-initiated one.

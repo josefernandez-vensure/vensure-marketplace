@@ -20,7 +20,7 @@ Read as the closure, every row would become the union of its dependencies' rows 
 
 After BE-02's paragraph:
 
-`SharedKernel` is BCL-only for the same reason one step removed: `Domain` references it, so a package added there reaches every aggregate in the solution.
+`SharedKernel` admits only the BCL and `Microsoft.Extensions.Compliance.Abstractions`, which carries the classification attributes and no behaviour, for the same reason one step removed: `Domain` references it, so a package added there reaches every aggregate in the solution.
 
 After the definition of the composition root:
 
@@ -204,7 +204,7 @@ That is what "no business logic in a hub" means in a form a check can evaluate.
 
 After BE-80's mark:
 
-A lambda has no type to inspect, so every rule about an endpoint's signature is unenforceable against one.
+A lambda's signature can be read from endpoint metadata, but its body compiles into another class, so a type-level check cannot attribute the body's references to the endpoint; a type makes them attributable.
 
 ## Restatements removed in 3.0 stage 1
 
@@ -418,3 +418,132 @@ Notes taken out of the inventory's Check cells in 3.0 stage 1, word for word.
 - Review fix: `annex-realtime.md` §12: SignalR never revalidates a connection's principal; a connection's lifetime is bounded by the access token's, or by the external authority's cache lifetime where one answers for permissions; a rate-limited hub invocation fails with a `HubException` naming the limit.
 - Review fix: Core map: core §7 is also carried by §10 Observability (*Audit trail*) and §13 API Layer.
 - Targeted check fix: the authorization package admitted to both Infrastructure rows; the audit trail and cursor codec placed in `Platform.Infrastructure/Persistence/`; the audit port writes through its own context, not the module's, so a command that does not persist stages nothing; an upload's stored name derives from a parsed id, never the client's file name; which endpoints are principal-dependent is reached by review.
+
+## 3.0 stage 5
+
+- §2: the `SharedKernel` and `<Module>.Domain` rows declare the BCL and `Microsoft.Extensions.Compliance.Abstractions`; the shared-projects paragraph and the Layout's `Domain` line admit that one package, which carries the classification attributes and no behaviour. The §2 rationale above ("`SharedKernel` admits only ...") follows. Closes NET-B-11.
+- §7 *Declaring a class*, BE-54: a class is a `DataClassification` from Microsoft.Extensions.Compliance; `SharedKernel` defines one attribute derived from `DataClassificationAttribute` per class of core §8; the illustration uses `[Restricted]`. BE-54's rule text, check and source follow. Closes NET-B-11.
+- §7 *Logging*, BE-57: logging is structured through source-generated `LoggerMessage` methods with a constant template that interpolates no value; redaction is Microsoft's (`EnableRedaction()`, a redactor per class, the erasing redactor for `Restricted` and unresolved classes), replacing the destructuring policy. BE-57's rule text, check (CA2254 and CA1848 as errors) and source follow. Closes NET-B-11.
+- §1: the Stack list adds Microsoft.Extensions.Compliance and Microsoft Agent Framework (agents annex). Closes NET-B-11, NET-B-13.
+- §10 *Logging*: code logs through `ILogger` and source-generated `LoggerMessage` methods; Serilog is the provider. Owner's decision E2 (2026-11-03).
+- §3 *Entities and Domain Events*: the unit of work dispatches domain events to their in-module reactions before it commits, in the same transaction. §2: a reaction changes state as a command handler does, inside the command's unit of work, and calls no handler. §4 *Transactions and consistency*: one transaction SHOULD modify exactly one aggregate, and a second changed by a reaction needs the PR to name its invariant (the module-boundary sentence was not added: the next bullet states it with BE-32). Closes NET-A-8, A-19.
+- §4 *Pipeline behaviors*: items 4 (idempotency) and 5 (transaction) become one item 4, the unit-of-work behavior, so the idempotency record and its change are one commit; "the idempotency behavior" and "the transaction behavior" become "the unit-of-work behavior" in §4 *Idempotency* and *Transactions and consistency*, §5 and §13, and in BE-111's check. The BE-28 bullet's lookup sentences now point at item 4. Closes N-1.
+- §2: a contract's public surface admits the page and cursor types a published collection query returns. Closes N-3.
+- §4 *Commands and Queries*: handlers MUST NOT call other handlers directly; a handler MAY dispatch another module's published query through the dispatcher, through the full pipeline. Closes N-5.
+- `annex-realtime.md` §12, BE-74: a hub may reference its DTOs, the message it dispatches and their component types, the hub base type, the dispatcher and its `Result`, and framework primitives. BE-74's rule text follows. Closes N-7.
+- §3 illustration: the operation takes `DateTimeOffset now`, with no `_clock`. §15: inject `TimeProvider` into the handler and pass the time to the aggregate as an argument. Closes N-11.
+- §5 *EF Core mapping for DDD*: a single-value value object MAY be mapped through a value converter. Closes NET-A-12.
+- §9 *Transport*, BE-70: every endpoint is covered by a `GlobalLimiter` or a named policy the registrar applies, and `[DisableRateLimiting]` is forbidden; the registrar applies the write policy to every command endpoint; a new bullet states when `Retry-After` is sent and that a limit is per instance unless shared. BE-70's rule text, check and source follow. Closes NET-B-8, A-23.
+- §13: the registrar applies each endpoint's authorization and rate-limit metadata from its message's operation declaration. The §13 rationale above ("A lambda's signature ...") is corrected. Closes A-23, NET-B-7, A-22.
+- §4 *Pagination*, BE-23: the `ORDER BY` and keyset predicate are generated from the descriptor. BE-23's rule text and check follow. Closes A-17.
+- Inventory: BE-50's mechanism is `arch` + `roslyn` (every `AuthorizeAttribute` sets a policy name; `RequireAuthorization()` with no arguments banned); BE-96's check sweeps the solution's own options classes for a registered `IValidateOptions<T>` and `ValidateOnStart`; BE-12's mechanism is `arch` alone, with an ArchUnitNET method-call condition for `SaveChangesAsync`. Owner's decision E14 (2026-11-03).
+- `annex-agents.md` §8 *Effective permissions*: the pointer to core §7 follows its new wording (a subset, never wider, always with the actor claim); an autonomous run acts as a service principal declared for its manifest. §9 *Agent runs*: invocation, wall-clock and spend budgets are enforced by the agent runtime's middleware, and the row budget by the dispatch pipeline. Closes C-2, NET-B-13.
+- Cache invalidation (annex-caching, BE-48) runs after commit, from the committed domain events, not as an in-transaction reaction: E3 moved reactions before commit, and the annex's own rule increments stamps after commit so a concurrent read cannot repopulate the cache with pre-commit data.
+- Review fix: BE-54's check also proves each logging-method parameter's class attribute equals its type's class (core §8).
+- Review fix: §7 *Logging*: the erasing redactor covers `Confidential` and `Restricted`, and every parameter of a logging method carries its class attribute, since the redactor applies only to classified parameters; the per-class redactor and the unresolved-class clause are removed. BE-55's graph walk also covers every logging-method parameter.
+- Review fix: §10 *Logging*: Serilog is registered on the logging builder with `AddSerilog()`; replacing `ILoggerFactory`, as `UseSerilog()` does, is forbidden because redaction runs in the factory `EnableRedaction()` configures. §14 *Classification*: a test proves a classified logging-method parameter is redacted in the provider's output.
+- Review fix: §9 *Transport*: a stricter policy, and an expensive read's tighter policy, are named in the operation declaration, not chosen by the endpoint.
+- Review fix: `annex-agents.md` §8 *Effective permissions*: for an autonomous run, the service principal's permissions stand in for the user's (core §7).
+- Review fix: §4 *Pipeline behaviors*, item 4: the attempt identity is resolved, and the idempotency record written, only for a command that declares a key. After a successful commit the behavior hands the committed domain events to their post-commit effects, such as cache invalidation; a failure there is logged as an error and the committed result is returned. `annex-caching.md`: the invalidation-failure bullet says the committed result is returned and the TTL bounds the stale entry.
+- Review fix: §13, BE-80: the shared endpoint abstraction takes the Request DTO, the message it dispatches and the Response DTO as type arguments, so the registrar can find the operation declaration.
+- Review fix: §2: the `Api` row declares the logging provider and `Microsoft.Extensions.Telemetry` with `Microsoft.Extensions.Compliance.Redaction`; the Layout's `Domain` line names `Microsoft.Extensions.Compliance.Abstractions` as its one framework reference.
+- Review fix: §4 *Commands and Queries*: a cross-module query a handler dispatches runs on its own module's connection, never enlisted in the command's transaction.
+- Review fix: §4 illustration: the switch passes `now` to the aggregate operation, matching §3's signature.
+- Review fix: §9 *Transport*: the `Retry-After` bullet states that ASP.NET Core writes neither the status nor the header; `OnRejected` sets `429` and copies `MetadataName.RetryAfter`.
+- Review fix: `annex-agents.md` §9 *Agent runs*: function-invocation middleware reaches an agent only where it invokes tools through `FunctionInvokingChatClient`.
+- Review fix: Inventory: BE-57, BE-23 and BE-70 state their gaps (Serilog's static `Log`, direct `ILogger.Log` and interpolated arguments; `ORDER BY` in SQL text; framework-mapped endpoints); BE-50's check names BE-25's sweep as its named-policy half; BE-48's check also proves no in-transaction reaction slice references `ICacheInvalidator`.
+
+## Rationale moved in 3.0 stage 5
+
+Reasons, consequences and examples removed from `skills/law/SKILL.md` when the law was shortened in stage 5, verbatim, grouped by section and prefixed with the rule they came from. No rule changed; the rule text stays in the law.
+
+### §1 Stack
+
+- **Verify third-party licenses before pinning**: MediatR and FluentAssertions moved to commercial licensing; the picks above avoid that.
+
+### §2 Project Reference Law
+
+- **BE-02**: Checkable by `.csproj` and by an architecture test.
+- **SharedKernel and the two Platform.* projects are shared, not modules**: `SharedKernel` and `Domain` admit one package beyond the BCL, `Microsoft.Extensions.Compliance.Abstractions`, because it carries the classification attributes (§7) and no behaviour.
+- **`Result` lives in `Platform.Application`**: `Domain` does not reference `Platform.Application`, so "the domain MUST NOT reference `Result`" (core §6) is carried by the compiler rather than by an analyzer.
+- **`Contracts` references `Platform.Application`**: That is the only reason for the reference
+- **`Contracts` references `Platform.Application`**: so the committed contract snapshot (§4) is coupled to the message abstraction and to nothing else.
+- **Duplicating an aggregate across feature folders**: it means the module has more than one model of the same concept.
+
+### §3 Domain Layer
+
+- **BE-78** (Aggregates): "Root" is not a folder position or a naming convention; it is a property a check can read, and several rules depend on being able to read it.
+- **Primitives in aggregates and entities SHOULD be replaced by Value Objects** (Value Objects): A `DateOnly` date of birth becomes `Birthday`, which rejects future dates and implausible ages.
+- **BE-08** (Value Objects): they are how the id is built from, and read as, the wire value its `Contracts` twin carries.
+- **BE-08** (Value Objects): so an `int` pressed into service as an identifier is caught in review rather than by the check.
+- **BE-109** (Value Objects): A module with an endpoint therefore has a `Contracts` project.
+- **Domain events MUST be raised by the aggregate** (Entities and Domain Events): so a reaction commits or rolls back with the command that caused it.
+- **A Specification MUST NOT be the authority** (Specifications): the two will drift, and the drift is a bypassed business rule.
+
+### §4 Application Layer
+
+- **BE-14** (Commands and Queries): a read returns the fields the caller needs, never a whole aggregate.
+- **BE-15** (Commands and Queries): A query handler that is pure computation is rare
+- **BE-15** (Commands and Queries): so a handler's placement never depends on inspecting what it calls.
+- **BE-15** (Commands and Queries): Commands do not split this way: a command handler needs only the repository port declared in `Domain`, so it stays in `Application`.
+- **BE-108** (Commands and Queries): EF never tracks a keyless type
+- **BE-108** (Commands and Queries): SQL is not checked against the model at compile time, so that test is what catches a renamed column.
+- **Non-exhaustive switches fail the build** (Commands and Queries): so adding a domain outcome forces every handler to address it.
+- **BE-21, BE-22** (Pagination): a caller that asked for 500, received 100, and was told nothing will conclude it has every row.
+- **BE-24** (Pagination): A cursor therefore cannot carry a filter, a sort, or a principal: a client that could edit those would otherwise widen its own read.
+- **BE-119** (Pagination): so its sort key - which may be classified - is neither readable nor editable by the client.
+- **BE-119** (Pagination): so a cursor survives a restart and works on any instance.
+- **Pipeline item 4, Unit of work and idempotency** (Pipeline behaviors): so the idempotency record and the change it proves are one commit.
+- **BE-27** (Idempotency): an expired cache entry must never make a command executable a second time (§5).
+- **BE-30** (Idempotency): it will be forgotten on exactly the endpoint that needed it.
+- **BE-110** (Transactions and consistency): the idempotency record and the outbox row are written through the unit of work it does not have.
+- **BE-110 (It is idempotent naturally or by a client-supplied id)** (Transactions and consistency): so a retry repeats the same write rather than adding a second.
+- **Placement is decided by dependencies, never by the name** (Placement of interfaces and implementations): `IPricingStrategy` and `IEmailSender` are both "services" and belong in different layers.
+- **An implementation that is pure logic MUST live in `Application`** (Placement of interfaces and implementations): **Only one direction of this error is caught by the compiler.** Infrastructure logic in `Application` fails to build - the reference is not there. Application logic in `Infrastructure` builds cleanly, because `Infrastructure` references `Application`.
+- **BE-34, BE-107** (Placement of interfaces and implementations): The source-generated dispatcher names each concrete handler in its generated registration, so every concrete query handler is public. Where the compiler no longer holds the boundary for a public type, BE-105's check holds it.
+- **BE-36** (Placement of interfaces and implementations): so the two halves of a read slice are findable from each other.
+
+### §5 Persistence
+
+- **Every aggregate MUST carry an application-managed version**: a database row version protects one row, not the aggregate.
+- **A data migration MUST be idempotent** (Migrations): for the same reason a command is (§4).
+- **A repository MUST load the complete aggregate** (Repositories and the aggregate graph): an incompletely loaded aggregate cannot enforce its own invariants.
+- **BE-43** (EF Core mapping for DDD): **If a mapping cannot be expressed without changing the domain type, the mapping is wrong, not the domain type.**
+
+### §6 Authorization
+
+- **BE-51**: so a forgotten attribute fails closed.
+- **External authorities (introduction)** (External authorities): A token claim cannot be unavailable, and neither can a signature checked against keys the process holds. A remote service that validates the token or answers for permissions can be unreachable, its answers can outlive a revocation, and a permission service answers for the user when the caller is an agent. The rules below cover the first two cases, and key the third on the acting principal; the agent case itself is in `references/annex-agents.md`.
+- **BE-100** (External authorities): and that value is the revocation window: a permission withdrawn at the authority continues to grant for that long.
+
+### §7 Data Classification
+
+- **BE-54** (Declaring a class): `Domain` and `Contracts` are peers (§2), so neither can inherit the other's declaration
+- **BE-83** (Declaring a class): so it reaches every client with the contract.
+- **Exception messages, `ProblemDetails`, and validation errors MUST NOT echo a classified value** (Logging): core §6 forbids leaking internals; this extends it to the data.
+- **`Restricted` columns MUST be encrypted at rest** (Cache, events, and storage): Driver-level encryption limits what the database can do with the column - deterministic encryption allows equality only, randomized encryption allows nothing, and range, pattern and sort operations need a secure enclave where the server version supports one
+- **`Restricted` columns MUST be encrypted at rest** (Cache, events, and storage): for the same reason it MUST NOT know it is persisted (§5).
+
+### §9 Quotas and Rate Limits
+
+- **Limits attach to the caller and to the run**: HTTP rate limiting does not bound an agent, because agent dispatch never passes through the middleware pipeline.
+- **Limits are keyed on the acting principal** (Transport): it is a shared bucket that one customer's office fills.
+
+### §10 Observability
+
+- **An expected business rejection MUST NOT be logged at `Error`** (Logging): and logging it as one teaches everybody to ignore the error log.
+- **Every pipeline behavior MUST emit a span** (Metrics and traces): "the request was slow" is not a finding anyone can act on.
+- **Metrics are exported with exemplars** (Metrics and traces): the SDK's default is off.
+- **Liveness MUST NOT depend on a downstream** (Metrics and traces): a failing dependency restarts nothing.
+- **A persisting command's success is recorded through its unit of work** (Audit trail): so the record commits with the change.
+
+### §11 Configuration and Secrets
+
+- **BE-95**: which is what makes BE-96's validation reach every setting.
+- **BE-97**: connection strings, client secrets, signing keys, API keys and package-feed tokens are examples of the class, not the list of it, and `appsettings*.json`, environment files and source are where it has happened, not where the rule applies.
+- **BE-98**: so nothing below it needs to ask.
+
+### §13 API Layer
+
+- **An endpoint maps `If-Match` to the message's expected version**: so a version that changes between load and commit surfaces when the unit of work commits.
+- Restored after the tightening pass, because each tells an agent how to apply a rule: "A module with an endpoint therefore has a `Contracts` project", "every concrete query handler is public" (BE-34), and "If a mapping cannot be expressed without changing the domain type, the mapping is wrong" (BE-43). Their copies under *Rationale moved in 3.0 stage 5* are superseded.
