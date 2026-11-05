@@ -29,7 +29,7 @@ Caching is a **decorator over `IQueryHandler<TQuery, TResponse>`**, never a bran
 - Every cache key MUST embed the stamps of the aggregates its result depends on, and a cached query MUST declare those dependencies explicitly. ⚙ BE-46
 - A write increments the relevant stamps. Old keys become unreachable and expire by TTL.
 - Stamps MUST be incremented **after** the transaction commits, never before.
-- `KEYS` and `SCAN`-and-delete invalidation are forbidden. ⚙ BE-47
+- Enumerating keys - `KEYS` or `SCAN`, for invalidation or anything else - is forbidden. ⚙ BE-47
 - Command handlers MUST NOT touch the cache. Invalidation runs after the unit of work commits: the unit-of-work behavior hands the committed domain events to an Application slice, which invalidates through an `ICacheInvalidator` port implemented in Infrastructure. ⚙ BE-48 It is a post-commit effect, not an in-transaction reaction (§3).
 - An invalidation failure MUST be logged as an error and MUST NOT be swallowed. The committed result is returned; the TTL bounds how long the stale entry is served. The mandatory TTL is the backstop bounding how long a failed invalidation serves stale data - that is why unbounded entries are forbidden.
 - A flow requiring read-your-own-writes MUST NOT be cached unless invalidation completes before the response returns. TTL expiry is not a substitute for invalidation.

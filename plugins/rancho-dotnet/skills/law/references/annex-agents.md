@@ -89,6 +89,6 @@ Verify Microsoft Agent Framework API specifics against official Microsoft docume
 The required tests of the rules above. `../SKILL.md` §14 states what a required test is.
 
 - **Authorization**: An agent-actor principal MUST have a test proving an operation the user holds but the manifest omits is denied when permissions come from the external authority (BE-103).
-- **Agents**: every manifest MUST have a test asserting an operation outside it is rejected, a test proving the acting principal carries the agent's actor claim (BE-65), and a test proving an agent-actor principal cannot start another agent run (BE-66).
+- **Agents**: every manifest MUST have a test asserting an operation outside it is rejected (BE-123), a test proving the acting principal carries the agent's actor claim (BE-65), and a test proving an agent-actor principal cannot start another agent run (BE-66).
 - **Budgets**: every budget MUST have a test proving a run that exceeds it aborts rather than truncates (BE-72).
 - **Idempotency**: Every agent-reachable command declaring a client-supplied id MUST have a test proving that a re-invocation after a timeout carries the same id and writes once (BE-114).

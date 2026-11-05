@@ -56,13 +56,13 @@ Twelve root rules are **duplicated** by a stack-law rule. One check satisfies ea
 | ROOT-07 | Endpoints take a Request DTO and return a Response DTO, no body, or a declared stream; no domain type reachable from HTTP | §4 | server | build | — |
 | ROOT-08 | Query results projected directly to Response DTOs | §4 | server | build | — |
 | ROOT-09 | OpenAPI document generated and committed | §4 | server | build | — |
-| ROOT-11 | Every collection endpoint not bounded by construction paginated; a bounded one declares `maxItems` | §4 | server | build | — |
-| ROOT-12 | One page shape across the API | §4 | server | build | — |
+| ROOT-11 | Every collection endpoint not bounded by construction paginated; a bounded one declares `maxItems` | §4 | server | build | https://spec.openapis.org/oas/v3.1.0#schema-object |
+| ROOT-12 | One page shape across the API | §4 | server | build | https://spec.openapis.org/oas/v3.1.0#parameter-object |
 | ROOT-13 | Every state-changing endpoint declares an idempotency mechanism | §4 | server | build | — |
 | ROOT-14 | Deny by default, everywhere | §7 | both | dropped | — |
 | ROOT-15 | Acting principal explicit; no ambient HTTP context in application or domain | §7 | server | build | — |
-| ROOT-16 | Unclassified is `Restricted` | §8 | server | build | — |
+| ROOT-16 | Unclassified is `Restricted` | §8 | both | build | — |
 | ROOT-17 | Integration events MUST NOT carry `Restricted` payloads | §8 | server | build | — |
-| ROOT-18 | A field's class travels with its contract: the OpenAPI document carries the class of every request and response property and every parameter, and the client enforces it at its own boundaries | §8 | both | build | — |
-| ROOT-19 | Every unit of work carries a correlation id | §9 | server | build | — |
+| ROOT-18 | A field's class travels with its contract: the OpenAPI document carries the class of every request and response property and every parameter, and the client enforces it at its own boundaries | §8 | both | build | https://spec.openapis.org/oas/v3.1.0#specification-extensions |
+| ROOT-19 | Every unit of work carries a correlation id | §9 | server | build | https://www.w3.org/TR/trace-context/ |
 | ROOT-20 | A class declared on a domain type and on its published contract type is proven by a check to agree | §8 | server | build | — |
