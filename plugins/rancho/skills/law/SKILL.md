@@ -26,9 +26,7 @@ Silence is not permission: an uncovered decision follows §0.
 
 A rule marked `⚙` can be made to fail the build. The mark is a claim about the rule, not about any one project: these plugins ship no checks, and each project builds its own. Each project's maintainers MUST keep an `ENFORCEMENT-STATUS.md` at its repository root, listing every marked rule its trees bind, the check that enforces it, whether that check is built, and whether it has been reviewed against the rule's wording. A marked rule missing from it counts as unbuilt. When the plugins add a marked rule, the project adds it to the file at upgrade. Until a project has built and reviewed a rule's check, the rule is verified by the reviewer who approves each change in that project, and a green build says nothing about it.
 
-What a mechanism actually reaches is recorded in an enforcement inventory (§10), where a shortfall is a known gap rather than a permission.
-
-A rule no build check can reach carries no mark. Where a test can prove it, it is carried by a named required test, listed in the Testing section of the law that owns it - equally binding, differently caught. Otherwise it is reached by review, and is no less binding. The enforcement inventories map every mark and every required test to its mechanism.
+A rule no build check can reach carries no mark. Where a test can prove it, it is carried by a named required test, listed in the Testing section of the law that owns it - equally binding, differently caught. Otherwise it is reached by review, and is no less binding. The enforcement inventories map every mark and every required test to its mechanism (§10).
 
 ## 2. Stack Laws
 
@@ -37,7 +35,7 @@ This document is the **core law**: what MUST be true in every tree, whatever it 
 - Every tree that holds code MUST be bound to exactly one stack law, or to none as below. The binding is one line in the `CLAUDE.md` at the root of that tree: `Stack law: /<plugin>:law`. A repository that is a single tree binds it in its root `CLAUDE.md`.
 - A stack law governs code written with a technology its Stack section names. A tree whose code no stack law governs - such as infrastructure-as-code or CI scripts - is bound instead with `Stack law: none - <reason>`, and only this document binds it. Its `CLAUDE.md` MUST name its verification commands. A tree MUST NOT be bound to none when a stack law governs any of its code.
 - The tree a file belongs to is the nearest directory at or above it whose `CLAUDE.md` holds a `Stack law:` line.
-- Before writing, placing, or reviewing code in a tree bound to a stack law, read this document and then that stack law **in full**. This document alone is not sufficient to write compliant code in such a tree.
+- Before writing, placing, or reviewing code in a tree bound to a stack law, read this document and then that stack law **in full**.
 - A tree with no binding, a binding to a stack law that is not available in the session, or two bindings for one tree is a defect in the repository. Stop and say so. A stack law MUST NOT be chosen by guessing from file extensions or folder names.
 
 Every stack law declares one **role**:
@@ -73,7 +71,7 @@ This section governs server modules. Client boundaries are a different decomposi
 
 ### Collections
 
-- Every endpoint returning a collection whose size is not bounded by construction MUST be paginated. A collection bounded by construction - such as a lookup by a capped list of ids, or a fixed registry - MUST declare its bound as `maxItems` on its array schema, and a request that would exceed it is rejected, never truncated. An unbounded list response is a defect - with agents in the system it is also an exfiltration path and a cost incident. ⚙ ROOT-11
+- Every endpoint returning a collection whose size is not bounded by construction MUST be paginated. A collection bounded by construction - such as a lookup by a capped list of ids, or a fixed registry - MUST declare its bound as `maxItems` on its array schema, and a request that would exceed it is rejected, never truncated. ⚙ ROOT-11
 - One page shape across the whole API. A per-feature paging envelope is a defect. ⚙ ROOT-12
 - The maximum page size is enforced by the server. A request above it MUST be rejected, never silently truncated.
 
@@ -85,12 +83,12 @@ This section governs server modules. Client boundaries are a different decomposi
 
 ### Limits
 
-- Every endpoint MUST be covered by a rate limit policy. A rejection is `429` with `Retry-After`, shaped as problem details (§6).
+- Every endpoint MUST be covered by a rate limit policy. A rejection is `429`, with `Retry-After` wherever the limiter can estimate it, shaped as problem details (§6).
 - Transport limits do not bound an in-process caller. Agent runs carry their own budgets, stated by the server stack law.
 
 ### Wire contract
 
-The two trees share only what this document states (§2), so every format a client and a server must agree on is stated here.
+Every format a client and a server must agree on is stated here.
 
 - **Data class.** Every property schema and every parameter's schema in the OpenAPI document carries `x-data-class`, whose value is `public`, `internal`, `confidential` or `restricted` (§8). The extension sits on the parameter's schema, not on the Parameter Object. Every property schema the document contains carries it, framework schemas included, such as problem details and the page.
 - **Page.** Every paginated response has one shape: `items`, the page; `nextCursor`, an opaque string, or `null` on the last page; and `totalCount` only where the operation opts in. A request pages with the `pageSize` and `cursor` query parameters. Paging is keyset: the cursor is the only position a request may send.
@@ -119,17 +117,17 @@ Four translation boundaries. Each is owned by exactly one layer. No layer may sk
 
 - The pipeline's own steps - such as authorization, validation, and idempotency - return result values of their own, without reaching the handler. They are outcomes, not translations, and need no boundary.
 - Expected business outcomes MUST be return values. Exceptions MUST NOT be control flow, except where an adapter translates its framework's exceptions (below).
-- An exception escaping a handler means an invariant was breached, i.e. an upstream guard failed. It is a defect: log with full context within §8's telemetry rule, return 500. Never catch a domain exception to convert it into a 4xx - add the missing guard instead.
+- An exception escaping a handler is a defect: log with full context within §8's telemetry rule, return 500. Never catch a domain exception to convert it into a 4xx - add the missing guard instead.
 - An adapter MAY catch the exceptions its framework or SDK uses to signal an expected outcome - such as a concurrency conflict, a unique-key violation, or an unreachable or failing remote service - and MUST translate them into an outcome at that adapter. Nothing above the adapter catches them. Where the framework raises them at commit, the adapter is the unit of work, and its outcome is translated by the step that commits.
 - Error payloads MUST NOT leak exception messages, stack traces, SQL, or internal type names.
 
 ## 7. Security Baseline
 
-- Deny by default, everywhere. Authorized-by-omission is a defect, never a default. The principle is not itself checkable; the rules that implement it are, and each carries its own mark.
+- Deny by default, everywhere. Authorized-by-omission is a defect, never a default.
 - Authorization attaches to the **message** (Command/Query), not the transport. HTTP and in-process callers get identical checks.
 - Authorization has two parts, and both are required. The message's policy decides whether the principal may perform the operation at all. An object check decides whether it may perform it on the records it names: an operation that acts on a record the caller identifies MUST check that the principal may act on that record, unless its policy grants every record. A query MUST return only the records the principal may see, filtered where the records are read, never after.
 - The acting principal MUST be explicit in the dispatch context. Reading ambient HTTP context from application or domain code is forbidden. ⚙ ROOT-15
-- AI agents MUST hold a strict narrowing of the calling user's permissions - never equal, never wider. Full rules in the server stack law.
+- AI agents MUST hold a subset of the calling user's permissions - or, for an autonomous run, of the service principal declared for its manifest - never wider, and always carry the actor claim that identifies the agent. Full rules in the server stack law.
 - Secrets MUST NOT appear in source, config files, or logs.
 
 ### File uploads
@@ -151,10 +149,10 @@ Classification is a property of the **data**, not of the endpoint that happens t
 | `Confidential` | Attributable to a person or a counterparty, and disclosing something they would expect to control | Crosses a boundary only where the operation's policy grants that field. |
 | `Restricted` | Regulated by statute or contract, or sufficient on its own to impersonate, defraud, or discriminate against its subject | MUST NOT cross any egress boundary below without a named, reviewed exception declared at that boundary that names its entry in the exceptions register (§11). |
 
-The test decides the class. The following illustrate it and do not enumerate it: `Public` - a published listing, marketing copy. `Internal` - org structure, site locations, operational metrics. `Confidential` - contact details, pay, performance, hours worked. `Restricted` - government identifiers, date of birth, bank and payment details, health and medical, protected-class attributes. A field this codebase holds that no example names is still classified, by the test.
+The test decides the class. The following illustrate it and do not enumerate it: `Public` - a published listing, marketing copy. `Internal` - org structure, site locations, operational metrics. `Confidential` - contact details, pay, performance, hours worked. `Restricted` - government identifiers, date of birth, bank and payment details, health and medical, protected-class attributes.
 
 - **Unclassified is `Restricted`.** Deny by default applies to data, not only to operations. ⚙ ROOT-16
-- A class is declared on the domain value object or id that carries it, and on the module's published contract type for the same concept. A check MUST prove the two agree: two declarations of one fact drift unless something holds them together. ⚙ ROOT-20 Every other type that carries a classified value inherits its class, and MUST NOT redeclare it - not per DTO, per log call, or per endpoint. A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, a field of a shared platform type, or a value projected from a classified source - declares its class on the property. Where it is projected from a classified source, the same check proves the two agree. Mechanism in the server stack law.
+- A class is declared on the domain value object or id that carries it, and on the module's published contract type for the same concept. A check MUST prove the two agree. ⚙ ROOT-20 Every other type that carries a classified value inherits its class, and MUST NOT redeclare it - not per DTO, per log call, or per endpoint. A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, a field of a shared platform type, or a value projected from a classified source - declares its class on the property. Where it is projected from a classified source, the same check proves the two agree. A parameter of a logging method declares the class of the value it logs, and the same check proves the declaration agrees with the value's type. Mechanism in the server stack law.
 - A field's class MUST travel with its contract: the OpenAPI document carries the class of every property of every request and response, and of every parameter. The client receives each class from the contract and enforces it at its own boundaries; the mechanism is the client stack law's. ⚙ ROOT-18
 
 ### Egress boundaries
@@ -164,7 +162,7 @@ Each boundary has exactly one owner. There is no other path across it.
 | Boundary | Owner | Rule |
 |---|---|---|
 | Response DTO to an HTTP or real-time client | API endpoint / real-time hub | `Confidential` and above require the operation's policy to grant that field. An HTTP response carrying `Confidential` or `Restricted` data is sent `Cache-Control: no-store`. |
-| Anything placed in a model's context | Agent tool projection | The model vendor is an external processor. `Restricted` MUST NOT cross. |
+| Anything placed in a model's context | Agent tool projection | `Restricted` MUST NOT cross. |
 | Log, metric, trace, or error report | The telemetry pipeline: the logging behavior, and the processors and exporters every signal passes through, automatic instrumentation included | `Confidential` and above MUST NOT be written. Log the id, never the value. |
 | Cache entry | Cache decorator | `Restricted` MUST NOT be cached. `Confidential` only under a principal-scoped key. |
 | Payload to a third-party integration | Infrastructure adapter | A per-integration allowlist of fields, declared and reviewed. |
@@ -172,12 +170,12 @@ Each boundary has exactly one owner. There is no other path across it.
 
 A boundary whose own rule forbids `Restricted` outright - a model's context, a cache entry, a log line, an integration event - admits no exception.
 
-- An exception's type and stack trace MAY be recorded in telemetry. Its message MAY be recorded only where our code wrote it, and a message our code writes MUST NOT contain a classified value. A message from code we do not control - a framework, a driver, a vendor SDK - is dropped or scrubbed before it is exported: such messages routinely carry the values that caused them.
+- An exception's type and stack trace MAY be recorded in telemetry. Its message MAY be recorded only where our code wrote it, and a message our code writes MUST NOT contain a classified value. A message from code we do not control - a framework, a driver, a vendor SDK - is dropped or scrubbed before it is exported.
 
-- A model's context is egress in **both** directions: tool arguments, tool output, system and user prompts, retrieved documents, and retained conversation history. All of it leaves the boundary.
-- Egress to a model is not reversible. Once a value is sent it is disclosed; the response is notification and rotation, not deletion.
+- A model's context is egress in **both** directions: tool arguments, tool output, system and user prompts, retrieved documents, and retained conversation history.
+- Once a value is sent to a model, the response is notification and rotation, not deletion.
 - Agents reference sensitive records **by id**. The id is resolved to values by an authorized read in the user's own session, not by widening what the model may see.
-- Integration events MUST NOT carry `Restricted` payloads. They are persisted in the outbox, replayed, and read by operators - reference by id. ⚙ ROOT-17
+- Integration events MUST NOT carry `Restricted` payloads. Reference by id. ⚙ ROOT-17
 
 ## 9. Observability
 
@@ -188,8 +186,8 @@ Every request, message, job, and agent run MUST be attributable end to end.
 - The correlation id MUST cross every boundary the work crosses - module to module through the outbox, user to agent, server to client on every problem details response.
 - Logs, metrics, and traces MUST share that one identity.
 - An agent run MUST be reconstructable from telemetry alone: which user, which operations, which rows, what it cost.
-- Telemetry MUST NOT be optional per environment. Sampling rates MAY differ; emission MUST NOT.
-- What may be emitted is governed by §8. Classification applies to every log line, metric label, and trace attribute, not only to responses.
+- Telemetry MUST NOT be optional per environment. Sampling rates and log levels MAY differ; whether each signal is emitted MUST NOT.
+- What may be emitted is governed by §8.
 
 Mechanism in the server stack law.
 
@@ -201,11 +199,11 @@ Every failed authorization, every executed command, and every read of `Restricte
 
 Every stack law names its verification commands. Before a change is complete, the verification commands of every tree the change touches MUST pass: its stack law's, or for a tree bound to none, those its `CLAUDE.md` names (§2). Never report work as done on unverified code.
 
-A check MUST NOT be stricter than its rule: the check will be read as the rule, and the next reader of the rule is entitled to approve what the check refuses. Narrow the check, or ask for the rule to be widened (§11). A check narrower than its rule is a known gap, recorded where the check is listed - in the plugin's enforcement inventory for a check the law describes, in the project's `ENFORCEMENT-STATUS.md` for one the project builds; it never makes the rest of the rule optional.
+A check MUST NOT be stricter than its rule. Narrow the check, or ask for the rule to be widened (§11). A check narrower than its rule is a known gap, recorded where the check is listed - in the plugin's enforcement inventory for a check the law describes, in the project's `ENFORCEMENT-STATUS.md` for one the project builds; it never makes the rest of the rule optional.
 
 ## 11. Changing the Law, and Exceptions
 
-The law changes only in its plugins; how, and what a stack law must carry, is in `AUTHORING.md` at the plugin root. A project cannot change the law, so it records its exceptions to the law in one register:
+The law changes only in its plugins; how, and what a stack law must carry, is in `AUTHORING.md` at the plugin root. A project records its exceptions to the law in one register:
 
 - Each repository keeps one exceptions register, `LAW-EXCEPTIONS.md` at its root. An entry MUST be recorded there before the code that relies on it is merged. Every entry has a permanent id, `EXC-<n>`, never reused.
 - An agent that finds a case for an entry proposes the entry and stops (§0). A maintainer of the project adds it.

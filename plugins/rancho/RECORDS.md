@@ -139,3 +139,40 @@ From the note under the inventory's root table: "ROOT-03 is dropped by R-01 and 
 - §9 *Audit trail*: new subsection - every failed authorization, executed command and read of `Restricted` data is audited (principal, agent, operation, record ids, time, outcome), separate from telemetry, never sampled, append-only, retained as `DECISIONS.md` declares. Closes S-3, A-34.
 - Review fix: §8 egress table, Response DTO row: `Cache-Control: no-store` applies to an HTTP response.
 - Review fix: §7 *File uploads*: a file is stored under a name the server generates or derives, never one the client chose.
+
+## 3.0 stage 5
+
+- §7: AI agents hold a subset of the calling user's permissions - never wider - and always carry the actor claim that identifies the agent, replacing "a strict narrowing ... never equal". Closes C-2, NET-B-13.
+- §4 *Limits*: a rejection is `429`, with `Retry-After` wherever the limiter can estimate it. Closes NET-B-8, A-23.
+- §9: sampling rates and log levels MAY differ per environment; whether each signal is emitted MUST NOT. Closes N-10.
+- Review fix: §8, the declaring-a-class bullet: a parameter of a logging method declares the class of the value it logs, and the same check proves the declaration agrees with the value's type.
+- Review fix: §7: an autonomous agent run holds a subset of the permissions of the service principal declared for its manifest, never wider, in place of the calling user's.
+
+## Rationale moved in 3.0 stage 5
+
+Reasons, consequences and examples removed from `skills/law/SKILL.md` when the law was shortened in stage 5, verbatim, grouped by section and prefixed with the rule they came from. No rule changed; the rule text stays in the law.
+
+### §4 API Contract
+
+- **ROOT-11** (Collections): An unbounded list response is a defect - with agents in the system it is also an exfiltration path and a cost incident.
+- **Wire contract (introduction)** (Wire contract): The two trees share only what this document states (§2), so
+
+### §6 Error Contract
+
+- **An exception escaping a handler**: An exception escaping a handler means an invariant was breached, i.e. an upstream guard failed.
+
+### §7 Security Baseline
+
+- **Deny by default, everywhere**: The principle is not itself checkable; the rules that implement it are, and each carries its own mark.
+
+### §8 Data Boundaries
+
+- **ROOT-20**: two declarations of one fact drift unless something holds them together.
+- **Egress table, model's context row** (Egress boundaries): The model vendor is an external processor.
+- **An exception's type and stack trace MAY be recorded in telemetry** (Egress boundaries): such messages routinely carry the values that caused them.
+- **Egress to a model is not reversible** (Egress boundaries): Egress to a model is not reversible. Once a value is sent it is disclosed
+- **ROOT-17** (Egress boundaries): They are persisted in the outbox, replayed, and read by operators
+
+### §10 Verification
+
+- **A check MUST NOT be stricter than its rule**: the check will be read as the rule, and the next reader of the rule is entitled to approve what the check refuses.
