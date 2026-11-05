@@ -4,5 +4,5 @@ Binds a tree once the tree meets its trigger: the first real-time channel the cl
 
 ## 12. Real-time
 
-- Real-time messages - over SignalR, or any other channel the server offers - update the TanStack Query cache. Components MUST NOT subscribe to hubs directly. ⚙ FE-18 The real-time client packages to flag live in the project's lint configuration, not here.
+- Real-time messages - over SignalR, or any other channel the server offers - update the TanStack Query cache. Components MUST NOT subscribe to hubs directly. ⚙ FE-18 The real-time client packages to flag live in the project's lint configuration.
 - The UI MUST be correct if no real-time message ever arrives. Real-time is an optimization over refetch, never the only path to a state.

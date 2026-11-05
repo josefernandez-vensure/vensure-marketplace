@@ -148,3 +148,80 @@ Notes taken out of the inventory's Check cells in 3.0 stage 1, word for word exc
 
 - §4: one client-wide retry rule on the query client - never retry a `4xx` except `408` and `429`, and honour `Retry-After` - replacing TanStack Query's default of three retries for every failure. §13 gains **Retries** (FE-37), with its row; the Summary counts follow (37 rows, 6 `required-test`). Closes S-8, FE-R-11.
 - Review fix: §4: the interceptor's one replay after a silent refresh (§9), and a mutation's replay under its idempotency key, are not retries under the client-wide retry rule.
+
+## 3.0 stage 6
+
+- §2: the tree gains `app/main.tsx`, the entry module `index.html` loads; `routeTree.gen.ts` moves into `app/`, and the generator's `generatedRouteTree` becomes `./src/app/routeTree.gen.ts`, because the generated route tree imports every route file; a feature gains `lib/` and `types/`, `shared/` gains `stores/`, `api/` names key factories, and `providers.tsx` names the identity provider (§9). A feature's folders are those listed and no others. Closes R-4, A-26, R-1. A-26 is accepted with the folder set closed rather than illustrative, because FE-11 and FE-13 locate their checks by folder; `lib/` and `types/` are added, which was A-26's need. Source for the generator options: https://tanstack.com/router/latest/docs/api/file-based-routing
+- §5: a store two or more features need lives in `shared/stores/`, by §2's second-consumer rule, in place of a global store justified in the PR. FE-11's rule and check now allow `src/features/*/stores/**` and `src/shared/stores/**`. Closes R-1.
+- §4: query keys come from a key factory, one per server resource; an array literal as a key is forbidden outside one. A resource's factory lives in the reading feature's `api/` and moves to `shared/lib/` when a second feature reads or invalidates that resource; a mutation declares its invalidations through the key factory of every resource it changes. FE-09's rule and check follow, with source https://tkdodo.eu/blog/effective-react-query-keys . Closes R-2 and the FE-09 check finding: the old check required a call expression and so flagged the canonical factory's property member; the plan's "cross-feature invalidation wired in `app/`" was not needed once a resource's factory is shared on its second consumer, as any shared code is.
+- §3, §8: client-only state - a value no contract field holds - has no class from the contract and is `Restricted` until declared; before it crosses a boundary §11 names, it is declared in the client-state registry, one module in `shared/lib/` holding its class and a branding schema. A brand assertion is permitted in that module as in generated code (FE-34's rule and check), route and search params are validated through branded schemas, and FE-16's Gap now reads "client-only state not parsed through the registry". FE-23's Gap was "—" and named no client-only state, so it is unchanged. Closes R-3.
+- §9: token acquisition lives in exactly one module in `shared/lib/`, which also exports the identity provider component `app/providers.tsx` renders; nothing else imports the identity library or touches its session store. FE-24's rule follows. Closes R-4.
+- §4, §6: an edit form is the one exception to "no copy of server data": it takes the query's result as its starting values through React Hook Form's `values`, or through `defaultValues` from a component mounted only after the query resolves; a dialog holds the id, never the record. An edit form of a versioned resource sends the `etag` of the values it was last reset from, never the query's current one, and its resets do not use `keepDirtyValues`. Closes A-24, widened to React Hook Form's `values`. Sources: https://react-hook-form.com/docs/useform#values (a change of `values` resets the form, replacing what the user typed; an object with the same content does nothing) and https://tkdodo.eu/blog/react-query-and-forms .
+- §7: FE-31 is split. Its mark now reaches what its check reaches - `shared/` imports neither the UI library nor its component library, and no module re-exports a UI-library component - with the custom rule also flagging an export of a binding imported from a UI package; the wrapper and restyle clause follows the mark, is reached by review and carries no mark (FE-R-13). A feature component that composes library components to express domain meaning is not a wrapper. FE-31's Gap is "—". Closes A-25.
+- §6: FE-12 is split: the mark ends the form-library sentence, and the binding clause (`Controller`, the input's own error property) follows it, is reached by review and carries no mark. FE-12's Gap is "—".
+- FE-25: Gap "—". The shortest-lived-store sentence already follows the mark and is not FE-25's, so the Gap recorded nothing the check claims.
+- FE-07: the check is a type-aware custom rule in FE-34's family, failing an assertion whose operand's type is declared in `src/generated/`; re-declaring a response by annotation is the recorded Gap. `no-restricted-syntax` has no type information, so the old check could not see which casts were of generated types. Source: https://typescript-eslint.io/developers/custom-rules/#typed-rules
+- §10: the parser reads which problem types are user-facing from the document's `x-problem-types` (core §4 *Wire contract*), generated with the types. Closes A-27's client half.
+- §1: the lint-suppression rule is made checkable: a suppression MUST name the rules it suppresses and give a reason, marked FE-38 (`@eslint-community/eslint-plugin-eslint-comments`: `no-unlimited-disable` and `require-description`). Source: https://eslint-community.github.io/eslint-plugin-eslint-comments/rules/require-description.html
+- §13: required tests for unmarked MUSTs - **Forms** (FE-41, replacing the untitled forms bullet, and adding each field error on its field and the edit form's `etag`), **Query states** (FE-39), **Idempotency** (FE-40), **Accessibility** (FE-42, axe on every route; supports §7's rule and does not satisfy it) and **Errors** (FE-43), with their rows. Closes FE-R-13, A-37. The other unmarked MUSTs of the React law are reached by review (core §1): no copy of server data into stores; invalidations declared; the throttled UI state; stores hold no server or form state; a Zod schema per form; mirroring the server's constraints; the presentational-component and thin-route rules; route-structure authorization; the grant declared in one place; sign-out clearing every store; no secrets in the bundle; scrubbing configuration beyond FE-17.
+- Inventory Summary: 32 marks; 43 rows, 31 `build`, 11 `required-test`, 1 `dropped`, 0 `retired`.
+- Part B: the law's wording is tightened with no rule changed (React `SKILL.md` 3,961 to 3,605 words; the annex 126 to 124). The review fixes, which restored four sentences, brought it to 3,830. Rationale removed is below, verbatim.
+- Review fix: §11: "The application MUST NOT write to that store." is restored after the identity library's session-store exception; FE-23's check already flags such a write.
+- Review fix: §4: "The TanStack Query cache is memory-only: it is never persisted, and dies with the tab." is restored as a rule, after FE-08's mark; its FE-23 rationale entry is removed from the moved rationale.
+- Review fix: §4: "Nor may pages be looped any other way to reassemble a complete client-side collection." is restored after FE-21's mark.
+- Review fix: §10: the FE-15 sentence again ends "nothing else does".
+- Review fix: §1: generated files - `src/generated/` and `src/app/routeTree.gen.ts` - are outside the suppression rules; FE-01's and FE-38's checks put them in the lint configuration's `ignores`.
+- Review fix: §6, §13: an edit form carries the `etag` as one of its form values, so every reset updates it with its values; its resets use neither `keepValues` nor `keepDirtyValues`; a form fed through `values` is not reset by a background refetch while dirty; after its own write it resets to the written values and the returned `etag`. FE-41's rule and the **Forms** test follow, adding that a second save is not refused with `412`.
+- Review fix: FE-09: the check covers an array literal passed as a key positionally to a `QueryClient` method, such as `getQueryData` or `setQueryData`, as well as a `queryKey` property; a spread array is no longer accepted. Gap: one factory per server resource is reached by review.
+- Review fix: FE-11: the check restricts `create` and `createStore` from `zustand` and `zustand/vanilla` by `importNames`, so using a store elsewhere is not restricted. The inventory's *How to read this* records that a later ESLint flat-config block replaces a rule's options, so each path-scoped block repeats every restriction for its paths.
+- Review fix: FE-07: the check fails an assertion whose operand's type is the return type of a generated client function, or derived from one; `as const` is exempt.
+- Review fix: §3, §2: each client-state registry schema accepts only a closed set of values and the registry exports nothing else that brands (FE-34 Gap: reached by review); the identity module, the problem-details parser and the client-state registry are placed in `shared/lib/` from the start, as the exception to the second-consumer rule.
+- Review fix: FE-38: `require-description` sets `ignore` to `eslint-enable`, `eslint-env`, `exported`, `global` and `globals`.
+- Review fix: §13 **Query states**: where a route's loader and a suspense query move those states to the route, the route's pending and error components carry the tests.
+- Review fix: FE-31: Gap names an export that aliases a UI-library component through a local binding.
+
+## Rationale moved in 3.0 stage 6
+
+Reasons and consequences removed from `skills/law/SKILL.md` and its annex when the law was tightened in stage 6, verbatim, grouped by section and prefixed with the rule they came from. No rule changed; the rule text stays in the law.
+
+### §2 Structure
+
+- **Cross-feature composition happens in `app/routes/`**: Without a layer permitted to know about two features, "a feature MUST NOT import from another feature" has no legal answer for the screens this domain is made of, and the rule gets suppressed instead of followed.
+- **FE-28**: The check reads `src/features/` and the registry and nothing else - it does not reach into the server tree.
+- **The two trees share vocabulary, not shape**: A server module is a consistency boundary; a feature is a user capability.
+
+### §3 API Types
+
+- **FE-07**: Contract drift must be a compile error, not a runtime surprise.
+- **FE-34**: it is a brand the application asserts for itself.
+
+### §4 Server State
+
+- **Server data MUST NOT be copied into Zustand or component state**: a second copy is a second source of truth.
+- **FE-09**: it makes invalidation unauditable.
+- **Idempotency key**: regenerating it per attempt defeats the mechanism completely.
+- **FE-37 (client-wide retry rule)**: TanStack Query's default retries every failure three times
+
+### §6 Forms and Validation
+
+- **Server errors MUST still be handled and displayed**: a `ProblemDetails` 400 is an expected outcome, not an edge case.
+
+### §7 Components
+
+- **FE-14 (`style` prop)**: that is what the prop is for.
+
+### §9 Authentication
+
+- **FE-27**: so applications sharing one session do not race to refresh it
+- **FE-27 (`403`)**: the token is fine, the permission is not.
+- **FE-29**: An application in a host shell does not own the provider session
+- **FE-29**: Ending the provider session also signs the user out of other applications that share it; on a shared workstation, that is the intended effect.
+- **The frontend holds no secrets**: Everything in the bundle is public
+
+### §11 Data Boundaries
+
+- **FE-17**: Breadcrumbs, form-field capture, and unredacted request bodies are the usual leak
+
+### §13 Testing
+
+- **FE-19**: it mocks past the contract.

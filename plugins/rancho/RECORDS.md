@@ -176,3 +176,7 @@ Reasons, consequences and examples removed from `skills/law/SKILL.md` when the l
 ### §10 Verification
 
 - **A check MUST NOT be stricter than its rule**: the check will be read as the rule, and the next reader of the rule is entitled to approve what the check refuses.
+
+## 3.0 stage 6
+
+- §11: a conflict entry carries the rule id - or, for a rule with none, its section and the sentence it departs from. An unmarked rule has no id, and a conflict entry against one had no form. Found while closing the React law's unmarked MUSTs in stage 6.
