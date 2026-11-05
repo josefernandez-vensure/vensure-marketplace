@@ -95,6 +95,8 @@ A test project MUST NOT be referenced by a project of any other kind. A fixture 
 
 The table is an allowlist over **direct** `ProjectReference` entries, not over the transitive closure. A project MAY declare a reference it could also reach transitively; it MUST NOT declare one its row omits. ⚙ BE-01
 
+An analyzer - a package or project reference that contributes analyzers only, and no assembly the project compiles against or runs with - is admitted in every project and is outside the table. A package reference qualifies with `IncludeAssets="analyzers"` and `PrivateAssets="all"`; a project reference with `OutputItemType="Analyzer"` and `ReferenceOutputAssembly="false"`.
+
 The Domain project MUST NOT reference EF Core, Mediator, ASP.NET, `IHttpContextAccessor`, or any application type. ⚙ BE-02
 
 `Platform.*` carries the dispatch pipeline - `Result`, the message abstractions, the solution-wide page shape and cursor type, and the behaviors.
@@ -113,7 +115,7 @@ A module is a Bounded Context. Its projects exist **at most once per module**, n
 |---|---|---|
 | `Domain` | Aggregate | `<Aggregate>/` - root, its entities, value objects, outcomes, domain events, specifications, repository port |
 | `Application` | Feature (use case) | `<Feature>/` - command or query, handler, validator, response DTO, operation declaration |
-| `Infrastructure` | Technical concern | `Persistence/`, `Messaging/`, `External/` |
+| `Infrastructure` | Technical concern | `Persistence/`, `Queries/`, `Messaging/`, `External/` |
 | `Contracts` | Published surface | `IntegrationEvents/`, `Queries/`, and the module's wire ids (§3) |
 | `Platform.Application` | Technical concern | `Abstractions/`, `Behaviors/` |
 | `Platform.Infrastructure` | Technical concern | `Persistence/` - including the audit trail and the cursor codec - and `Messaging/` |
@@ -157,7 +159,7 @@ public <Outcome> <Operation>(<Args> args, DateTimeOffset now)
 - Value Objects MUST be immutable, MUST validate in their constructor, and MUST have structural equality.
 - A Value Object MUST be impossible to construct in an invalid state.
 - Every identifier MUST be a strongly-typed id, one type per concept, so passing the wrong id does not compile.
-- No public member of `Domain`, or of a command or query message, exposes a bare `Guid`, except a strongly-typed id's own constructor and value member. ⚙ BE-08 `int` stays permitted for counts and quantities.
+- No public member of `Domain`, or of a command or query message, exposes a bare `Guid`, except a strongly-typed id's own constructor, its value member, and its compiler-generated members, such as a positional record's `Deconstruct`. ⚙ BE-08 `int` stays permitted for counts and quantities.
 - A command or query message, and a Response DTO, MUST NOT reference a `Domain` type. ⚙ BE-109 An id they carry is the module's published id type from `Contracts`, which is the one wire id for that concept; the handler converts it, and any other wire value, into domain values. A module with an endpoint therefore has a `Contracts` project.
 
 ### Entities and Domain Events
@@ -280,7 +282,7 @@ An implementation that is pure logic MUST live in `Application`, except a concre
 
 Application logic in `Infrastructure` is invisible to the build and MUST be caught in review.
 
-- Every Infrastructure type MUST be an adapter: it implements a port declared in `Domain` or `Application`, or a framework extension point such as `IEntityTypeConfiguration<T>`, `IHostedService` or `DbContext`, or it is a registration entry point (§2), or it is a type the project maps or binds - an entity or read type in its model, such as the outbox row or the idempotency record, or an options class (§11). A free-standing Infrastructure service belonging to none of these is a defect. Infrastructure types are `internal`, except the registration entry points, any type the dispatcher's generated code in `Api` must name, and the types those expose in a public constructor or member - such as the module's `DbContext`, which a query handler's constructor takes, and the read types the `DbContext` exposes. The source-generated dispatcher names each concrete handler in its generated registration, so every concrete query handler is public. `InternalsVisibleTo` names test assemblies only. ⚙ BE-34, BE-107
+- Every Infrastructure type MUST be an adapter: it implements a port declared in `Domain` or `Application`, or a framework extension point such as `IEntityTypeConfiguration<T>`, `IHostedService` or `DbContext`, or it is a registration entry point (§2), or it is a type the project maps or binds - an entity or read type in its model, such as the outbox row or the idempotency record, or an options class (§11). A free-standing Infrastructure service belonging to none of these is a defect. Infrastructure types are `internal`, except the registration entry points, any type the dispatcher's generated code in `Api` must name, and the types those expose in a public constructor or member - such as the module's `DbContext`, which a query handler's constructor takes, and the read types the `DbContext` exposes. The source-generated dispatcher names each concrete handler in its generated registration, so every concrete query handler is public. `InternalsVisibleTo` names only test assemblies and the proxy assembly of the test project's mocking library, such as `DynamicProxyGenAssembly2`. ⚙ BE-34, BE-107
 - Infrastructure types MUST live under `Persistence/`, `Queries/`, `Messaging/`, or `External/`, except the registration entry point, which sits at the project root. A new top-level folder there is added to the check's allowed set, with its justification in the PR. ⚙ BE-35
 - `Infrastructure/Queries/<Feature>/` MUST mirror the feature folder name used in `Application`. ⚙ BE-36
 
@@ -321,7 +323,7 @@ Application logic in `Infrastructure` is invisible to the build and MUST be caug
 - Strongly-typed ids MUST be mapped with value converters.
 - Private collections MUST be mapped to their backing field.
 - Navigation properties between aggregate roots are forbidden. One aggregate references another by id only. ⚙ BE-42
-- Domain types MUST NOT acquire public parameterless constructors, public setters, or EF attributes to satisfy the ORM. Use EF's private-constructor and backing-field support. ⚙ BE-43 If a mapping cannot be expressed without changing the domain type, the mapping is wrong, not the domain type.
+- A Domain type the EF model maps MUST NOT have a public parameterless constructor, a public setter, or an EF attribute; use EF's private-constructor and backing-field support. ⚙ BE-43 If a mapping cannot be expressed without changing the domain type, the mapping is wrong, not the domain type.
 
 ### Redis
 
@@ -389,7 +391,7 @@ public sealed record NationalId
 
 ### Logging
 
-- Logging is structured, through source-generated `LoggerMessage` methods. A message template MUST be a constant and MUST NOT interpolate a value. ⚙ BE-57
+- Logging is structured, through source-generated `LoggerMessage` methods. A message template MUST be a constant and MUST NOT interpolate a value, and a log scope is begun with a state object (`ILogger.BeginScope<TState>`), never a template. ⚙ BE-57
 - Redaction is Microsoft's: `EnableRedaction()` on the logging builder, and the erasing redactor for `Confidential` and `Restricted`. Every parameter of a logging method carries its class attribute; the redactor applies only to classified parameters, so an unattributed one would be written in clear.
 - `PersonId` is loggable; `NationalId` is not (core §8).
 - Exception messages, `ProblemDetails`, and validation errors MUST NOT echo a classified value.
@@ -446,7 +448,7 @@ The agent rule of this subsection is in `references/annex-agents.md`, under its 
 
 ### Logging
 
-- Code logs through `ILogger` and source-generated `LoggerMessage` methods; Serilog is the provider that writes the output, registered on the logging builder (`builder.Logging.AddSerilog()`); replacing `ILoggerFactory` - as `UseSerilog()` does - is forbidden, because redaction runs in the logger factory `EnableRedaction()` configures. The logging behavior (§4) is the only place a message's dispatch is logged. A handler MUST NOT reference `ILogger`. ⚙ BE-93
+- Code logs through `ILogger` and source-generated `LoggerMessage` methods; Serilog is the provider that writes the output, registered on the logging builder (`builder.Logging.AddSerilog(logger, dispose: true)`, with the logger built from a `LoggerConfiguration` and never assigned to the static `Log.Logger`); replacing `ILoggerFactory` - as `UseSerilog()` does - is forbidden, because redaction runs in the logger factory `EnableRedaction()` configures. The logging behavior (§4) is the only place a message's dispatch is logged. A handler MUST NOT reference `ILogger`. ⚙ BE-93
 - Levels have fixed meanings. `Error` is a defect that needs someone. `Warning` is degraded but handled. `Information` is a business-meaningful event. `Debug` is developer detail and MUST NOT be enabled in production.
 - An expected business rejection MUST NOT be logged at `Error`. A `Result` failure is an outcome, not a fault.
 - Module, message type, principal id, and correlation id are supplied by the enricher. A call site MUST NOT restate them.
@@ -500,27 +502,29 @@ The agent rule of this subsection is in `references/annex-agents.md`, under its 
 
 A missing required test is a defect exactly as a violated rule is (core §1). The required tests of a rule in an annex are in that annex's own Testing section.
 
-- **Domain**: pure unit tests, no substitutes, no I/O. Every invariant and every domain outcome MUST have a test.
-- **Application**: handler tests with substituted infrastructure. Every declared policy MUST have a test proving *denial*, not only one proving success.
+- **Domain**: pure unit tests, no substitutes, no I/O. Every invariant and every domain outcome MUST have a test (BE-138).
+- **Application**: handler tests with substituted infrastructure. Every declared policy that some principal does not satisfy MUST have a test proving such a principal is denied, not only one proving success (BE-122).
 - **Integration**: real SQL Server via Testcontainers, real pipeline behaviors.
 - **Queries**: every query handler that reads with SQL MUST have a test against real SQL Server proving its SQL projects into its Response DTO and applies the module's query filters (BE-112).
 - **Transactions**: a command that runs without a transaction MUST have a test proving that a staged database change fails the dispatch and is never committed (BE-111).
 - **Architecture**: ArchUnitNET tests are first-class and MUST NOT be skipped or marked inconclusive to unblock a change.
 - **Authorization**: every external authority MUST have a test proving that an unreachable, a timing-out, and an erroring authority each deny, and that an expired cache entry is not served while the authority is unreachable (BE-99). Every token validation that reads a claim before the signature is checked MUST have a test proving that a token whose selecting claims disagree with its validated issuer or endpoint is refused, and that no claim read before validation reaches the principal (BE-104). Every policy MUST have a test proving an in-process dispatch with no HTTP context receives the same decision as the HTTP path (BE-101). Every operation that acts on a record the caller identifies, unless its policy grants every record, MUST have a test proving a principal that holds the policy but not the record is denied, and every query a test proving it returns no record the principal may not see. (BE-117)
 - **Audit**: every persisting command MUST have a test proving its success record commits with its change and its failure record is written after rollback; every command that does not persist, a test proving its record is written; and the authorization behavior and the resource-authorization port, a test proving a denial is recorded. (BE-118)
-- **Pagination**: every paginated query MUST have a test proving a request above its maximum is rejected, and a test proving no row is skipped or repeated across a page boundary.
-- **Idempotency**: every command declaring a key MUST have a test proving a replayed key returns the recorded result without executing twice, and a test proving two concurrent attempts under one key resolve as one execution and one replay rather than an error (BE-29), and a test proving the same key with a different payload is refused with `422` (BE-116).
+- **Pagination**: every paginated query MUST have a test proving a request above its maximum is rejected, and a test proving no row is skipped or repeated across a page boundary; every collection bounded by construction whose size a request determines MUST have a test proving a request beyond its bound is rejected, never truncated (BE-124).
+- **Idempotency**: every command declaring a key MUST have a test proving a replayed key returns the recorded result without executing twice (BE-125), and a test proving two concurrent attempts under one key resolve as one execution and one replay rather than an error (BE-29), and a test proving the same key with a different payload is refused with `422` (BE-116), and a test proving a request that carries no key is refused with `400` (BE-137).
 - **Concurrency**: every versioned write MUST have a test proving a write without `If-Match` is refused with `428`, and one with a stale version with `412`, that `If-Match: *` is refused with `428`, and that a create with `If-None-Match: *` for an existing id is refused with `412`. (BE-115)
 - **Uploads**: every upload endpoint MUST have a test proving a file whose content does not match its declared type is refused, a file above the maximum size is refused, and a stored file is not served before its scan passes. (BE-120)
+- **Rate limits**: every rate-limit policy, and the `GlobalLimiter`, MUST have a test proving a request beyond its limit is refused with `429` as problem details, carrying `Retry-After` where its limiter can estimate when permits return (BE-127).
 - **Correlation**: the outbox MUST have a test proving the trace context survives the round trip - written with the transaction, restored on delivery, present on the consumer's log line (BE-92).
+- **Observability**: the dispatch pipeline MUST have a test proving that every behavior registered in it, and the handler, emits a span, nested in pipeline order, so that authorization, validation and handler time are separable (BE-128).
 - **Migrations**: every migration MUST be applied to a Testcontainers database in CI and proven to run clean twice. A destructive migration MUST additionally have a test proving the previous application version still serves against the new schema (BE-89).
-- **Classification**: every `Confidential` and `Restricted` type MUST have a test proving it redacts in `ToString()` and in a serialized log event, and that a classified logging-method parameter is redacted in the provider's output.
+- **Classification**: every `Confidential` and `Restricted` type MUST have a test proving it redacts in `ToString()` and in a serialized log event, and that a classified logging-method parameter is redacted in the provider's output (BE-126).
 - Test names state the rule: `<Operation>_Returns<Rejection>_When<Condition>`.
 - Tests MUST NOT assert on implementation details - no verifying private calls, no asserting on generated SQL.
 
 ## 15. Forbidden
 
-`dynamic` · service location outside the composition root, except that a hosted service MAY create a scope through `IServiceScopeFactory` and resolve its per-iteration dependencies from it · static mutable state · reading the system clock in domain or application code - `DateTime.Now`, `DateTimeOffset.UtcNow`, `DateTime.Today`, or any other ambient read (inject `TimeProvider` into the handler, and pass the time to the aggregate as an argument) · `async void` outside event handlers · `.Result`, `.Wait()`, `.GetAwaiter().GetResult()` · catching `Exception` without rethrowing, except at a declared fault-isolation boundary - one iteration of a hosted-service loop, one outbox delivery, or any other unit whose failure must not stop the host - which is declared by a marker on the method, MUST log at `Error` with the exception, within core §8's telemetry rule, and MUST let `OperationCanceledException` propagate on shutdown · `#region` · commented-out code
+`dynamic` ⚙ BE-129 · service location outside the composition root, except that a hosted service MAY create a scope through `IServiceScopeFactory` and resolve its per-iteration dependencies from it ⚙ BE-130 · static mutable state ⚙ BE-131 · reading the system clock in domain or application code - `DateTime.Now`, `DateTimeOffset.UtcNow`, `DateTime.Today`, or any other ambient read (inject `TimeProvider` into the handler, and pass the time to the aggregate as an argument) ⚙ BE-132 · `async void` outside event handlers ⚙ BE-133 · `.Result`, `.Wait()`, `.GetAwaiter().GetResult()` ⚙ BE-134 · catching `Exception` without rethrowing, except at a declared fault-isolation boundary - one iteration of a hosted-service loop, one outbox delivery, a post-commit effect (§4), or any other unit whose failure must not stop the host - which is declared by a marker on the method, an attribute the solution declares once in `SharedKernel`, MUST log at `Error` with the exception, within core §8's telemetry rule, and MUST let `OperationCanceledException` propagate on shutdown ⚙ BE-135 · `#region` ⚙ BE-136 · commented-out code
 
 ## 16. Verification
 

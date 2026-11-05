@@ -180,3 +180,14 @@ Reasons, consequences and examples removed from `skills/law/SKILL.md` when the l
 ## 3.0 stage 6
 
 - §11: a conflict entry carries the rule id - or, for a rule with none, its section and the sentence it departs from. An unmarked rule has no id, and a conflict entry against one had no form. Found while closing the React law's unmarked MUSTs in stage 6.
+
+## 3.0 stage 7
+
+The core rows were re-derived against the stack rows that carry them (react-core findings).
+
+- ROOT-16 binds `both`: core §8's "unclassified is `Restricted`" applies to all data, and the React law already invokes it for client-only state (React §3). The React inventory now carries it, covered by FE-22 and FE-34 with the client-state registry.
+- Source recorded: ROOT-11 and ROOT-12 (the OpenAPI Schema and Parameter objects), ROOT-18 (OpenAPI specification extensions, which `x-data-class` is), ROOT-19 (W3C Trace Context, whose trace id is the correlation id).
+- Rows found realistic, no change: ROOT-01, ROOT-03, ROOT-13, ROOT-14, ROOT-18, ROOT-20.
+- Check or Gap findings on the server's carried rows, which live in the .NET inventory and are the .NET law's to apply and record: ROOT-02, ROOT-04, ROOT-07, ROOT-08, ROOT-09, ROOT-11, ROOT-12, ROOT-15, ROOT-17, ROOT-19.
+- Owner's decision 2026-11-05: the signed-in browser is inside the authenticated boundary, with safeguards the client stack law states.
+- Review fix: §8, after "The test decides the class": the authenticated boundary is defined - the organization's systems and an authenticated user's signed-in session, including the URLs and storage of the browser it runs in; the client stack law states what keeps that browser inside it. The React law's §11 claim that the browser's URLs and storage are inside the boundary now rests on core §8.
