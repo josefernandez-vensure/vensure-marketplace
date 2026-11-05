@@ -1,6 +1,6 @@
 # Authoring the law
 
-What a law maintainer needs and a coding agent does not: how a rule is written, what every stack law carries, how the inventories are kept, and how the law changes. It binds as the core law does; it was moved, word for word, out of `skills/law/SKILL.md` in 3.0 stage 1, under the core law's section numbers. The last sentence of §1 below, and the paragraph of §2 on what a stack law may add, are also stated in the core law, which a coding agent reads. In it, "this document" and "here" mean the core law, "this skill" is `skills/law/`, and §N is §N of the core law.
+What a law maintainer needs and a coding agent does not: how a rule is written, what every stack law carries, how the inventories are kept, and how the law changes. It binds as the core law does; it was moved, word for word, out of `skills/law/SKILL.md` in 3.0 stage 1, under the core law's section numbers. The paragraph of §2 below on what a stack law may add is also stated in the core law, which a coding agent reads, and the last sentence of §1 is stated there in other words, in core §10. In this file, "this document" and "here" mean the core law, "this skill" is `skills/law/`, and §N is §N of the core law.
 
 ## §1 Rule Language
 
@@ -14,7 +14,7 @@ Every stack law MUST carry:
 - **Stack**: the technologies it governs.
 - **Testing**: the required tests that carry those of its unmarked rules a test can prove (§1).
 - **Verification**: the commands that MUST pass before a change in its tree is complete (§10).
-- An enforcement inventory, `references/enforcement.md` in its own skill, listing every `⚙` it carries and every core rule its role binds.
+- An enforcement inventory, `references/enforcement.md` in its own skill, listing every `⚙` it carries and every `build` core rule its role binds.
 
 A stack law MAY add rules. It MUST NOT weaken one stated here. A stack law that contradicts this document is the defect, exactly as code that contradicts it is.
 

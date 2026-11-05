@@ -10,7 +10,7 @@ The records of how the law came to read as it does - rewordings, amendments, pre
 
 This legend is shared: every inventory, core and stack, is read by it.
 
-**Ids are permanent.** `BE-31` stays `BE-31` when sections renumber. The Section column is maintained; the id never changes. An id is never deleted and never reused, in any law: a rule that leaves keeps its row, with the status that says why. Tests reference the id in their name: `BE_31_QueryHandlers_DoNotReferenceAggregates`.
+**Ids are permanent.** `BE-108` stays `BE-108` when sections renumber. The Section column is maintained; the id never changes. An id is never deleted and never reused, in any law: a rule that leaves keeps its row, with the status that says why. Tests reference the id in their name: `BE_108_QueryHandlers_DoNotReferenceDomain`.
 
 **Each law has its own prefix.** `ROOT` is the core law's. A stack law declares its own prefix at the top of its inventory - `BE` is `rancho-dotnet`'s, `FE` is `rancho-react`'s - and a new stack law takes a new one.
 
@@ -35,15 +35,15 @@ This legend is shared: every inventory, core and stack, is read by it.
 | `build` | Enforceable as worded. A violation can be made to fail the build, and the law marks the rule ⚙ with this id. |
 | `required-test` | No build check can reach it. The rule carries no ⚙; the obligation is named, with this id, in its law's Testing section, which is where it is caught. |
 | `dropped` | The ⚙ was removed. The rule still stands - it is enforced by review, not by the build. |
-| `retired` | Merged into another row: the rule's sentence was a duplicate of one that survives, and the Check cell names it (`Merged into X`). The id is kept and never reused. |
+| `retired` | Merged into another row: the rule's sentence was a duplicate of one that survives, and the Check cell names it (`Merged into X`). A core row, which has no Check cell, names it in its Rule cell. The id is kept and never reused. |
 
 ## Summary
 
-The core law carries **15 ⚙ marks**, one on each `build` row below. Its inventory has **17 rows**: 15 `build`, 0 `required-test`, 2 `dropped`, and 0 `retired`. The two `dropped` rows record core rules whose mark was dropped and which review enforces.
+The core law carries **15 ⚙ marks**, one on each `build` row below. Its inventory has **20 rows**: 15 `build`, 0 `required-test`, 2 `dropped`, and 3 `retired`. The two `dropped` rows record core rules whose mark was dropped and which review enforces. The three `retired` rows record rules that left the core law under A-02 (`RECORDS.md` at the plugin root), each merged into the `rancho-react` row that states it.
 
 **Every one of the 15 marked rules can be made to fail the build** in each stack law that carries it. Totals for each stack law are in that stack law's inventory.
 
-Twelve root rules are **duplicated** by a stack-law rule. One check satisfies each pair; the stack law's inventory names the canonical id.
+Eleven root rules are **duplicated** by a stack-law rule: a stack law's inventory names the canonical id in the root rule's row (`Canonical: X`). One check satisfies each pair. A root row whose check is only reached by another (`Covered by X`) is not counted.
 
 ## Root - `../SKILL.md`
 
@@ -53,12 +53,15 @@ Twelve root rules are **duplicated** by a stack-law rule. One check satisfies ea
 | ROOT-02 | Domain events MUST NOT cross a module boundary | §3 | server | build | — |
 | ROOT-03 | "An event with both audiences is two events" | §3 | server | dropped | — |
 | ROOT-04 | One schema per module; no cross-schema joins, no cross-module FKs | §3 | server | build | — |
+| ROOT-05 | Frontend folders mirror backend modules; left the core law under A-02. Merged into FE-28 (`rancho-react`): every feature is declared in the feature registry | §3 | client | retired | — |
+| ROOT-06 | A frontend feature does not import another; left the core law under A-02. Merged into FE-03 (`rancho-react`) | §3 | client | retired | — |
 | ROOT-07 | Endpoints take a Request DTO and return a Response DTO, no body, or a declared stream; no domain type reachable from HTTP | §4 | server | build | — |
 | ROOT-08 | Query results projected directly to Response DTOs | §4 | server | build | — |
 | ROOT-09 | OpenAPI document generated and committed | §4 | server | build | — |
+| ROOT-10 | A generated client response is not cast; left the core law under A-02. Merged into FE-07 (`rancho-react`) | §4 | client | retired | — |
 | ROOT-11 | Every collection endpoint not bounded by construction paginated; a bounded one declares `maxItems` | §4 | server | build | https://spec.openapis.org/oas/v3.1.0#schema-object |
 | ROOT-12 | One page shape across the API | §4 | server | build | https://spec.openapis.org/oas/v3.1.0#parameter-object |
-| ROOT-13 | Every state-changing endpoint declares an idempotency mechanism | §4 | server | build | — |
+| ROOT-13 | Every state-changing endpoint declares an idempotency mechanism | §4 | server | build | https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/ |
 | ROOT-14 | Deny by default, everywhere | §7 | both | dropped | — |
 | ROOT-15 | Acting principal explicit; no ambient HTTP context in application or domain | §7 | server | build | — |
 | ROOT-16 | Unclassified is `Restricted` | §8 | both | build | — |

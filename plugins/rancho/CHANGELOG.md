@@ -1,5 +1,96 @@
 # Changelog
 
+## 3.0.0
+
+- **Breaking for every project.** Released together with `rancho-dotnet`
+  2.0.0 and `rancho-react` 2.0.0; upgrade the three at once. The rationale
+  and history of each change are in this plugin's `RECORDS.md`, in its 3.0
+  stage sections (stage 0 to stage 8).
+- **What changed:**
+  - How the law reads (§0, §1). Precedent needs a second occurrence. When
+    two rules, or a rule and a decision in `DECISIONS.md`, leave no
+    compliant answer, the agent stops and asks. A comment arguing that a
+    rule does not apply is a defect, never an exemption. Every `⚙` names
+    its row (`⚙ BE-34`) and claims only that the rule can be made to fail
+    the build: the plugins ship no checks, and until a project has built
+    and reviewed a rule's check, the approving reviewer verifies the rule.
+  - §1: each project keeps `ENFORCEMENT-STATUS.md` at its root, listing
+    every marked rule its trees bind, its check, and whether that check is
+    built and reviewed. A marked rule missing from it counts as unbuilt.
+  - §11: one exceptions register per repository, `LAW-EXCEPTIONS.md`, with
+    permanent `EXC-<n>` ids. A conflict entry carries the rule id (or the
+    section and sentence), the paths, the justification, an upstream
+    amendment request and an expiry; a boundary entry carries a review
+    date. An agent proposes an entry, a maintainer adds it, and a
+    suppression of a check names the entry's id. No other exemption is
+    valid.
+  - §2: a tree no stack law governs is bound with
+    `Stack law: none - <reason>` and names its own verification commands.
+    A file's tree is the nearest `CLAUDE.md` holding a `Stack law:` line.
+    Agents, caching and real-time rules move to annexes of each stack law,
+    which bind a tree once it meets the annex's trigger; the reading order
+    names each triggered annex.
+  - §10: a check MUST NOT be stricter than its rule; a narrower check is a
+    known gap, recorded in the inventory or in `ENFORCEMENT-STATUS.md`.
+  - §4 *Wire contract*, new: `x-data-class` on every property and parameter
+    schema (ROOT-18); one keyset page shape, whose cursor the server
+    encrypts and authenticates and whose class is `internal`; problem
+    details with a declared `type` URI, `x-problem-types`, `errors` keyed
+    by request paths, and `traceId`; concurrency by the version as a strong
+    `ETag`, `etag` in the body, `If-Match` required on an existing resource
+    (`428` without it, `412` when stale), `If-None-Match: *` on a create
+    naming its id, `Cache-Control: private` for a principal-dependent
+    response; `traceparent` and `tracestate`; a CORS policy admitting the
+    contract's headers.
+  - §4: ROOT-07 admits a Response DTO, no body, or a declared stream;
+    framework endpoints are a declared list in the server stack law.
+    ROOT-11 paginates only a collection not bounded by construction; a
+    bounded one declares `maxItems` and rejects a request beyond it.
+    ROOT-13: a missing key is `400`, the same key with a different payload
+    `422`, a duplicate in progress a replay or `409`, never `500`, and a
+    replay is answered before any precondition. A rate-limit rejection is
+    `429`, with `Retry-After` where it can be estimated.
+  - §7: an object check on the records an operation names, beside the
+    message's policy; a query returns only records the principal may see.
+    New *File uploads* subsection. An agent holds a subset of the calling
+    user's permissions, never wider, and carries the actor claim; an
+    autonomous run, those of a service principal declared for its manifest.
+  - §8: an HTTP response carrying `Confidential` or `Restricted` data is
+    sent `Cache-Control: no-store`. The telemetry pipeline owns the
+    telemetry boundary; an exception's type and stack trace may be
+    recorded, its message only where our code wrote it. The authenticated
+    boundary is defined and includes the signed-in browser's URLs and
+    storage. ROOT-16 binds both roles.
+  - §9: the correlation id is the W3C trace id (ROOT-19). A server adopts a
+    caller's `traceparent` only through an edge inside its trust boundary,
+    and otherwise starts a new trace linked to it; `traceId` reaches the
+    caller on problem details. Metrics join traces through exemplars. New
+    *Audit trail* subsection. Sampling and log levels may differ per
+    environment; whether a signal is emitted may not.
+  - Inventory: 20 rows; ROOT-05, ROOT-06 and ROOT-10 have rows, `retired`.
+- **What each project does to upgrade:**
+  1. Install `rancho` 3.0.0, `rancho-dotnet` 2.0.0 and `rancho-react` 2.0.0
+     together, then work through each stack law's upgrade list.
+  2. Create `ENFORCEMENT-STATUS.md` at the repository root (§1), listing
+     every `⚙` row of each bound stack inventory, its check, and whether
+     the check is built and reviewed.
+  3. Create `LAW-EXCEPTIONS.md` at the repository root (§11). Record each
+     existing exemption - a justifying comment, a PR-declared exception, a
+     `Restricted` field an egress boundary admits - as an `EXC-<n>` entry
+     with its required fields; point every suppression of a law check at
+     its id; delete comments that argue a rule does not apply (§0).
+  4. Bind every tree no stack law governs, such as infrastructure-as-code or
+     CI scripts, with `Stack law: none - <reason>` and its verification
+     commands in its `CLAUDE.md` (§2).
+  5. Narrow every check the project has built that is stricter than its
+     rule, and record a narrower one's gap in `ENFORCEMENT-STATUS.md` (§10).
+  6. Declare the audit trail's retention in `DECISIONS.md` (§9 *Audit
+     trail*).
+  7. Decide which edge admits callers inside the trust boundary, since only
+     a request through it adopts the caller's `traceparent` (§9).
+  8. Only where agents run autonomously: declare the service principal for
+     each such manifest (§7).
+
 ## 2.1.0
 
 - Amendment A-08, from a consuming project's compliance audit of 2026-10-30

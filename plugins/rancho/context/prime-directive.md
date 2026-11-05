@@ -22,7 +22,8 @@ This repository is governed by an engineering law. It is not advisory.
 **Before writing, placing, or reviewing any code in this repository, read the
 full core law via the `/rancho:law` skill** - and then, in full, the stack law
 bound to the tree you are working in. The nearest `CLAUDE.md` at or above the
-files names it, as `Stack law: /<plugin>:law`. A tree bound as
+files that holds a `Stack law:` line names it, as `Stack law: /<plugin>:law`
+(core §2). A tree bound as
 `Stack law: none - <reason>` is not a defect: only the core law binds it, so
 read only the core law there. Otherwise, read each annex of that
 stack law whose trigger the tree already meets, or the work would meet:

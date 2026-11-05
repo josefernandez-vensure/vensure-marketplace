@@ -18,7 +18,7 @@ This annex is part of the .NET stack law, `../SKILL.md`, and uses its section nu
 Caching is a **decorator over `IQueryHandler<TQuery, TResponse>`**, never a branch inside a handler. One generic decorator serves every cached query: check Redis, fall through to the database handler on a miss, populate on the way out. Both paths return the same DTO.
 
 - Decorators MUST be registered explicitly per query at the composition root, never auto-applied, so the cached set is auditable. ⚙ BE-44
-- The decorated and undecorated paths MUST return the same type and the same values. Removing the decorator changes latency, never behavior. Every cached query MUST have a test that exercises the handler undecorated.
+- The decorated and undecorated paths MUST return the same type and the same values. Removing the decorator changes latency, never behavior.
 - A decorator MUST contain cache logic only. Any business rule inside one is a defect - it is invisible to every test that runs the handler directly.
 - Cache keys MUST be derived from the query message type and its parameter values, and MUST carry a schema version segment so a changed DTO shape cannot deserialize into a stale one.
 - **Every cache key MUST include the acting principal**, added by the one key builder every cached query uses. ⚙ BE-45
@@ -31,7 +31,7 @@ Caching is a **decorator over `IQueryHandler<TQuery, TResponse>`**, never a bran
 - Stamps MUST be incremented **after** the transaction commits, never before.
 - Enumerating keys - `KEYS` or `SCAN`, for invalidation or anything else - is forbidden. ⚙ BE-47
 - Command handlers MUST NOT touch the cache. Invalidation runs after the unit of work commits: the unit-of-work behavior hands the committed domain events to an Application slice, which invalidates through an `ICacheInvalidator` port implemented in Infrastructure. ⚙ BE-48 It is a post-commit effect, not an in-transaction reaction (§3).
-- An invalidation failure MUST be logged as an error and MUST NOT be swallowed. The committed result is returned; the TTL bounds how long the stale entry is served. The mandatory TTL is the backstop bounding how long a failed invalidation serves stale data - that is why unbounded entries are forbidden.
+- An invalidation failure MUST be logged at `Error`, never silently discarded. The committed result is returned; the TTL bounds how long the stale entry is served. The mandatory TTL is the backstop bounding how long a failed invalidation serves stale data - that is why unbounded entries are forbidden.
 - A flow requiring read-your-own-writes MUST NOT be cached unless invalidation completes before the response returns. TTL expiry is not a substitute for invalidation.
 - A Redis failure MUST be treated as a miss. An unreachable cache degrades latency, never availability.
 - Failures and empty results SHOULD NOT be cached, unless the negative result is itself expensive to compute and then only with a short TTL.
@@ -47,4 +47,4 @@ Caching is a **decorator over `IQueryHandler<TQuery, TResponse>`**, never a bran
 
 The required tests of the rules above. `../SKILL.md` §14 states what a required test is.
 
-- **Cache**: the read-side decorator MUST have a test proving an unreachable Redis is served as a miss, not as a failure (BE-49).
+- **Cache**: the read-side decorator MUST have a test proving an unreachable Redis is served as a miss, not as a failure (BE-49), and every cached query a test that exercises the handler undecorated (BE-140).
