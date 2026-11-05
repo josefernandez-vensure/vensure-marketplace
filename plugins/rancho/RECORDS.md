@@ -191,3 +191,38 @@ The core rows were re-derived against the stack rows that carry them (react-core
 - Check or Gap findings on the server's carried rows, which live in the .NET inventory and are the .NET law's to apply and record: ROOT-02, ROOT-04, ROOT-07, ROOT-08, ROOT-09, ROOT-11, ROOT-12, ROOT-15, ROOT-17, ROOT-19.
 - Owner's decision 2026-11-05: the signed-in browser is inside the authenticated boundary, with safeguards the client stack law states.
 - Review fix: §8, after "The test decides the class": the authenticated boundary is defined - the organization's systems and an authenticated user's signed-in session, including the URLs and storage of the browser it runs in; the client stack law states what keeps that browser inside it. The React law's §11 claim that the browser's URLs and storage are inside the boundary now rests on core §8.
+
+## 3.0 stage 8
+
+Release review fixes, from the core review of the release candidate.
+
+- §4 *Idempotency*: a replay is answered from the record of the first attempt before any precondition, such as `If-Match`, is evaluated, so a retried write whose version has since moved returns its recorded response, not `412`. Closes release review core S3.
+- §4 *Wire contract*, Page: the server encrypts and authenticates the cursor, and the `x-data-class` of `nextCursor` and of the `cursor` parameter is `internal`, whatever the cursor's payload. Closes release review core S4.
+- §4 *Wire contract*, Concurrency: `etag` holds exactly the `ETag` header's value, quotes included, and a client sends it back unchanged as `If-Match`. Closes release review core S2.
+- §4 *Wire contract*, Concurrency: a successful write that leaves the resource in place returns its new `etag` in its body; a successful delete returns no body (`204`). Closes release review core S1 (the core half; the .NET law's success statuses are the .NET law's to align).
+- §9: the server links its new trace to an external caller's wherever the caller's `traceparent` reaches it; an ingress that strips the header leaves nothing to link. Closes release review core B2 (the core half; .NET §10 is the .NET law's).
+- §11: a conflict entry's upstream amendment request is to the law, or to the dependency whose gap forces the conflict. Closes release review core S8 (the core half).
+- §2: the reading order names each annex of the stack law whose trigger the tree meets, or the work would meet. Closes release review core N4.
+- §1: the inventories are described in `AUTHORING.md` §10, not core §10. Closes release review core N2.
+- §8: a class is not redeclared "per call site", in place of "per log call", which read as contradicting the logging-method parameter that declares one. Closes release review core N8.
+- Inventory: ROOT-05, ROOT-06 and ROOT-10 have rows, status `retired`, each naming in its Rule cell the `rancho-react` row it was merged into under A-02 (FE-28, FE-03, FE-07). The legend says that a core row, which has no Check cell, names the surviving row in its Rule cell. Closes release review core S5.
+- Inventory Summary: 15 ⚙ marks; 20 rows, 15 `build`, 0 `required-test`, 2 `dropped`, 3 `retired`. Eleven root rules, not twelve, are duplicated: a stack inventory names a canonical id (`Canonical: X`) in the rows of ROOT-02, ROOT-08, ROOT-11, ROOT-12, ROOT-13, ROOT-15, ROOT-16, ROOT-17, ROOT-18, ROOT-19 and ROOT-20; ROOT-07's `Covered by` is not counted. This agrees with the .NET inventory. Closes release review core S6.
+- Inventory legend: the example id and test name use BE-108, the query-handler rule, in place of BE-31, the agent idempotency-key rule. Closes release review core N1 (the core half; the .NET inventory repeats the name).
+- ROOT-13 Source: the Idempotency-Key header draft, which defines the header and its `400`, `422` and `409` answers. Closes release review core S11 (the core part, with the Source lines below).
+- `AUTHORING.md` §2: a stack inventory lists every `build` core rule its role binds, as the inventories do. Closes release review core S12.
+- `AUTHORING.md` preamble: the last sentence of its §1 is stated in other words in core §10, not word for word in the core law. Closes release review core N3.
+- Loaders (`context/prime-directive.md`, `skills/vaca/SKILL.md`, `agents/vaca-stream.md`): the stack law is named by the nearest `CLAUDE.md` that holds a `Stack law:` line (core §2), not by the nearest `CLAUDE.md`. Closes release review core S10.
+- Root `README.md`: agents read each triggered annex of the stack law before writing anything. Closes release review core N10.
+- Nit not applied, because it would add a rule: N9, the class of an object- or array-valued property.
+- Source for the `428` status for a write that carries no precondition (§4 *Concurrency*): https://www.rfc-editor.org/rfc/rfc6585#section-3
+- Source for the `429` status and its optional `Retry-After` (§4 *Limits*): https://www.rfc-editor.org/rfc/rfc6585#section-4
+- Source for the entity-tag format, quotes included, that the `ETag` header and `etag` carry (§4 *Concurrency*): https://www.rfc-editor.org/rfc/rfc9110#section-8.8.3
+- Source for `If-Match` compared strongly and refused with `412` when the version is stale (§4 *Concurrency*): https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1
+- Source for `If-None-Match: *` refused with `412` when the resource exists (§4 *Concurrency*): https://www.rfc-editor.org/rfc/rfc9110#section-13.1.2
+- Source for `Cache-Control: private` keeping a response out of every shared cache (§4 *Concurrency*): https://www.rfc-editor.org/rfc/rfc9111#section-5.2.2.7
+- Source for `Cache-Control: no-store` keeping a response out of every cache (§8 egress table): https://www.rfc-editor.org/rfc/rfc9111#section-5.2.2.5
+- Source for `traceId` as the 32-hex-digit trace-id of a `traceparent` (§4 *Wire contract*, Problem details): https://www.w3.org/TR/trace-context/
+- §4 *Wire contract* gains **Cross-origin**: the server's CORS policy admits the contract's request headers and exposes the response headers a client reads, because a browser on another origin can read only CORS-safelisted response headers and send only safelisted request headers without it. Closes release review React S10 (core half; .NET §13 already states the policy). Source: https://fetch.spec.whatwg.org/#http-cors-protocol
+- §4: endpoints the framework maps to operate the service - a health probe, the OpenAPI document, a hub's connection - carry no Request DTO and are a declared list in the server stack law, still under the rate limit and the authorization fallback. Closes release review .NET S4 (core half; .NET §13 states the list).
+- §8 egress table: the cache-entry boundary has a second owner, the adapter for an external authority, for that authority's decisions: the authorization behavior needs those decisions, so they cannot pass through a decorated query. Closes release review .NET S2.
+- Re-review fix: core §4's framework endpoints carry a named authorization policy or fall to the deny-by-default fallback, matching .NET §13. vaca-stream's binding sentence names the nearest `CLAUDE.md` that holds a `Stack law:` line.
