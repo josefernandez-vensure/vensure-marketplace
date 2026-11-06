@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.2.0
+
+- Law 3.2. Released alone: `rancho` 3.0.0 and `rancho-react` 2.0.0 are
+  unchanged. The ledger is `RECORDS-3.2-ledger.md` at the repository root.
+- **What changed:** the .NET law is rewritten as short instructions. Long
+  paragraphs become lists, multi-part rules become sub-bullets, each
+  Testing entry names its own subject and id, and §15 lists one
+  prohibition per line. Rule ids, ⚙ marks and inventory rows are
+  unchanged.
+- **What did not change:** no rule. An independent checklist of the old
+  law's 924 obligations, conditions, exceptions, named tools, marks and
+  Testing entries was checked item by item against the rewrite, and
+  every finding was fixed and re-checked.
+- **Upgrade:** nothing to do.
+
 ## 2.1.0
 
 - Law 3.1. Released alone: `rancho` 3.0.0 and `rancho-react` 2.0.0 are

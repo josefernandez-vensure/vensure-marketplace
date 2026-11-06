@@ -247,7 +247,7 @@ Its agent rule: `annex-agents.md`.
 
 ### Transactions and consistency
 
-- One transaction SHOULD modify exactly one aggregate. A second, changed by a domain-event reaction in the same transaction, needs the PR to name the invariant that requires it. Outbox rows, idempotency records and audit records are pipeline bookkeeping, not aggregates, and do not count.
+- One transaction SHOULD modify exactly one aggregate. A second, changed by a domain-event reaction in the same transaction, needs the PR to name the invariant that requires it. Outbox rows, idempotency records and audit records are pipeline bookkeeping, not aggregates, and do not count against this rule.
 - A transaction MUST NOT span a module boundary. ⚙ BE-32
 - Integration events MUST be written to the outbox in the same transaction as the state change that caused them. Publishing directly from a handler is forbidden. ⚙ BE-33
 - Every integration event handler MUST be idempotent. Delivery is at-least-once; assume redelivery.
@@ -559,7 +559,7 @@ A missing required test is a defect exactly as a violated rule is (core §1). Th
 - **Audit**:
   - Every persisting command MUST have a test proving its success record commits with its change and its failure record is written after rollback (BE-118).
   - Every command that does not persist MUST have a test proving its record is written (BE-118).
-  - The authorization behavior and the resource-authorization port MUST each have a test proving a denial is recorded (BE-118).
+  - The authorization behavior and the resource-authorization port MUST have a test proving a denial is recorded (BE-118).
 - **Pagination**:
   - Every paginated query MUST have a test proving a request above its maximum is rejected, and a test proving no row is skipped or repeated across a page boundary (BE-124).
   - Every collection bounded by construction whose size a request determines MUST have a test proving a request beyond its bound is rejected, never truncated (BE-124).
@@ -588,7 +588,7 @@ A missing required test is a defect exactly as a violated rule is (core §1). Th
 - Reading the system clock in domain or application code - `DateTime.Now`, `DateTimeOffset.UtcNow`, `DateTime.Today`, or any other ambient read. Inject `TimeProvider` into the handler, and pass the time to the aggregate as an argument. ⚙ BE-132
 - `async void` outside event handlers ⚙ BE-133
 - `.Result`, `.Wait()`, `.GetAwaiter().GetResult()` ⚙ BE-134
-- Catching `Exception` without rethrowing, except at a declared fault-isolation boundary: one iteration of a hosted-service loop, one outbox delivery, a post-commit effect (§4), or any other unit whose failure must not stop the host. It is declared by a marker on the method - an attribute the solution declares once in `SharedKernel`. It MUST log at `Error` with the exception, within core §8's telemetry rule, and MUST let `OperationCanceledException` propagate on shutdown. ⚙ BE-135
+- Catching `Exception` without rethrowing, except at a declared fault-isolation boundary: one iteration of a hosted-service loop, one outbox delivery, a post-commit effect (§4), or any other unit whose failure must not stop the host. The boundary is declared by a marker on the method - an attribute the solution declares once in `SharedKernel` - and MUST log at `Error` with the exception, within core §8's telemetry rule, and MUST let `OperationCanceledException` propagate on shutdown. ⚙ BE-135
 - `#region` ⚙ BE-136
 - Commented-out code
 
