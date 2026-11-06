@@ -5,7 +5,7 @@ description: The React client stack law - structure and feature boundaries, gene
 
 # React Stack Law
 
-The core law, `/rancho:law`, governs: read it first. This is a stack law under core §2. It adds the React rules, and it carries the core law's mechanism in every tree bound to it. Core §N is §N of the core law. ⚙ = machine-checked. Every ⚙ here, and every core rule this role carries, is inventoried in `references/enforcement.md`, beside this file: consult it by rule id rather than reading it whole.
+The core law, `/rancho:law`, governs: read it first. This is a stack law under core §2: it adds the React rules, and carries the core law's mechanism in every tree bound to it. Core §N is §N of the core law. `⚙` = can be made to fail the build (core §1). Every `⚙` here, and every core rule this role carries, is inventoried in `references/enforcement.md`: consult it by rule id rather than reading it whole.
 
 A tree is bound to this stack law by one line in the `CLAUDE.md` at its root:
 
@@ -17,7 +17,7 @@ If `/rancho:law` is not available in the session, stop and say so. This file alo
 
 ## Role
 
-`client`. A tree bound here consumes the API contract a server stack law publishes (core §4), and owns what reaches the user's device. It decides nothing about what the user may do: that is the server's answer, every time.
+`client`. A tree bound here consumes the API contract a server stack law publishes (core §4), and owns what reaches the user's device. What the user may do is the server's answer, every time.
 
 ## Core map
 
@@ -29,170 +29,191 @@ If `/rancho:law` is not available in the session, stop and say so. This file alo
 | §6 Error Contract | §10 Errors · §6 Forms and Validation |
 | §7 Security Baseline | §8 Routing · §9 Authentication |
 | §8 Data Boundaries | §3 API Types · §11 Data Boundaries |
-| §9 Observability | §11 Data Boundaries, for what telemetry may carry |
+| §9 Observability | §11 Data Boundaries, for what telemetry may carry · §9 Authentication (the interceptor sends `traceparent`) |
 | §10 Verification | §13 Testing · §14 Verification · `references/enforcement.md` |
 
-Gaps: core §9 requires the correlation id to cross the server-to-client boundary. How a client carries it - adopting the id a response returns, and attaching it to its own telemetry and error reports - is not yet stated here.
+Gaps: none.
 
 ## 1. Stack
 
 React · Vite · TypeScript (strict) · the organization's UI library and the component library it is built on (`DECISIONS.md`) · TanStack Query · TanStack Router · Zustand · React Hook Form + Zod · the organization's identity library (`DECISIONS.md`) · Vitest + React Testing Library · Playwright · MSW · ESLint 9 flat config, type-aware · Prettier
 
-A UI-class package - one whose purpose is presentation, such as a component, styling, icon, animation or class-name package, or any other - is a dependency only if the UI library depends on it. Application code imports no UI-class package but the UI library and the component library it is built on. ⚙
+A UI-class package - one whose purpose is presentation, such as a component, styling, icon, animation or class-name package - is a dependency only if the UI library depends on it, and application code imports none but the UI library and the component library it is built on. ⚙ FE-32
 
-TypeScript `strict` MUST stay on. `any` is forbidden; use `unknown` and narrow. Suppressing the type checker is forbidden - `@ts-ignore`, `@ts-nocheck`, or any other directive - except `@ts-expect-error`, which is permitted only with a reason comment and an issue reference. ⚙
+TypeScript `strict` MUST stay on. `any` is forbidden; use `unknown` and narrow. Every type-checker suppression directive - `@ts-ignore`, `@ts-nocheck`, or any other - is forbidden but `@ts-expect-error`, permitted only with a reason comment and an issue reference - or, where it suppresses a check of a rule of the law, the register entry's id (core §11). ⚙ FE-01, FE-02
+
+A lint suppression MUST name the rules it suppresses and give a reason. ⚙ FE-38 Where a suppressed rule enforces a rule of the law, the reason is its register entry's id (core §11).
+
+Generated files - `src/generated/` and `src/app/routeTree.gen.ts` - are outside these suppression rules: the generator writes their headers, and lint does not read them.
 
 ## 2. Structure
 
 ```
 src/
   app/                  composition root. Nothing outside it may import from it.
+    main.tsx            the entry module index.html loads
     routes/             the route tree. A route file composes features.
+    routeTree.gen.ts    TanStack Router output. Never hand-edited.
     router.tsx
-    providers.tsx       query client, router, identity provider, theme
-  features/<feature>/   one user-facing capability. Only the folders it needs.
-    api/                query options, mutations, use of the generated client
+    providers.tsx       query client, router, theme, and the identity provider (§9)
+  features/<feature>/   one user-facing capability
+    api/                query options, key factories, mutations, use of the generated client
     components/
     hooks/
     stores/
     schemas/
+    lib/                feature-local helpers
+    types/              feature-local types
   shared/               used by two or more features
     lib/
+    stores/             stores two or more features use (§5)
   generated/            OpenAPI output. Never hand-edited.
-  routeTree.gen.ts      TanStack Router output. Never hand-edited.
 ```
 
-When a host shell mounts the application, its lifecycle entry - such as `bootstrap`, `mount` and `unmount` - is part of `app/`. It is a composition root like any other.
+When a host shell mounts the application, its lifecycle entry - such as `bootstrap`, `mount` and `unmount` - is part of `app/`, a composition root like any other.
 
 Dependencies flow one way: `shared` -> `features` -> `app`.
 
-- A feature MUST NOT import from another feature. ⚙
-- `shared/` MUST NOT import from `features/` or `app/`, and a feature MUST NOT import from `app/`. ⚙
+- A feature MUST NOT import from another feature. ⚙ FE-03
+- `shared/` MUST NOT import from `features/` or `app/`, and a feature MUST NOT import from `app/`. ⚙ FE-04
 - `app/` MAY import from anything.
-- Cross-feature composition happens in `app/routes/`. A screen that needs two features is a route that renders both, never a feature that reaches into another. Without a layer permitted to know about two features, "a feature MUST NOT import from another feature" has no legal answer for the screens this domain is made of, and the rule gets suppressed instead of followed.
-- Promote to `shared/` on the second consumer, never in anticipation of one.
-- A feature contains only the folders it needs. An empty folder created for symmetry is a defect.
+- Cross-feature composition happens in `app/routes/`. A screen that needs two features is a route that renders both, never a feature that reaches into another.
+- Promote to `shared/` on the second consumer, never in anticipation of one - except the modules this law places in `shared/lib/` from the start: the identity module (§9), the problem-details parser (§10) and the client-state registry (§3).
+- A feature's folders are those listed above and no others, and it contains only the ones it needs. An empty folder created for symmetry is a defect.
 
 ### Feature names
 
-- Every feature MUST be declared in `src/features/REGISTRY.md`: the folder name and one line saying what capability it covers. ⚙ An undeclared feature folder is a defect. The check reads `src/features/` and the registry and nothing else - it does not reach into the server tree.
-- Where a feature covers the same concept as a server module, it SHOULD reuse that module's name. Shared vocabulary is worth having. A build check that crosses into the other tree to enforce it is not, and a naming convention is not worth coupling two trees over.
-- The two trees share vocabulary, not shape. A server module MAY have no feature. A feature MAY read several modules' contracts, and a UI-only feature - a dashboard, onboarding, global search - MAY map to none. A server module is a consistency boundary; a feature is a user capability. They are not the same decomposition and MUST NOT be forced into one.
+- Every feature MUST be declared in `src/features/REGISTRY.md`: its folder name and one line naming the capability it covers. ⚙ FE-28
+- Where a feature covers the same concept as a server module, it SHOULD reuse that module's name.
+- The two trees share vocabulary, not shape, and MUST NOT be forced into one decomposition. A server module MAY have no feature; a feature MAY read several modules' contracts, and a UI-only feature - a dashboard, onboarding, global search - MAY map to none.
 
 ### Routing
 
-Route files live in `app/routes/`. Configure the generator once, in `vite.config.ts`, and do not work around it:
+Route files live in `app/routes/`. Configure the generator once, in `vite.config.ts`, and do not work around it; its own options, such as `routeFileIgnorePrefix` or `routeFileIgnorePattern` for a test file beside a route, are configuration, not a workaround:
 
 ```ts
 tanstackRouter({
   routesDirectory: './src/app/routes',
-  generatedRouteTree: './src/routeTree.gen.ts',
+  generatedRouteTree: './src/app/routeTree.gen.ts',
 })
 ```
 
-## 3. API Types ⚙
+The generated route tree imports every route file, so it lives in `app/` with them.
 
-- All request and response types are generated from the server's OpenAPI document into `src/generated/`.
-- `src/generated/` MUST NOT be hand-edited.
-- A response from the generated client MUST NOT be cast, type-asserted, or re-declared by a locally written type. Contract drift must be a compile error, not a runtime surprise.
-- Generated types MUST carry the class of every property and parameter in the OpenAPI document (core §8) in a form the type checker can read, such as a branded type per class. ⚙ The lints for the boundaries §11 names - the URL, browser storage, and client telemetry - read that type at the call that crosses the boundary, and refuse a value whose class the boundary does not permit. A value the user enters takes its brand only by being parsed through a schema the generator emits for the field or parameter it fills - a Zod schema, for example, whose output carries the class brand. A type assertion to a class brand outside generated code is forbidden: it is a brand the application asserts for itself. A value with no brand - one rebuilt with string operations, or client-only state such as a selected tab - is not reached by the lint: that gap is inventoried, and review carries it. Without the class in the types, every data-boundary rule on this side is a hope rather than a check.
+## 3. API Types
+
+- All request and response types are generated from the server's OpenAPI document into `src/generated/`. ⚙ FE-05
+- `src/generated/` MUST NOT be hand-edited. ⚙ FE-06
+- A response from the generated client MUST NOT be cast, type-asserted, or re-declared by a locally written type. ⚙ FE-07
+- Generated types MUST carry the class of every property and parameter in the OpenAPI document (`x-data-class`, core §4 *Wire contract*; core §8) in a form the type checker can read, such as a branded type per class; a property or parameter the document leaves without `x-data-class` carries the `Restricted` brand. ⚙ FE-22 At each boundary §11 names - the URL, browser storage, client telemetry - a lint reads that type at the call that crosses it, and refuses a value whose class the boundary does not permit or that carries no brand: an unbranded value is unclassified, which is `Restricted` (core §8). A value whose type is a literal type, `null` or `undefined` is written in the source, carries no data, and passes, and a union passes where each of its members is branded or passes. ⚙ FE-33, FE-16, FE-23 The exception given to an error reporter's capture call is outside the telemetry lint: core §8 admits an exception's type and stack trace, and its message is FE-17's scrubbing test. A value the user enters takes its brand only by being parsed through the generated schema for the field or parameter it fills, such as a Zod schema whose output carries the class brand, or, for client-only state, through the registry's schema below. ⚙ FE-22 Every argument to the generated client is branded, so a literal or a minted value - `pageSize: 20`, an idempotency key from `crypto.randomUUID()` - is parsed through the generated parameter schema too. Client-only state - a value no contract field holds, such as a selected tab, a sort order or a saved grid layout - has no class from the contract, and unclassified is `Restricted` (core §8). Before it crosses a boundary §11 names, it is declared in the client-state registry: one module in `shared/lib/` holding, for each such value, its class by core §8's test and a schema whose output carries that class's brand. Each schema accepts only a closed set of values - an enum, a literal, a boolean, a bounded number, a string constrained to a fixed format that carries no data, such as the 32-hex trace id, an array of closed values, or an object composed of them - and the registry exports nothing else that brands. The value takes its brand by being parsed through that schema. A type assertion to a class brand, or a schema's `.brand()` naming one, outside generated code and the client-state registry is forbidden. ⚙ FE-34 A value rebuilt with string operations loses its brand and is refused. A value bound for string-only storage, such as `localStorage` or a cookie, is serialized after it is parsed and branded, within the write's own argument, such as `setItem(key, JSON.stringify(value))`, and the lint reads the brand on the value before serialization.
 - Regenerate whenever the server's contract changes, and commit the output.
 
 ## 4. Server State - TanStack Query
 
-- All server data MUST go through TanStack Query. `useEffect` plus `fetch` for data loading is forbidden. ⚙
-- Server data MUST NOT be copied into Zustand or component state. Derive from the query result; a second copy is a second source of truth.
-- Query keys MUST come from a per-feature factory. Inline array literals as keys are forbidden - they make invalidation unauditable. ⚙
-- Mutations MUST declare their invalidations explicitly. A mutation that leaves stale data on screen is incomplete.
-- Loading, error, and empty states MUST each be handled. A component that renders only the success path is incomplete.
-- Every list query MUST be paginated. Enforcement is server-side (core §4) - the client cannot verify it, and MUST NOT work around it.
-- A loop that exhausts `fetchNextPage` to assemble a whole collection is forbidden. ⚙ The page you were handed is not the data set, and treating it as one produces a UI that is quietly wrong at scale.
-- Cursor-paged lists use `useInfiniteQuery`. Looping pages to reassemble a complete client-side collection is forbidden; if a screen needs a total or an aggregate, the server computes it.
-- A mutation MUST NOT be retried automatically unless it carries an idempotency key. The key is generated once per user intent and reused across every retry of that intent - regenerating it per attempt defeats the mechanism completely.
+- All server data MUST go through TanStack Query. `useEffect` plus `fetch` for data loading is forbidden. ⚙ FE-08 The TanStack Query cache is memory-only: it is never persisted, and dies with the tab.
+- Server data MUST NOT be copied into Zustand or component state. Derive from the query result. An edit form is the exception: it takes the query's result as its starting values, through React Hook Form's `values` option, or through `defaultValues` from a component mounted only after the query resolves. A dialog holds the id of what it opened, never the record.
+- Query keys MUST come from a key factory, one per server resource. An array literal as a key is forbidden outside a key factory. ⚙ FE-09
+- A resource's key factory lives in the `api/` of the feature that reads it, and moves to `shared/lib/` when a second feature reads that resource or invalidates it.
+- Mutations MUST declare their invalidations explicitly, through the key factory of every resource they change. A mutation that leaves stale data on screen is incomplete.
+- Loading, error, and empty states MUST each be handled.
+- A list query against a paginated endpoint pages with the page shape (core §4 *Wire contract*); a collection the server bounds by construction arrives whole.
+- Cursor-paged lists use `useInfiniteQuery`. A loop that exhausts `fetchNextPage` to assemble a whole collection is forbidden. ⚙ FE-21 Nor may pages be looped any other way to reassemble a complete client-side collection. If a screen needs a total or an aggregate, the server computes it.
+- A mutation MUST NOT be retried automatically unless it carries an idempotency key, generated once per user intent and reused across every retry of that intent.
+- A mutation of a versioned resource sends as `If-Match` the `etag` it read: from the resource's `ETag` or `etag` field, from a list item's `etag` field, or from the last write's response. A `412` refetches the resource and tells the user it changed; it MUST NOT be retried as it was.
 - A `429` MUST be respected: honour `Retry-After`, back off, and never retry in a tight loop. The UI MUST show that it is throttled rather than appearing to hang.
+- One client-wide retry rule, configured once on the query client, governs every query: it never retries a `4xx` except `408` and `429`, and its delay honours `Retry-After`. The interceptor's one replay after a silent refresh (§9) is a retry under neither this rule nor the mutation rule above: the server refused the request before executing it. A mutation's replay under its idempotency key is not a retry under this rule.
 
 ## 5. Client State - Zustand
 
-Client state is UI state the server does not own: selections, wizard step, panel open or closed, unsaved draft.
+Client state is UI state the server does not own: selections (the ids of what is selected, held as references), wizard step, panel open or closed, unsaved draft.
 
-- Default to component state. Escalate to a feature store only when two or more components need it. Escalate to a global store only when two or more features need it, and justify it in the PR.
-- Stores MUST be feature-scoped, in `features/<feature>/stores/`. ⚙
+- Default to component state. Escalate to a feature store when two or more components need it, and to a store in `shared/stores/` when two or more features need it (§2's second-consumer rule).
+- A store MUST live in `features/<feature>/stores/` or `shared/stores/`. ⚙ FE-11
 - Stores MUST NOT hold server data, form state, or anything derivable from either.
 
 ## 6. Forms and Validation
 
-- React Hook Form + Zod. A UI-library input is bound in the feature with React Hook Form's `Controller`, and receives its error text through the input's own error property. No other form library, and no validation through the UI library's own validator. ⚙
+- React Hook Form + Zod. No other form library, and no validation through the UI library's own validator. ⚙ FE-12 A UI-library input is bound in the feature with React Hook Form's `Controller`, and receives its error text through the input's own error property.
 - Every form MUST have a Zod schema. Ad-hoc validation inside handlers is forbidden.
 - Schemas MUST mirror the server's Request DTO constraints. Where they diverge, the server is right.
-- Client validation is UX. Server errors MUST still be handled and displayed - a `ProblemDetails` 400 is an expected outcome, not an edge case.
-- Field-level errors from `ProblemDetails` MUST be mapped back onto the corresponding form fields, not shown only as a banner.
+- Server errors, a `ProblemDetails` 400 included, MUST still be handled and displayed. (core §5)
+- Field-level errors - the `errors` member of `ProblemDetails` (core §4 *Wire contract*) - MUST be mapped onto their form fields, not shown only as a banner.
+- An edit form of a versioned resource carries the `etag` as one of its form values, so every reset updates it with the values it belongs to, and sends that one as `If-Match` (§4) - never the query's current `etag`. Its resets MUST NOT use `keepValues` or `keepDirtyValues`: either keeps edits made against older values while taking a newer `etag`, which turns a concurrent change into a silent overwrite. A form fed through `values` MUST NOT be reset by a background refetch while the user is editing: it passes `values` only while the form is not dirty, or its query does not refetch in the background while the form is mounted. After its own successful write, the form resets to the written values and the `etag` the write returned.
 
 ## 7. Components
 
-- Features and `app/` use the UI library and the component library it is built on directly. `shared/` MUST NOT import either. A module that re-exports, wraps, adapts or restyles a UI-library component is forbidden, wherever it lives. ⚙
-- Components MUST NOT call `fetch` or the generated client directly. Data access goes through a hook in the feature's `api/`. ⚙
+- Features and `app/` use the UI library and the component library it is built on directly. `shared/` MUST NOT import either, and no module re-exports a UI-library component. ⚙ FE-31 A component MUST NOT wrap a UI-library component to forward its props or restyle it: there is no second design system. A feature component that composes library components to express domain meaning is a feature component, not a wrapper.
+- A gap in the UI library - a component, variant or behaviour it lacks - that the wrapper rule above or FE-14's styling rule would leave unfilled is a conflict entry in the exceptions register against that rule, carrying core §11's amendment request to the law and linking the issue filed with the UI library. Until the library fills it, the feature composes the library's public components and tokens, and MUST NOT reach into its internals, such as private classes or undocumented exports.
+- Components MUST NOT call `fetch` or the generated client directly. Data access goes through a hook in the feature's `api/`. ⚙ FE-13
 - Presentational components MUST NOT contain data fetching or business rules.
 - Prefer composition over configuration. A component with more than roughly seven props, or with boolean props that change layout, SHOULD be split.
-- Styling is the UI library's. The global stylesheet imports, once, the UI library's stylesheet entry, the theme of the component library it is built on, and the library's icon stylesheet. Layout the library has no component for lives in one layout partial, imported by the global stylesheet. That partial uses only the library's own tokens and mixins, styles only the application's own markup, and MUST NOT target or restyle a library component. Any other stylesheet import, utility-class system or CSS-in-JS is forbidden. ⚙
-- A static object literal passed to `style` is forbidden. ⚙ A computed value is fine - that is what the prop is for.
+- Styling is the UI library's. The global stylesheet imports, once, the UI library's stylesheet entry, the theme of the component library it is built on, and the library's icon stylesheet. Layout the library has no component for lives in one layout partial the global stylesheet imports, which uses only the library's own tokens and mixins, styles only the application's own markup, and MUST NOT target or restyle a library component. Any other stylesheet import, utility-class system or CSS-in-JS is forbidden. ⚙ FE-14
+- A static object literal passed to `style` is forbidden. ⚙ FE-14 A computed value is permitted.
 - Every interactive element MUST be keyboard-operable and MUST have an accessible name.
 
 ## 8. Routing
 
-- TanStack Router. Route params and search params MUST be typed and validated with Zod.
+- TanStack Router. Route params and search params MUST be typed and validated with Zod, through schemas whose output carries a class brand: a generated schema for a value a contract field holds, and the registry's for client-only state (§3).
 - Route-level data loading SHOULD use loaders integrated with TanStack Query.
 - A route file MUST be thin: typed params and search, a loader, and composition of feature components. Business logic in a route file belongs in a feature.
-- Authorization MUST NOT be inferred from route structure. Hiding UI is not access control; the server decides.
+- Authorization MUST NOT be inferred from route structure; hiding UI is not access control.
 
 ## 9. Authentication
 
-The organization's identity provider, through its identity library. Which provider and which library are recorded in `DECISIONS.md`. The browser proves who the user is. It decides nothing about what they may do - that is the server's answer, every time (core §7).
+The organization's identity provider, through its identity library, both recorded in `DECISIONS.md`. The browser proves who the user is.
 
-- An application mounted in a host shell uses the shell's session through the identity library and MUST NOT run a sign-in flow of its own. A second flow is a second session: sign-out in one would leave the other signed in.
-- Token acquisition MUST live in exactly one place in `shared/lib/`. No component, hook, or query calls the identity library, or reads or writes its session store, directly. ⚙
-- A token is obtained from the identity library per request and MUST NOT be retained by the application beyond that request - not in browser storage of any kind, such as `localStorage`, `sessionStorage`, IndexedDB, or a cookie, not in a store, and not in a module-level cache. ⚙ The identity library's own session store is the one place a token may live. Where the library offers a choice of store, a standalone application MUST configure the shortest-lived one it supports; an application in a host shell uses the store the shell configures.
-- A token is opaque to the application. Its claims MAY be read for display within the user's own session and MUST NOT be used for any other purpose. The same holds for the signed-in user's profile as the identity library returns it.
-- A credential nested inside a token - an embedded access or refresh token - MUST NOT be extracted, stored, forwarded, or logged. ⚙ A refresh token is a long-lived credential; reusing one found inside another token creates a credential-handling path nothing else in this section governs. The claim names to flag live in the project's lint configuration, not here.
-- The token is attached by exactly one interceptor on the generated client. A hand-written `Authorization` header is a defect. ⚙
-- A `401` MUST trigger one silent refresh, then an interactive sign-in. In a host shell both are the shell's: the application asks the identity library once and never refreshes a token itself, so applications sharing one session do not race to refresh it, and the interactive step is the shell's sign-in page. It MUST NOT produce a retry loop and MUST NOT surface as a generic error.
-- A `403` is a final answer. It MUST be shown as a permission error and MUST NOT trigger a refresh - the token is fine, the permission is not. Retrying a `403` is how a UI turns a clear denial into a hang.
+- An application mounted in a host shell uses the shell's session through the identity library and MUST NOT run a sign-in flow of its own.
+- Token acquisition MUST live in exactly one module in `shared/lib/`, which also exports the identity provider component that `app/providers.tsx` renders. Nothing else imports the identity library, or reads or writes its session store. ⚙ FE-24
+- A token is obtained from the identity library per request and MUST NOT be retained by the application beyond that request - in browser storage of any kind (§11), a store, or a module-level cache. ⚙ FE-25 The identity library's own session store is the one place a token may live. Where the library offers a choice of store, a standalone application MUST configure the shortest-lived one it supports; an application in a host shell uses the store the shell configures.
+- A token is opaque to the application. Its claims, and the signed-in user's profile as the identity library returns it, MAY be read for display within the user's own session and MUST NOT be used for any other purpose.
+- A credential nested inside a token - an embedded access or refresh token - MUST NOT be extracted, stored, forwarded, or logged. ⚙ FE-30 The claim names to flag live in the project's lint configuration.
+- The token is attached by exactly one interceptor on the generated client. A hand-written `Authorization` header is a defect. ⚙ FE-26
+- The same interceptor sends `traceparent`, and `tracestate` when present, on every call to the server, and the client attaches its trace id to its own telemetry and error reports.
+- A `401` MUST trigger one silent refresh, then an interactive sign-in, and MUST NOT produce a retry loop or surface as a generic error. In a host shell both are the shell's: the application asks the identity library once and never refreshes a token itself, and the interactive step is the shell's sign-in page.
+- A `403` is a final answer: it MUST be shown as a permission error and MUST NOT trigger a refresh.
 - What the application requests from the provider - scopes, a service name, or any other grant - MUST be declared in one place and MUST be the narrowest the application needs. In a host shell the shell requests the grant: the application declares what it needs to the shell's owners, in that one place, and requests nothing itself.
-- Sign-out MUST have the identity library clear its session store - in a host shell, through the shell's sign-out (below) - and MUST clear the TanStack Query cache and every store. A previous user's data surviving a sign-out on a shared workstation is a disclosure, and shared workstations are the normal case in this domain.
-- Sign-out MUST also end the identity-provider session, including any upstream session the provider federates to. A standalone application calls the provider's end-session endpoint itself. An application in a host shell does not own the provider session: it clears its own caches and stores, then delegates sign-out to the shell's sign-out, which MUST end the provider session. Clearing local state while a provider session survives means the next sign-in completes silently as the previous user - the disclosure the rule above exists to prevent, reintroduced one step later. The next sign-in MUST prompt. Ending the provider session also signs the user out of other applications that share it; on a shared workstation, that is the intended effect.
-- The frontend holds no secrets. Everything in the bundle is public: a client id belongs there, a client secret never does.
+- Sign-out MUST have the identity library clear its session store - in a host shell, through the shell's sign-out (below) - and MUST clear the TanStack Query cache, every store, and everything the application wrote to browser storage.
+- Sign-out MUST also end the identity-provider session, including any upstream session the provider federates to. A standalone application calls the provider's end-session endpoint itself; an application in a host shell clears its own caches and stores, then delegates sign-out to the shell's sign-out, which MUST end the provider session. The next sign-in MUST prompt.
+- The frontend holds no secrets: a client id may be in the bundle, a client secret never.
 
 ## 10. Errors
 
-- `ProblemDetails` is the error shape. Exactly one parser lives in `shared/lib/` and is the only place that shape is read. ⚙
-- A raw server error object or message MUST NOT be rendered to the user unmapped.
+- `ProblemDetails` is the error shape, and exactly one parser, in `shared/lib/`, reads it; nothing else does. ⚙ FE-15
+- A server error is mapped by its `type` and `status`. The parser reads which types are user-facing from the document's `x-problem-types` (core §4 *Wire contract*), generated with the types (§3). The UI MAY render a problem's `title` and its field messages only for a type the OpenAPI document marks user-facing, and MUST NOT render `detail`, or anything of a type it does not recognise, unmapped.
+- An error shown to the user offers its `traceId`, so a report can be joined to the server's trace.
 - The root route MUST declare an `errorComponent`, and a route SHOULD declare its own wherever a failure should not take down more than that screen. An unhandled render error MUST NOT blank the app.
 
 ## 11. Data Boundaries
 
-Core §8 governs, and its classes apply here unchanged. The browser is inside the authenticated boundary. Everything listed below is outside it.
+Core §8 governs, and its classes apply here unchanged. The browser's URLs and storage are inside the authenticated boundary (core §8), so `Internal` data MAY appear in them; `Confidential` and `Restricted` MUST NOT, because a URL is kept in history and server logs, and storage outlives the session. They stay inside only while the document's effective referrer policy sends no path to another origin - `strict-origin-when-cross-origin`, the browser's default where none is set, or `no-referrer`, `same-origin`, `origin`, `strict-origin` or `origin-when-cross-origin` - and no element, request or `<meta>` tag sets any other; in a host shell, which serves the document, the application declares this to the shell's owners, as it declares its grants (§9); and while sign-out clears everything the application wrote to browser storage (§9). Analytics, telemetry, session replay and error reporting are core §8's telemetry boundary.
 
-- `Confidential` and `Restricted` values MUST NOT appear in any part of a URL - path, query string, fragment, route param, or search param. ⚙ They land in browser history, server access logs, and `Referer` headers sent to third parties.
-- They MUST NOT be written to browser storage of any kind - such as `localStorage`, `sessionStorage`, IndexedDB, Cache Storage, or a cookie. ⚙ Server data belongs in the TanStack Query cache, which is memory-only and dies with the tab. The identity library's session store (§9) MAY hold the signed-in user's own profile as the provider returns it. The application MUST NOT write to that store.
-- Analytics, telemetry, session replay, and error reporting MUST scrub them. Breadcrumbs, form-field capture, and unredacted request bodies are the usual leak, and the default configuration of every one of these tools is wrong for this domain.
-- The client MUST NOT assemble an export of sensitive data out of paged reads. An export comes from a server endpoint carrying the same policy as the read, and is audited (core §8).
+- `Confidential` and `Restricted` values MUST NOT appear in any part of a URL the browser navigates to, keeps in history or links to - path, query string, fragment, route param, or search param. ⚙ FE-16 A request URL the generated client builds is the contract's (core §4), not this rule's.
+- They MUST NOT be written to browser storage of any kind - such as `localStorage`, `sessionStorage`, IndexedDB, Cache Storage, or a cookie - and a store persisted through a storage library names the state it persists, such as Zustand `persist`'s `partialize`. ⚙ FE-23 The identity library's session store (§9) MAY hold the tokens §9 places there and the signed-in user's own profile as the provider returns it. The application MUST NOT write to that store.
+- Analytics, telemetry, session replay, and error reporting MUST scrub them, from breadcrumbs, form-field capture and request bodies too: the default configuration of each is wrong for this domain.
+- The client MUST NOT assemble an export of sensitive data out of paged reads. (core §8)
 
 ## 12. Real-time
 
-- Real-time messages - over SignalR, or any other channel the server offers - update the TanStack Query cache. Components MUST NOT subscribe to hubs directly. ⚙ The real-time client packages to flag live in the project's lint configuration, not here.
-- The UI MUST be correct if no real-time message ever arrives. Real-time is an optimization over refetch, never the only path to a state.
+§12 is in `references/annex-realtime.md`, which binds once the tree meets its trigger: the first real-time channel the client opens - SignalR, `WebSocket`, `EventSource`, or any other.
 
 ## 13. Testing
 
-- Vitest + React Testing Library. Query by role and accessible name. `data-testid` is a last resort and requires a comment explaining why.
-- MSW for all network mocking. Module-mocking the generated client - `vi.mock`, `vi.doMock`, or any other - is forbidden: it mocks past the contract. ⚙
-- Every form MUST have a test for a validation failure and a test for a server-side failure.
-- **Data boundaries**: telemetry, analytics, and error reporting MUST have a test proving a known classified field is scrubbed from a captured event.
-- **Authentication**: a `401` MUST have a test proving exactly one silent refresh is attempted before interactive sign-in - the provider's sign-in, or the host shell's sign-in page - and a `403` MUST have a test proving no refresh occurs. Sign-out MUST have a test proving the local caches are cleared and that the provider's end-session endpoint is called - or, for an application in a host shell, that sign-out is delegated to the shell's sign-out.
+- Vitest + React Testing Library. Query by role and accessible name. `data-testid` is a last resort, and requires a comment stating which element has no usable role or accessible name.
+- MSW for all network mocking. Module-mocking the generated client - `vi.mock`, `vi.doMock`, or any other - is forbidden. ⚙ FE-19
+- **Forms**: every form MUST have a test for a validation failure, and a test for a server-side failure proving each field error appears on its field; every edit form of a versioned resource, a test proving it sends the `etag` of the values it was last reset from, and that after its own successful write a second save is not refused with `412`. (FE-41)
+- **Data boundaries**: telemetry, analytics, and error reporting MUST have a test proving a known classified field is scrubbed from a captured event (FE-17).
+- **Authentication**: a `401` MUST have a test proving exactly one silent refresh precedes interactive sign-in - the provider's, or the host shell's sign-in page - and a `403` a test proving no refresh occurs (FE-27). Sign-out MUST have a test proving the local caches and everything the application wrote to browser storage are cleared and the provider's end-session endpoint is called - or, in a host shell, that sign-out is delegated to the shell's sign-out (FE-29).
+- **Wire contract**: the client MUST have a test proving every call to the server carries `traceparent` (FE-35), and a test proving a `412` on a mutation refetches the resource and does not retry the write (FE-36).
+- **Retries**: the query client MUST have a test proving a `403` is not retried and a `429` waits for its `Retry-After` before retrying. (FE-37)
+- **Query states**: every component that renders a query's result MUST have a test for its loading state, its error state and, for a list, its empty state. Where a route's loader and a suspense query move those states to the route, the route's pending and error components carry the tests. (FE-39)
+- **Idempotency**: every mutation that is retried MUST have a test proving each attempt carries the same idempotency key. (FE-40)
+- **Accessibility**: every route MUST have a test that runs axe against it - a component test with axe-core, or `@axe-core/playwright` in a journey that visits it - and fails on any violation. A passing check supports §7's accessibility rule and does not satisfy it: review still carries it. (FE-42)
+- **Errors**: the root route MUST have a test proving a render error shows its `errorComponent`, and the problem-details parser a test proving a problem of a type not marked user-facing renders neither its `title` nor its `detail`. (FE-43)
 - Playwright for critical user journeys only.
 - Tests MUST NOT assert on class names, DOM structure, or component internals.
 
-## 14. Verification ⚙
+## 14. Verification
 
-- `eslint-plugin-boundaries` enforces §2's dependency direction. A cross-feature or upward import fails the build.
+- `eslint-plugin-boundaries` enforces §2's dependency direction, failing the build on a cross-feature or upward import.
 - `typescript-eslint` runs type-aware.
-- `pnpm lint && pnpm typecheck && pnpm test` MUST pass before a change is complete.
+- `pnpm lint && pnpm typecheck && pnpm test` MUST pass before a change is complete. ⚙ FE-20

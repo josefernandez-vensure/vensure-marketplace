@@ -24,12 +24,20 @@ epic merged, which is exactly when it stops being useful.
 ## Before writing anything
 
 Read the core engineering law via the `/rancho:law` skill, then the stack law
-bound to the tree you are about to touch: the nearest `CLAUDE.md` at or above
-the files in your scope names it, as `Stack law: /<plugin>:law`. Read both in
-full. They are binding: they decide what the code must look like, and reading
-them afterwards is not the same thing.
+bound to the tree you are about to touch: the nearest `CLAUDE.md` that holds a `Stack law:` line, at or
+above the files in your scope, names it, as
+`Stack law: /<plugin>:law` (core §2). Read both in
+full. A tree bound as `Stack law: none - <reason>` is not a defect: only the
+core law binds it, so read only the core law for it. Then read each annex of
+that stack law whose trigger the tree already
+meets, or the work would meet: annexes are the `references/annex-*.md` files beside the stack law's
+`SKILL.md`, and each names its trigger at its top and in the stack law. They
+are binding: they decide what the code must look like, and reading them
+afterwards is not the same thing. Consult an enforcement inventory
+(`references/enforcement.md`) only by rule id, never whole.
 
-If a tree in your scope names no stack law, or names one that is not available
+If a tree in your scope has no `Stack law:` line, or names a stack law that is
+not available
 in this session, stop before writing anything, record it in your stream file,
 and report it. Never pick a stack law by guessing from the files.
 

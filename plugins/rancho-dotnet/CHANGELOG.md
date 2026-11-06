@@ -1,5 +1,145 @@
 # Changelog
 
+## 2.0.0
+
+- **Breaking.** Released together with `rancho` 3.0.0, whose core law it
+  carries, and `rancho-react` 2.0.0. The rationale and history of each
+  change are in this plugin's `RECORDS.md`, in its 3.0 stage sections
+  (stage 0 to stage 8).
+- **What changed:**
+  - Agents, caching and real-time move to `references/annex-agents.md`,
+    `annex-caching.md` and `annex-realtime.md`, each binding a tree once
+    the tree meets its trigger. Inventory rows carry id, rule, section,
+    mechanism, status, check, gap and source; 141 rows, 106 marks.
+  - §1, §2: Microsoft.Extensions.Compliance joins the stack;
+    `SharedKernel` and `Domain` admit
+    `Microsoft.Extensions.Compliance.Abstractions`. An analyzer reference that adds no compile or runtime
+    assembly is admitted in every project (BE-01). A real-time push
+    adapter is implemented in `Api`.
+  - §3, §4: the unit of work dispatches domain events to in-module
+    reactions before it commits, in the same transaction; one aggregate
+    per transaction is a SHOULD. A handler may dispatch another module's
+    published query through the dispatcher. Translation is a switch
+    expression with no discard arm: CS8524 is disabled, so an added enum
+    member fails the build through CS8509, and each outcome of a type
+    hierarchy has a test (BE-141).
+  - §4 *Pipeline behaviors*: the idempotency and transaction behaviors
+    become one unit-of-work behavior (item 4), so the idempotency record
+    and its change are one commit. The fingerprint is an HMAC under a
+    server key; a keyed failure result is recorded after the rollback;
+    post-commit effects run after the commit (BE-28).
+  - §4 *Pagination*: keyset only; offset paging is removed. A cursor is
+    encoded through a codec port with ASP.NET Core Data Protection, the key
+    ring persisted in the database or in Blob storage, never in a cache
+    (BE-119). `ORDER BY` and the keyset predicate are generated from the
+    descriptor (BE-23). A bounded collection declares its bound (BE-19).
+  - §4, §5, §13: every aggregate carries an application-managed version as
+    its concurrency token, replacing the row version. A command may return
+    the new version (BE-11). `If-Match` maps to the expected version and
+    `If-None-Match: *` to a create-only flag; a precondition failure is
+    `412`, a missing `If-Match` `428`. A write returns the new `etag` in
+    its body; a delete returns `204`.
+  - §6: the object check goes through a resource-authorization port in
+    `Platform.Application`; a query applies the record scope in its read
+    (BE-117).
+  - §7: a class is a `DataClassification`; `SharedKernel` defines one
+    attribute per class (BE-54). Logging is through source-generated
+    `LoggerMessage` methods with constant templates, every parameter but
+    the first `ILogger`, `LogLevel` and `Exception` carrying its class
+    (BE-55, BE-57); redaction is `EnableRedaction()` with the erasing
+    redactor for `Confidential` and `Restricted`.
+  - §9: every endpoint is under the `GlobalLimiter` or a named policy the
+    registrar applies from the operation declaration; `[DisableRateLimiting]`
+    is forbidden; `OnRejected` sets `429` and `Retry-After` (BE-70).
+  - §10: Serilog is a provider, registered with
+    `builder.Logging.AddSerilog(logger, dispose: true)`; `UseSerilog()` and
+    the static `Log.Logger` are forbidden. The correlation id is the
+    current `Activity`'s trace id; outbox rows carry the trace context; an
+    outside caller's trace is linked, never adopted (BE-139); exemplars are
+    trace-based. New *Audit trail* through `IAuditTrail` (BE-118). A
+    processor drops `exception.message` for exception types the solution
+    does not declare.
+  - §13: problem types are declared URIs that generate `x-problem-types`;
+    `x-data-class` is on every property and parameter schema (BE-83); the
+    registrar sets `Cache-Control: no-store` or `private`; CORS admits the
+    wire contract's headers; uploads are quarantined until scanned (BE-120);
+    framework endpoints are a declared list (BE-81).
+  - §11, §15: a test key is exempt only where `tests/test-keys.txt` lists it
+    (BE-97). §15's items are marked BE-129 to BE-136. Time reaches the
+    domain as an argument from `TimeProvider`.
+  - New required tests: BE-115 to BE-118, BE-120, BE-122 to BE-128, BE-137
+    to BE-139 and BE-141; in annexes, BE-121, BE-123 and BE-140.
+- **What each project does to upgrade:**
+  1. Do the core law's upgrade list (`rancho` 3.0.0), and add every new
+     `⚙` row - BE-119, BE-129 to BE-136 - to `ENFORCEMENT-STATUS.md` (core
+     §1).
+  2. Rewrite each warning suppression that enforces a rule of the law so
+     its reason is a `LAW-EXCEPTIONS.md` id (§1, core §11). List each test
+     key by file and key in `tests/test-keys.txt` (BE-97).
+  3. Reference analyzers with `IncludeAssets="analyzers"` and
+     `PrivateAssets="all"` (BE-01); use ArchUnitNET 0.13.5 or later for
+     `arch` checks.
+  4. Disable CS8524 in the solution's build configuration; write
+     translation as switch expressions with no discard arm, and add a test
+     per outcome of a type hierarchy (§4, BE-141).
+  5. Add `Microsoft.Extensions.Compliance.Abstractions` to `SharedKernel`
+     and `Domain`; define one `DataClassificationAttribute` per class in
+     `SharedKernel`; redeclare classes with them, a projected property
+     naming its source's `Contracts` twin (§7, BE-54).
+  6. Convert logging to `[LoggerMessage]` methods with constant templates
+     and classified parameters; reference
+     `Microsoft.Extensions.Telemetry.Abstractions` in each project that
+     declares one; make CA2254 and CA1848 errors; call `EnableRedaction()`
+     with the erasing redactor; remove the destructuring policy (§7,
+     BE-55, BE-57).
+  7. Register Serilog with `builder.Logging.AddSerilog(logger, dispose:
+     true)`; remove `UseSerilog()` and any `Log.Logger` assignment (§10).
+  8. Merge the idempotency and transaction behaviors into one unit-of-work
+     behavior; make the fingerprint an HMAC classed `Internal`; record keyed
+     failure results after the rollback (§4, BE-28).
+  9. Dispatch domain events to in-module reactions inside the unit of work,
+     before commit; move other effects to post-commit (§3, §4).
+  10. Replace the row version with an application-managed version mapped as
+      the concurrency token, with its migration (§5).
+  11. Map `If-Match` and `If-None-Match: *` in endpoints; return `ETag` and
+      the new `etag` in the body; `204` for a delete; `428` and `412` as the
+      wire contract states (§13, BE-115).
+  12. Remove offset paging; add the cursor codec port over Data Protection,
+      with the key ring persisted by `PersistKeysToDbContext` or Blob
+      storage with Key Vault; generate ordering from the descriptor (§4,
+      BE-119, BE-23).
+  13. Declare every problem type URI with its status, title and user-facing
+      flag; override defaults through `CustomizeProblemDetails`; write
+      `traceId` from `Activity.Current.TraceId` (§13, §10).
+  14. Regenerate and commit the OpenAPI document, now carrying
+      `x-data-class` on every property and parameter schema and
+      `x-problem-types` (BE-83); the client regenerates from it.
+  15. Set `Sdk.SetDefaultTextMapPropagator(new TraceContextPropagator())`;
+      where an outside `traceparent` can reach the application, install a
+      propagator that starts a new trace and links the caller's (BE-139);
+      persist trace context in outbox rows; enable trace-based exemplars
+      (§10).
+  16. Add the resource-authorization port and each module's authorization
+      handlers, and apply record scope in query reads (§6, BE-117).
+  17. Add `IAuditTrail` and the audit tables (§10, BE-118).
+  18. Put every endpoint under the `GlobalLimiter` or a registrar-applied
+      policy, remove `[DisableRateLimiting]`, and set `429` and
+      `Retry-After` in `OnRejected` (§9, BE-70, BE-127).
+  19. Admit and expose the wire contract's headers in CORS; declare the
+      framework endpoints as a list at the composition root (§13).
+  20. Write the new required tests listed above for the rules that bind.
+  - Only when the project accepts uploads: quarantine, scan and record them
+    as §13 states (BE-120).
+  - Only when the caching annex binds: invalidate from committed events
+    after commit, log a failure at `Error`, and add BE-140.
+  - Only when the real-time annex binds: move the push adapter to `Api`;
+    close connections on authentication expiry with a bounded lifetime,
+    rate-limit hub invocations with a hub filter, let the server assign
+    groups (BE-121).
+  - Only when the agents annex binds: project tool output into a tool DTO
+    (BE-58, BE-59, BE-69); set `DisableWebSearch = true` on a `HarnessAgent`
+    (BE-62); enforce budgets in Agent Framework middleware (§9).
+
 ## 1.1.0
 
 - Amendment A-09, from a consuming project's compliance audit of 2026-10-30

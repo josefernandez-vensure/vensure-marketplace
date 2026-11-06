@@ -67,7 +67,7 @@ every project. The skills are usable independently.
 The two are meant to work together. VACA decides *what* gets built and in what
 order; the law decides what the finished code must look like. Agents that VACA
 launches read the core law, then the stack law bound to the tree they work in,
-before writing anything.
+then each of its annexes whose trigger the tree meets, before writing anything.
 
 A `SessionStart` hook states that the law is binding and points at the skill. It
 deliberately restates no rules, so there is exactly one copy of each to keep

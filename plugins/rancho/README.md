@@ -13,7 +13,7 @@ rancho/
 ├── skills/                      skills as <name>/SKILL.md    [law, vaca]
 │   ├── law/
 │   │   ├── SKILL.md             the core law
-│   │   └── references/          enforcement.md: the core inventory and records
+│   │   └── references/          enforcement.md: the core inventory
 │   └── vaca/
 │       ├── SKILL.md             Vensure Agentic Code Assistant
 │       ├── references/          one file per phase, plus conventions.md
@@ -28,6 +28,8 @@ rancho/
 ├── bin/                         executables added to PATH          [empty]
 ├── hooks/hooks.json             event handlers             [four events]
 ├── context/prime-directive.md   payload the SessionStart hook prints
+├── AUTHORING.md                 the core law's rules for writing and changing the law
+├── RECORDS.md                   rationale and history moved out of the law
 ├── .mcp.json                    MCP servers                        [empty]
 ├── .lsp.json                    LSP servers                        [empty]
 └── settings.json                default settings when enabled      [empty]
@@ -266,15 +268,21 @@ that is a reason to take the dependency, not to write a longer regex.
 `skills/law/` holds the core engineering law: what must be true in every tree,
 whatever it is built with. How one technology satisfies it is a **stack law**,
 shipped as a plugin of its own - `rancho-dotnet` (role `server`) and
-`rancho-react` (role `client`) today. Core §2 states the contract every stack
-law meets: a role, a core map from each core section to the section carrying
+`rancho-react` (role `client`) today. The core law's §2 states that a stack
+law may add rules and never weaken one; `AUTHORING.md` (§2) states the contract
+every stack law meets: a role, a core map from each core section to the section carrying
 it, a gap list, Stack, Testing, and Verification sections, and its own
 enforcement inventory.
 
 Only the frontmatter `description` is always in context; the body loads when
-the skill triggers, and `references/enforcement.md` loads when the law
-instructs Claude to read it. A stack law loads the same way, from its own
-plugin, and only in a project that enables that plugin.
+the skill triggers. Claude reads the core law, then the bound stack law in
+full, then each annex of that stack law whose trigger the tree already meets, or
+the work would meet - the `references/annex-*.md` files beside the stack law's `SKILL.md`, each naming
+its trigger at its top and in the stack law. An inventory,
+`references/enforcement.md`, is consulted only by rule id. A stack law loads
+from its own plugin, and only in a project that enables that plugin.
+`AUTHORING.md` and `RECORDS.md` are for whoever changes the law; a coding agent
+does not read them.
 
 Skills are model-invoked, which is a weaker guarantee than the law's own claim
 that it "is not advisory". The `SessionStart` hook closes that gap: it states
@@ -325,12 +333,13 @@ stack without touching the other.
 ### The enforcement inventories
 
 The core inventory, `references/enforcement.md`, lists the `ROOT` rows and the
-role each binds, and holds every record that concerns the core law or more than
-one stack law. Each stack law's inventory holds its own rows, the core rows its
-role carries with their mechanism and check, and the records that concern it
-alone. Ids are permanent across the split.
+role each binds, and holds the legend every inventory is read by. Each stack
+law's inventory holds its own rows and the core rows its role carries with
+their mechanism and check. Records - every record that concerns the core law or
+more than one stack law - are in `RECORDS.md`; each stack-law plugin keeps the
+records that concern it alone in its own. Ids are permanent across the split.
 
 Changing a rule: change the law first, then bring the codebase into compliance.
-Per §11, the document is never edited to accommodate code that violates it. A
+Per §11 (in `AUTHORING.md`), the document is never edited to accommodate code that violates it. A
 stack-law rule is changed in its own plugin; a rule every stack law of a role
 would need is changed here.
