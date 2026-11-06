@@ -684,3 +684,76 @@ Release-review fixes (findings `s8-review-dotnet`, ids ".NET Bn/Sn/Nn"; `s8-revi
 - Re-review fix: a switch expression over a hierarchy of outcome types always raises CS8509, since C# cannot prove it exhaustive, so it ends in a discard arm that throws `UnreachableException` and BE-141's test proves each outcome; the illustration's no-discard-arm rule is for an enum outcome. BE-141's check no longer says CS8509 reaches only an enum's members.
 - Re-review fix: the framework endpoints each carry a named policy, such as an anonymous one for the probes, or fall to the fallback, which denies them; a probe with no credentials could otherwise never succeed.
 - Re-review fix: the propagator sentence names a propagator that extracts `traceparent`.
+
+## 2.1.0
+
+Law 3.1. Closes the two items 3.0 deferred (`## 3.0 stage 8`, "Deferred"). Every sentence and row changed is listed, old and new, in `RECORDS-3.1-ledger.md` at the repository root.
+
+### Duplicate rules merged
+
+The 2026-11-03 review (`RECORDS-3.0-review.md` §6, item 4) asked for these merges; 3.0 linked them with `Covered by`. One rule and one row now carry each obligation; the other id is `retired`, `Merged into` the survivor, as the inventory legend defines.
+
+- BE-42 into BE-79 (§3 *Aggregates*): "a navigation property between aggregate roots included". BE-79's row gains BE-42's EF-model check; mechanism `arch` + `contract`.
+- BE-41 into BE-13 (§4 *Commands and Queries*): a command handler loads through its repository, calls the aggregate's methods and persists through the repository; "There is no other write path". BE-13's row gains BE-41's check (no `Application` type references the unit-of-work port), and states BE-01's part directly rather than as `Covered by`. The contradiction the review found between the two rows (net review §5) no longer arises.
+- BE-43 into BE-38 (§5 *Persistence*): no mapping attribute, an EF attribute included, on a Domain type; no public parameterless constructor or public setter on a mapped one; the last sentence of BE-43 moves with it. BE-38's row gains BE-43's check. BE-04's Gap now points at BE-38's setter ban.
+- The five query-side bullets of §4 *Commands and Queries* (BE-12, BE-14, BE-15, BE-108, BE-16) become one. BE-12 keeps "A Query MUST NOT mutate" and `SaveChangesAsync`; its repository-port half is BE-108's, since a port is a `Domain` type. BE-108 states "MUST bypass the domain", "untracked", no `Domain` type, no aggregate materialized, no aggregate repository, and gains BE-14's keyless-model check and BE-16's repository-implementation check and Gap. BE-15 is unchanged. BE-14 and BE-16 retire into BE-108.
+- Inventory Summary: 101 ⚙ marks; 141 rows - 103 `build`, 32 `required-test`, 1 `dropped`, 5 `retired`. Two rules restate another rule in the file (BE-05, BE-32); BE-13 and BE-14 no longer do.
+
+### Rationale moved from SKILL.md in 2.1.0
+
+Moved word for word, by the section it came from. Each instruction it explained stays in the law.
+
+§4 Commands and Queries (T3):
+
+> a switch statement gets no exhaustiveness check.
+
+> A hierarchy of outcome types cannot be proven exhaustive, so CS8509 fires on every switch over one
+
+§4 Placement of interfaces and implementations (T6):
+
+> `IHubContext<T>` ships only in the ASP.NET Core shared framework, which BE-01 admits in `Api` only
+
+§7 Data Classification (T10):
+
+> Core §8 defines the classes and the boundaries. This section is the mechanism.
+
+§7 Logging (T11):
+
+> which the logging generator treats specially; the redactor applies only to classified parameters, so an unattributed one would be written in clear
+
+§7 Logging (T12):
+
+> the in-box generator ignores them, and writes a classified parameter in clear
+
+§9 Transport (T16):
+
+> An endpoint carries one named policy beside the `GlobalLimiter`, so
+
+§10 Observability (T18):
+
+> Core §9 governs. This is the mechanism.
+
+§10 Correlation (T19):
+
+> under any other propagator that extracts `traceparent`, the SDK's default composite included, the ASP.NET Core instrumentation re-parents the request onto the caller's trace. An ingress that strips the header leaves nothing to link.
+
+§10 Logging (T21):
+
+> because redaction runs in the logger factory `EnableRedaction()` configures
+
+§13 API Layer (T24):
+
+> so a retry finds the same file and no client can name another's
+
+§4 Idempotency (T26):
+
+> means a concurrent attempt executed first
+
+### Load
+
+- Load per .NET stream, as `python -I tools/check-law.py` measures it: ~19.9k tokens before, ~19.4k after. The core law is unchanged at 4557 words; the .NET law goes from 9684 to 9325 words. Annex pointers are shortened, since the introduction already says where the annexes are and when they bind; two orientation lines the Core map already gives are removed; two restatements become pointers to the sentence that stays (§4 *Pipeline behaviors* item 4, §5 *Persistence*).
+- Not reached: the ~16k target. After 2.1.0 the .NET law is rules, their conditions and exceptions, the illustrations, the Core map AUTHORING.md requires, and the Testing section; the sentences in it that restate a core rule are marked rules of their own. Reaching ~16k means taking about 2,300 more words out of what every stream loads, which no further move of rationale can do. It needs a decision on structure, such as moving more topics behind annex triggers, or moving the Core map and Role out of the loaded file (AUTHORING.md §2 now requires them at the top). Left for that decision.
+
+### Review
+
+- An independent reviewer, given the old and new law text and inventory but not these records or the ledger, found no obligation, condition, exception, named tool, live mark or Testing entry lost, and no new rule combination without a compliant answer. Fixed from its findings: §13 says the unit-of-work behavior returns the create-only unique-index violation "as a precondition failure", not "as one", which could be read as a conflict; the merged query bullet keeps "MUST bypass the domain and project ... untracked" as a MUST; the inventory Summary carries no release history. Left as at `main`: BE-13's "no other write path" strains against a command that does not persist and creates nothing to load, exactly as BE-13 and BE-41 did before the merge.
