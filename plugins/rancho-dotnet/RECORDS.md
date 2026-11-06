@@ -757,3 +757,19 @@ Moved word for word, by the section it came from. Each instruction it explained 
 ### Review
 
 - An independent reviewer, given the old and new law text and inventory but not these records or the ledger, found no obligation, condition, exception, named tool, live mark or Testing entry lost, and no new rule combination without a compliant answer. Fixed from its findings: §13 says the unit-of-work behavior returns the create-only unique-index violation "as a precondition failure", not "as one", which could be read as a conflict; the merged query bullet keeps "MUST bypass the domain and project ... untracked" as a MUST; the inventory Summary carries no release history. Left as at `main`: BE-13's "no other write path" strains against a command that does not persist and creates nothing to load, exactly as BE-13 and BE-41 did before the merge.
+
+## 2.2.0
+
+Law 3.2. The .NET law is rewritten as short instructions, after the owner asked whether its prose could be shorter, straighter and clearer. No rule changes. The ledger and the item-by-item proof are in `RECORDS-3.2-ledger.md` at the repository root.
+
+- Long paragraphs become lists: §2's module projects, §4 *Pipeline behaviors* item 4, the query-side rules, the external-write command, the Infrastructure adapter kinds, the audit records, §13's preconditions, problem types and uploads, and §15, one prohibition per line.
+- Each §14 Testing entry with several obligations becomes sub-bullets, each a full sentence naming what MUST have a test and its id; Idempotency says "four tests, one proving each".
+- Restored after the check: the old wording wherever the shorter one dropped "only", "exactly", "not through `Api`", "a handler", "there", "against this rule" or a closed list ("Three annexes", "The framework endpoints ... and the OpenAPI document"), or moved a ⚙ mark off the sentence it marks.
+- Not changed, though the checklist noticed it: Layout says `<Module>.Application/` holds "Commands, queries, handlers, behaviors", while §2 puts the behaviors in `Platform.Application` and §4 puts concrete query handlers in `Infrastructure`. Correcting it changes what the Layout states, so it is left for a change that may.
+- Load per .NET stream: ~19.4k tokens before, ~19.3k after. The ~16k target still needs a decision on structure (`## 2.1.0`, *Load*).
+
+### Rationale moved from SKILL.md in 2.2.0
+
+§2, from "Code the dispatcher's source generator emits into `Api` is written by the generator, not in `Api`, and is outside this rule.":
+
+> is written by the generator, not in `Api`,
