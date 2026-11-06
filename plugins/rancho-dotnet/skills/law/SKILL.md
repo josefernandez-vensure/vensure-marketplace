@@ -68,6 +68,8 @@ tests/
 
 Verify third-party licenses before pinning.
 
+Solutions, projects, project references and package references are created with the `dotnet` CLI, never by writing the file: `dotnet new sln`, which writes an `.slnx` file; `dotnet new` with the template for the project, such as `classlib`, `webapi`, or xUnit v3's `xunit3` from `xunit.v3.templates`; `dotnet sln add`; `dotnet reference add`; and `dotnet package add`, which resolves the version from the configured package sources. A project file is edited by hand only for what the CLI cannot express, such as the project's kind (§2) or an analyzer reference's assets (§2). Solution-wide properties, such as `TreatWarningsAsErrors` and `Nullable`, are set once in `Directory.Build.props`, never per project.
+
 ## 2. Project Reference Law
 
 Four facts decide every reference. The table below is their consequence, not a second set of rules:

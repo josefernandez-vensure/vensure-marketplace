@@ -76,7 +76,8 @@ conflicts_with: []
 
 ## Definition of Done
 - [ ] Code implemented
-- [ ] Tests written and passing
+- [ ] Tests written and passing for the behavior this task adds (a setup or scaffolding task adds none: its tree's verification commands prove it)
+- [ ] Verification commands pass
 - [ ] Code reviewed
 ```
 
