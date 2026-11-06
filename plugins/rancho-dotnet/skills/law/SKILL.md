@@ -5,13 +5,15 @@ description: The .NET server stack law - project references, domain and applicat
 
 # .NET Stack Law
 
-Read the core law, `/rancho:law`, first; it governs. This stack law (core §2) adds the .NET rules and carries the core law's mechanism. Core §N is the core law's §N. `⚙` = can be made to fail the build (core §1). `references/enforcement.md` inventories every `⚙` here and every core rule this role carries: look rules up by id; do not read it whole.
+Read the core law, `/rancho:law`, first; it governs. This stack law (core §2) adds the .NET rules and carries the core law's mechanism in every tree bound to it. Core §N is the core law's §N. `⚙` = can be made to fail the build (core §1). `references/enforcement.md` inventories every `⚙` here and every core rule this role carries: consult it by rule id rather than reading it whole.
 
-Each annex in `references/` binds the whole tree, as this file does, once the tree meets its trigger. Each is named where its rules would otherwise stand.
+Three annexes, beside the inventory in `references/`, hold rules that bind a tree only once the tree meets the annex's trigger:
 
 - `annex-agents.md`: the first code that sends data to a model or exposes an operation to one as a tool - an agent manifest, `Microsoft.Agents.AI`, an MCP server, Semantic Kernel, a direct model client, or any other.
 - `annex-caching.md`: the first code that reads or writes a cache - a cache decorator, `IMemoryCache`, `IDistributedCache`, `HybridCache`, output caching, Redis, or any other.
 - `annex-realtime.md`: the first code that pushes messages to a client over a persistent connection - a SignalR hub, server-sent events, a raw WebSocket, or any other.
+
+Each is named where its rules would otherwise stand. Once the tree meets a trigger, the annex binds the whole tree, exactly as this file does.
 
 A tree is bound to this stack law by one line in the `CLAUDE.md` at its root:
 
@@ -90,14 +92,11 @@ Four facts decide every reference. The table below is their consequence, not a s
 - Every project MUST declare its kind - one of the rows above - as an MSBuild property. A project whose kind is missing, misspelled or not in the table may reference nothing and be referenced by nothing. A new kind of project needs a new row, derived from the four facts. ⚙ BE-01
 - The table allowlists **direct** `ProjectReference` entries, not the transitive closure. A project MAY declare a reference it could also reach transitively; it MUST NOT declare one its row omits. ⚙ BE-01
 - A test project MUST NOT be referenced by a project of any other kind. A fixture built to prove a check fails MUST NOT appear in the solution file or under the production source root.
-- Analyzer references - analyzers only, no assembly the project compiles against or runs with - are admitted in every project, outside the table: a package reference with `IncludeAssets="analyzers"` and `PrivateAssets="all"`, or a project reference with `OutputItemType="Analyzer"` and `ReferenceOutputAssembly="false"`.
+- An analyzer reference - one that contributes analyzers only, and no assembly the project compiles against or runs with - is admitted in every project and is outside the table. A package reference qualifies with `IncludeAssets="analyzers"` and `PrivateAssets="all"`; a project reference with `OutputItemType="Analyzer"` and `ReferenceOutputAssembly="false"`.
 - The Domain project MUST NOT reference EF Core, Mediator, ASP.NET, `IHttpContextAccessor`, or any application type. ⚙ BE-02
 - `Platform.*` carries the dispatch pipeline: `Result`, the message abstractions, the solution-wide page shape and cursor type, and the behaviors. `Result` lives in `Platform.Application`, not in `SharedKernel`.
-- A published query message in `Contracts` MUST name both its `Result` response and the abstraction it is dispatched by. Nothing else from `Platform.Application` may appear in a contract's public surface, except the page and cursor types a published collection query returns.
-- `Api` names only the registration entry points of Infrastructure projects:
-  - each module's Infrastructure exposes exactly one, `Add<Module>Module(IServiceCollection, IConfiguration)`;
-  - `Platform.Infrastructure` exposes one `Add<Feature>` extension per platform feature, such as the outbox or correlation logging.
-- `Api` MUST NOT name any other Infrastructure type - client, credential, `DbContext`, repository, adapter, SDK type, or any other - and after startup MUST NOT name or invoke one directly: Infrastructure handlers are reached through the dispatcher. Each Infrastructure project builds and registers its own clients, its `DbContext` included. ⚙ BE-105, BE-106 Code the dispatcher's source generator emits into `Api` is outside this rule.
+- `Contracts` references `Platform.Application`: a published query message MUST name both its `Result` response and the abstraction it is dispatched by. Nothing else from `Platform.Application` may appear in a contract's public surface, except the page and cursor types a published collection query returns.
+- `Api` names only the registration entry points of Infrastructure projects. Each module's Infrastructure exposes exactly one, `Add<Module>Module(IServiceCollection, IConfiguration)`; `Platform.Infrastructure` exposes one `Add<Feature>` extension per platform feature, such as the outbox or correlation logging. `Api` MUST NOT name any other Infrastructure type - no client, credential, `DbContext`, repository, adapter, SDK type, or any other - and after startup MUST NOT name or invoke an Infrastructure type directly: dispatch reaches an Infrastructure handler through the dispatcher, not through `Api`. Each Infrastructure project builds and registers its own clients, its `DbContext` included. ⚙ BE-105, BE-106 Code the dispatcher's source generator emits into `Api` is outside this rule.
 - The **composition root** is `Api` plus the registration entry points it calls. Wherever this law confines something to it - reading configuration (§11), learning the environment (§11), resolving services from the container (§15), registering decorators (§5) - both are admitted, nothing else.
 
 A module is a Bounded Context. Its projects exist **at most once per module**, never per feature:
@@ -152,7 +151,7 @@ public <Outcome> <Operation>(<Args> args, DateTimeOffset now)
 
 - Primitives in aggregates and entities SHOULD be Value Objects wherever the primitive carries meaning or constraints: a `string` email becomes `EmailAddress`.
 - Value Objects MUST be immutable, MUST validate in their constructor, MUST have structural equality, and MUST be impossible to construct in an invalid state.
-- Every identifier MUST be a strongly-typed id, one type per concept.
+- Every identifier MUST be a strongly-typed id, one type per concept, so passing the wrong id does not compile.
 - No public member of `Domain`, or of a command or query message, exposes a bare `Guid`, except a strongly-typed id's own constructor, its value member, and its compiler-generated members, such as a positional record's `Deconstruct`. ⚙ BE-08 `int` stays permitted for counts and quantities.
 - Command and query messages and Response DTOs MUST NOT reference a `Domain` type. ⚙ BE-109 An id they carry is the module's published id type from `Contracts`, the one wire id for that concept; the handler converts it, and every other wire value, into domain values. So a module with an endpoint has a `Contracts` project.
 
@@ -180,9 +179,9 @@ public <Outcome> <Operation>(<Args> args, DateTimeOffset now)
   - A Query MUST NOT mutate: its handler MUST NOT call `SaveChangesAsync`. ⚙ BE-12
   - A query handler MUST bypass the domain and project straight into its Response DTO, untracked: it MUST NOT reference a `Domain` type, materialize an aggregate, or use an aggregate repository. ⚙ BE-108
   - The query message, its Response DTO, and the `IQueryHandler<,>` abstraction live in `Application`. **Every concrete query handler lives in `Infrastructure`, by convention**, a pure-computation one included. A command handler stays in `Application`. ⚙ BE-15
-  - It reads a relational database through keyless read types its module's Infrastructure maps over a table or view, queried with LINQ, or with parameterized SQL projected into the DTO, such as EF Core's `Database.SqlQuery<T>` with an interpolated string.
-  - Read types carry the module's global query filters, such as a tenant or soft-delete filter. SQL bypasses them and MUST apply them itself; a handler that reads with SQL is covered by a test against a real database (§14).
-- SQL MUST NOT be built from input by any means but the parameterized form. The raw-string APIs - `SqlQueryRaw`, `FromSqlRaw`, `ExecuteSqlRaw`, or any other - MUST NOT be used in a module. ⚙ BE-113 A migration's SQL (§5) is outside this rule.
+  - A query handler reads a relational database through keyless entity types its module's Infrastructure maps for reading, over a table or a view and queried with LINQ, or with parameterized SQL projected into the DTO, such as EF Core's `Database.SqlQuery<T>` with an interpolated string.
+  - A read type carries the module's global query filters, such as a tenant or soft-delete filter. SQL bypasses them and MUST apply them itself; a handler that reads with SQL is covered by a test against a real database (§14).
+- SQL MUST NOT be built from input by any means but the parameterized form. The raw-string APIs - `SqlQueryRaw`, `FromSqlRaw`, `ExecuteSqlRaw`, or any other - MUST NOT be used in a module. ⚙ BE-113 A migration's SQL (§5) is written, not built from input, and is outside this rule.
 - `Repository` is reserved for the aggregate write path. A read-side type that returns DTOs MUST NOT be called a repository: name it `<Feature>Reader`. Usually the query handler is the read data access, and no separate type is warranted. ⚙ BE-17
 - One handler per message. Handlers MUST NOT call other handlers directly. Shared logic belongs in the domain or a named application service.
 - A handler MAY dispatch another module's published query through the dispatcher (core §3). That dispatch runs the full pipeline, on its own module's connection, never enlisted in the command's transaction.
@@ -204,7 +203,7 @@ Translation is a switch expression, never a switch statement.
 
 ### Pagination
 
-- A query returning a collection not bounded by construction MUST be paginated; one bounded by construction declares its bound (core §4). Returning an unbounded collection, such as a `List<T>` or `IEnumerable<T>`, is a defect. ⚙ BE-19 A declared stream (core §4 *Wire contract*) is not a collection.
+- Every query returning a collection whose size is not bounded by construction MUST be paginated; one bounded by construction declares its bound (core §4). A handler returning an unbounded collection, such as a `List<T>` or an `IEnumerable<T>`, is a defect. ⚙ BE-19 A declared stream (core §4 *Wire contract*) is not a collection.
 - A bounded set a UI grid shows in full is bounded by construction only where it declares its bound and rejects a request beyond it.
 - One shared page shape for the whole solution. A per-feature paging envelope is a defect. ⚙ BE-20
 - Every paginated query MUST declare a maximum page size, under a solution-wide ceiling. A request above the maximum MUST be rejected by the validation behavior. Silent clamping is forbidden. ⚙ BE-21, BE-22
@@ -212,10 +211,7 @@ Translation is a switch expression, never a switch statement.
 - Ordering MUST be deterministic: a paginated query MUST declare it as a descriptor whose last term is a unique key, not only as an `OrderBy` chain. The executed `ORDER BY` and keyset predicate MUST be generated from the descriptor, never written beside it. ⚙ BE-23
 - One cursor type solution-wide, whose payload is exactly the sort key and the id. ⚙ BE-24
 - Cursors are opaque to the client (core §4 *Wire contract*) and MUST be validated server-side.
-- A cursor is encrypted and authenticated:
-  - it is encoded and decoded only through a cursor codec port declared in `Platform.Application` and implemented in `Platform.Infrastructure` with ASP.NET Core Data Protection, under a purpose per query;
-  - a cursor that fails to decode is a validation failure, never an exception that escapes;
-  - the key ring is persisted in the database through `PersistKeysToDbContext`, or in Blob storage with its keys protected by Key Vault, never in a cache, and is shared by every instance. ⚙ BE-119
+- A cursor is encrypted and authenticated. It is encoded and decoded only through a cursor codec port declared in `Platform.Application` and implemented in `Platform.Infrastructure` with ASP.NET Core Data Protection, under a purpose per query. A cursor that fails to decode is a validation failure, never an exception that escapes. The key ring is persisted in the database through `PersistKeysToDbContext`, or in Blob storage with its keys protected by Key Vault, never in a cache, and is shared by every instance. ⚙ BE-119
 
 Its agent rule: `annex-agents.md`.
 
@@ -227,11 +223,11 @@ Fixed order. Changing it requires written justification.
 2. **Authorization** - resolves the message's declared policy and evaluates it against the explicit principal. A message with no declared policy MUST fail to dispatch. ⚙ BE-25
 3. **Validation** - FluentValidation. A failure short-circuits to a `Result` failure; the handler is never invoked.
 4. **Unit of work and idempotency** - commands only. One behavior.
-   - A command that persists aggregate state: open the unit of work. If the command declares a key, resolve the attempt identity first: where a record exists, answer with it as a replay, or `422` when the fingerprints differ, without invoking the handler.
-   - Otherwise: run the handler, write the idempotency record where a key is used, dispatch domain events to their reactions, and commit on success. Roll back on any failure or exception.
+   - A command that persists aggregate state: open the unit of work; then, if the command declares a key, resolve the attempt identity: where a record exists, answer with it as a replay, or `422` when the fingerprints differ, without invoking the handler.
+     Where no record answers: run the handler, write the idempotency record where a key is used, dispatch domain events to their reactions, and commit on success. Roll back on any failure or exception.
    - After a successful commit: hand the committed domain events to their post-commit effects, such as cache invalidation. A failure there is logged as an error, and the committed result is still returned.
-   - Any failure result, the handler's or one at commit: look up the attempt identity first and answer with its record where one exists. Otherwise return the failure - a commit-time one as a `Result` conflict, or as a precondition failure for a stale expected version or a create-only unique-index violation (§13; core §6).
-   - With a key: record a returned failure result after the rollback, in its own transaction on the module's context (core §4); a unique-index violation there is answered by the attempt identity. An exception is not recorded.
+   - On any failure result - the handler's, or one at commit: look up the attempt identity first, as above, and answer with the record where one exists. Otherwise return the failure - a commit-time one as a `Result` conflict, or as a precondition failure for a stale expected version or a create-only unique-index violation (§13; core §6).
+   - Where a key is used: a failure result the behavior returns is recorded after the rollback, in a transaction of its own on the module's context, so a replay returns it (core §4). A violation of the unique index there is answered by the attempt identity, as above. An exception is not recorded.
    - A command that does not persist: open nothing. After the handler returns, fail the dispatch if the module's context holds a staged change.
 
 ### Idempotency
@@ -242,7 +238,7 @@ A command that executes twice on a retry is a defect in the command, not in the 
 - Where a key is used, the identity of an attempt is `(principal, operation, key)`. The same key with a different payload MUST fail with `422`, never overwrite (core §4).
 - The idempotency record MUST be written through the same unit of work as the state change. Redis MUST NOT be the store. ⚙ BE-27
 - The store MUST carry a unique index on the attempt identity. ⚙ BE-28 The unit-of-work behavior answers a violation of that index at commit by the attempt identity, as it answers any failure result (§4 *Pipeline behaviors*, item 4) - never as a conflict.
-- The record stores a fingerprint of the request payload: an HMAC under a server key, never a plain hash. Its class is `Internal`.
+- The idempotency record stores a fingerprint of the request payload: an HMAC under a server key, never a plain hash, and the fingerprint's class is `Internal`.
 - Two concurrent attempts with the same key MUST resolve as one execution and one replay, never as a `500`.
 - Records MUST be retained longer than the longest caller retry window, and swept afterwards.
 - Idempotency is a pipeline behavior. A per-endpoint or per-handler check is a defect. ⚙ BE-30
@@ -256,9 +252,7 @@ Its agent rule: `annex-agents.md`.
 - Integration events MUST be written to the outbox in the same transaction as the state change that caused them. Publishing directly from a handler is forbidden. ⚙ BE-33
 - Every integration event handler MUST be idempotent. Delivery is at-least-once; assume redelivery.
 - Handlers MUST NOT call external systems inside a transaction.
-- A command declares, in its operation declaration (§6), whether it persists aggregate state. Only a command that does opens the unit of work.
-- A command whose effect is an external write:
-  - runs without a transaction, and MUST NOT use a key-based idempotency mechanism or the outbox; ⚙ BE-110
+- A command declares, in its operation declaration (§6), whether it persists aggregate state. Only a command that does opens the unit of work. A command whose effect is an external write runs without a transaction, and MUST NOT use a key-based idempotency mechanism or the outbox. ⚙ BE-110 Such a command:
   - MUST NOT stage a database change - the unit-of-work behavior refuses one (§4 *Pipeline behaviors*, item 4; its test, §14);
   - is idempotent naturally or by a client-supplied id, such as a blob name derived from the aggregate id;
   - MAY load an aggregate to decide whether the write may proceed;
@@ -300,8 +294,8 @@ Placement is decided by **dependencies, never by the name**. `Service`, `Manager
   - a registration entry point (§2);
   - a type the project maps or binds: an entity or read type in its model, such as the outbox row or the idempotency record, or an options class (§11).
 
-  Any other Infrastructure type is a defect. Infrastructure types are `internal`, except the registration entry points, any type the dispatcher's generated code in `Api` must name (every concrete query handler, so each is public), and the types those expose publicly, such as the module's `DbContext`, which a query handler's constructor takes, and the read types it exposes. `InternalsVisibleTo` names only test assemblies and the test mocking library's proxy assembly, such as `DynamicProxyGenAssembly2`. ⚙ BE-34, BE-107
-- Infrastructure types MUST live under `Persistence/`, `Queries/`, `Messaging/`, or `External/`, except the registration entry point, which sits at the project root. A new top-level folder is added to the check's allowed set, with its justification in the PR. ⚙ BE-35
+  A free-standing Infrastructure service belonging to none of these is a defect. Infrastructure types are `internal`, except the registration entry points, any type the dispatcher's generated code in `Api` must name, and the types those expose in a public constructor or member - such as the module's `DbContext`, which a query handler's constructor takes, and the read types the `DbContext` exposes. The source-generated dispatcher names each concrete handler in its generated registration, so every concrete query handler is public. `InternalsVisibleTo` names only test assemblies and the test mocking library's proxy assembly, such as `DynamicProxyGenAssembly2`. ⚙ BE-34, BE-107
+- Infrastructure types MUST live under `Persistence/`, `Queries/`, `Messaging/`, or `External/`, except the registration entry point, which sits at the project root. A new top-level folder there is added to the check's allowed set, with its justification in the PR. ⚙ BE-35
 - `Infrastructure/Queries/<Feature>/` MUST mirror the feature folder name used in `Application`. ⚙ BE-36
 
 ## 5. Persistence
@@ -510,11 +504,7 @@ Its agent rule: `annex-agents.md`.
 - Configuration binds to strongly-typed options classes. Outside the composition root, code MUST NOT read configuration from its source - `IConfiguration`, a process environment variable, or any other. ⚙ BE-95 It receives a bound options class.
 - Every options class MUST have a validator and MUST be registered with `ValidateOnStart`. ⚙ BE-96
 - An options default MUST NOT silently weaken a control. A missing limit, timeout, or policy denies (§9); it never falls back to permissive.
-- Secrets:
-  - Secrets come from Key Vault through managed identity in every environment above local development.
-  - A secret MUST NOT appear in any committed file. ⚙ BE-97 A secret is any value that grants access on its own, such as a connection string, a package-feed token, or any other.
-  - A key generated for a test and trusted by nothing outside it is not a secret where it is listed, by file and key, in the reviewed test-key list `tests/test-keys.txt`.
-  - A committed file that needs a credential MUST reference it - an environment-variable macro such as `nuget.config`'s `%NUGET_PAT%`, or a credential provider - and MUST NOT carry a placeholder to be overwritten in place.
+- Secrets come from Key Vault through managed identity in every environment above local development. A secret MUST NOT appear in any committed file. ⚙ BE-97 A secret is any value that grants access on its own, such as a connection string, a package-feed token, or any other. A key generated for a test and trusted by nothing outside it is not a secret where it is listed, by file and key, in the reviewed test-key list `tests/test-keys.txt`. A committed file that needs a credential MUST reference it - an environment-variable macro such as `nuget.config`'s `%NUGET_PAT%`, or a credential provider - and MUST NOT carry a placeholder to be overwritten in place.
 - Local development uses user secrets. A developer MUST NOT need a production credential to run the application.
 - Configuration that differs by environment MUST differ by value, never by code path. Outside the composition root, code MUST NOT learn which environment it runs in, by any means. ⚙ BE-98 Where telemetry needs the environment's name, the composition root puts it there - a resource attribute, a log enricher.
 - A feature flag is configuration: typed, validated, and removable.
@@ -527,7 +517,7 @@ In `annex-realtime.md`.
 
 - Every endpoint MUST be a type implementing the shared endpoint abstraction, with its Request DTO, dispatched message and Response DTO as type arguments. A lambda or method group passed as a route handler to a minimal-API route builder - `MapGet`, `MapPost`, `MapMethods`, or any other - is forbidden. ⚙ BE-80
 - Endpoints are registered by discovery over those types at the composition root. Hand-registering one is a defect. ⚙ BE-81
-- Framework endpoints - the readiness and liveness probes (§10), a hub's `MapHub` (real-time annex), the OpenAPI document - are mapped by the framework, not by an endpoint type: a declared list at the composition root, outside the two rules above. They stay under the rate limit (§9, the `GlobalLimiter`). Each carries a named policy (§6), such as an anonymous one for the probes, or falls to the denying fallback.
+- The framework endpoints - the readiness and liveness probes (§10), a hub's `MapHub` (real-time annex) and the OpenAPI document - are mapped by the framework, not by an endpoint type: a declared list at the composition root, outside the two rules above. They stay under the rate limit (§9, the `GlobalLimiter`). Each carries a named policy (§6), such as an anonymous one for the probes, or falls to the denying fallback.
 - The registrar applies each endpoint's authorization and rate-limit metadata from the operation declaration of the message it dispatches; an endpoint declares neither itself.
 - An endpoint MUST map its Request DTO to a message, dispatch it, and translate `Result` to HTTP (core §4). It MUST NOT reference any type other than its DTOs, the message it dispatches, and every type those are composed of; the shared endpoint abstraction; the dispatcher and the `Result` it returns; the result translator; and the framework's primitives, such as `Task`, `CancellationToken`, and HTTP result types. ⚙ BE-82
 - Endpoints MUST NOT reference domain types. ⚙ BE-77
@@ -545,7 +535,7 @@ In `annex-realtime.md`.
 - The endpoint registrar sets `Cache-Control: no-store` on every endpoint whose Response DTO resolves to `Confidential` or `Restricted` (BE-55), and `Cache-Control: private` on every other endpoint whose representation depends on the principal (core §4 *Wire contract*). Which endpoints depend on the principal is reached by review.
 - Uploads:
   - An upload endpoint's Request DTO carries the file as a stream with its metadata. Its size limit is enforced at the request boundary - the endpoint's request size limit - before the body is buffered.
-  - It dispatches a non-persisting command that stores the file in quarantine, under a name the server derives with a keyed hash, such as an HMAC under a server key, from the uploader's principal and the command's client-supplied id (parsed by the validation behavior) - never from the client's file name (§4).
+  - It dispatches a command that does not persist to store the file in quarantine, under a name the server derives from the uploader's principal and the command's client-supplied id - an id the validation behavior has parsed - with a keyed hash, such as an HMAC under a server key; never from the client's file name (§4).
   - A persisting command, run under the uploader's principal recorded with the quarantined file, records it once the scan passes (core §7 *File uploads*).
 - A change to a Request or Response DTO that does not regenerate and commit the OpenAPI document is incomplete.
 
@@ -554,26 +544,26 @@ In `annex-realtime.md`.
 A missing required test is a defect exactly as a violated rule is (core §1). The required tests of a rule in an annex are in that annex's own Testing section.
 
 - **Domain**: pure unit tests, no substitutes, no I/O. Every invariant and every domain outcome MUST have a test (BE-138).
-- **Application**: handler tests with substituted infrastructure. MUST have a test proving:
-  - for every declared policy that some principal does not satisfy: such a principal is denied, not only that one succeeds (BE-122);
-  - where a handler translates outcomes that are types: each outcome's translation (BE-141).
+- **Application**: handler tests with substituted infrastructure.
+  - Every declared policy that some principal does not satisfy MUST have a test proving such a principal is denied, not only one proving success (BE-122).
+  - Where a handler translates outcomes that are types, every outcome MUST have a test proving its translation (BE-141).
 - **Integration**: real SQL Server via Testcontainers, real pipeline behaviors.
 - **Queries**: every query handler that reads with SQL MUST have a test against real SQL Server proving its SQL projects into its Response DTO and applies the module's query filters (BE-112).
 - **Transactions**: a command that runs without a transaction MUST have a test proving a staged database change fails the dispatch and is never committed (BE-111).
 - **Architecture**: ArchUnitNET tests are first-class and MUST NOT be skipped or marked inconclusive to unblock a change.
-- **Authorization** - MUST have a test proving:
-  - for every external authority: an unreachable, a timing-out, and an erroring authority each deny, and an expired cache entry is not served while the authority is unreachable (BE-99);
-  - for every token validation that reads a claim before the signature is checked: a token whose selecting claims disagree with its validated issuer or endpoint is refused, and no claim read before validation reaches the principal (BE-104);
-  - for every policy: an in-process dispatch with no HTTP context receives the same decision as the HTTP path (BE-101);
-  - for every operation that acts on a record the caller identifies, unless its policy grants every record: a principal that holds the policy but not the record is denied; and for every query: it returns no record the principal may not see (BE-117).
-- **Audit** - MUST have a test proving:
-  - for every persisting command: its success record commits with its change, and its failure record is written after rollback;
-  - for every command that does not persist: its record is written;
-  - for the authorization behavior and the resource-authorization port: a denial is recorded (BE-118).
-- **Pagination** - MUST have a test proving:
-  - for every paginated query: a request above its maximum is rejected; and, in another test, no row is skipped or repeated across a page boundary;
-  - for every collection bounded by construction whose size a request determines: a request beyond its bound is rejected, never truncated (BE-124).
-- **Idempotency** - every command declaring a key MUST have a test proving each of:
+- **Authorization**:
+  - Every external authority MUST have a test proving that an unreachable, a timing-out, and an erroring authority each deny, and that an expired cache entry is not served while the authority is unreachable (BE-99).
+  - Every token validation that reads a claim before the signature is checked MUST have a test proving that a token whose selecting claims disagree with its validated issuer or endpoint is refused, and that no claim read before validation reaches the principal (BE-104).
+  - Every policy MUST have a test proving an in-process dispatch with no HTTP context receives the same decision as the HTTP path (BE-101).
+  - Every operation that acts on a record the caller identifies, unless its policy grants every record, MUST have a test proving a principal that holds the policy but not the record is denied; every query, a test proving it returns no record the principal may not see (BE-117).
+- **Audit**:
+  - Every persisting command MUST have a test proving its success record commits with its change and its failure record is written after rollback (BE-118).
+  - Every command that does not persist MUST have a test proving its record is written (BE-118).
+  - The authorization behavior and the resource-authorization port MUST each have a test proving a denial is recorded (BE-118).
+- **Pagination**:
+  - Every paginated query MUST have a test proving a request above its maximum is rejected, and a test proving no row is skipped or repeated across a page boundary (BE-124).
+  - Every collection bounded by construction whose size a request determines MUST have a test proving a request beyond its bound is rejected, never truncated (BE-124).
+- **Idempotency**: every command declaring a key MUST have four tests, one proving each of:
   - a replayed key returns the recorded result without executing twice (BE-125);
   - two concurrent attempts under one key resolve as one execution and one replay, not an error (BE-29);
   - the same key with a different payload is refused with `422` (BE-116);
@@ -581,9 +571,9 @@ A missing required test is a defect exactly as a violated rule is (core §1). Th
 - **Concurrency**: every versioned write MUST have a test proving a write without `If-Match` is refused with `428`, one with a stale version with `412`, `If-Match: *` with `428`, and a create with `If-None-Match: *` for an existing id with `412` (BE-115).
 - **Uploads**: every upload endpoint MUST have a test proving a file whose content does not match its declared type is refused, a file above the maximum size is refused, and a stored file is not served before its scan passes (BE-120).
 - **Rate limits**: every rate-limit policy, and the `GlobalLimiter`, MUST have a test proving a request beyond its limit is refused with `429` as problem details, carrying `Retry-After` where its limiter can estimate when permits return (BE-127).
-- **Correlation** - MUST have a test proving:
-  - for the outbox: the trace context survives the round trip - written with the transaction, restored on delivery, present on the consumer's log line (BE-92);
-  - for a request from outside the trust boundary that carries a `traceparent`: it gets a new trace id and a link to the caller's (BE-139).
+- **Correlation**:
+  - The outbox MUST have a test proving the trace context survives the round trip - written with the transaction, restored on delivery, present on the consumer's log line (BE-92).
+  - A request from outside the trust boundary that carries a `traceparent` MUST have a test proving it gets a new trace id and a link to the caller's (BE-139).
 - **Observability**: the dispatch pipeline MUST have a test proving every behavior registered in it, and the handler, emits a span, nested in pipeline order, so that authorization, validation and handler time are separable (BE-128).
 - **Migrations**: every migration MUST be applied to a Testcontainers database in CI and proven to run clean twice. A destructive migration MUST also have a test proving the previous application version still serves against the new schema (BE-89).
 - **Classification**: every `Confidential` and `Restricted` type MUST have a test proving it redacts in `ToString()` and in a serialized log event, and that a classified logging-method parameter is redacted in the provider's output (BE-126).
@@ -598,7 +588,7 @@ A missing required test is a defect exactly as a violated rule is (core §1). Th
 - Reading the system clock in domain or application code - `DateTime.Now`, `DateTimeOffset.UtcNow`, `DateTime.Today`, or any other ambient read. Inject `TimeProvider` into the handler, and pass the time to the aggregate as an argument. ⚙ BE-132
 - `async void` outside event handlers ⚙ BE-133
 - `.Result`, `.Wait()`, `.GetAwaiter().GetResult()` ⚙ BE-134
-- Catching `Exception` without rethrowing, except at a declared fault-isolation boundary: one iteration of a hosted-service loop, one outbox delivery, a post-commit effect (§4), or any other unit whose failure must not stop the host. Declare it with a marker attribute on the method, declared once in `SharedKernel`. It MUST log at `Error` with the exception, within core §8's telemetry rule, and MUST let `OperationCanceledException` propagate on shutdown. ⚙ BE-135
+- Catching `Exception` without rethrowing, except at a declared fault-isolation boundary: one iteration of a hosted-service loop, one outbox delivery, a post-commit effect (§4), or any other unit whose failure must not stop the host. It is declared by a marker on the method - an attribute the solution declares once in `SharedKernel`. It MUST log at `Error` with the exception, within core §8's telemetry rule, and MUST let `OperationCanceledException` propagate on shutdown. ⚙ BE-135
 - `#region` ⚙ BE-136
 - Commented-out code
 
