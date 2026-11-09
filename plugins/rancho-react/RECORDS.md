@@ -285,3 +285,11 @@ Release review fixes, from the stage 8 React review and the core review's findin
 - Left to the core law: React S10, CORS exposure of `ETag` and `Retry-After` and allowance of `traceparent`, `If-Match` and `Idempotency-Key`, is a core §4 *Wire contract* line.
 - Inventory Summary unchanged: 32 marks; 43 rows, 31 `build`, 11 `required-test`, 1 `dropped`, 0 `retired`; 2 core rules carried.
 - Re-review fix: a value for string-only storage is serialized within the write's own argument, which is where FE-23 reads its brand; a value serialized beforehand into a variable is a plain string the lint refuses.
+
+## 4.0: the contract law
+
+The core law became an index and its principles, and its wire rules moved into the contract law beside it (`rancho` RECORDS, *4.0*; `RECORDS-4.0-ledger.md`).
+
+- The Core map maps core §3 Access, §4 Data Boundaries, §5 Observability, §6 Verification, and the contract law. The two "Not bound" rows (old core §3 and §4) are gone: those rules left the core for the server stack law.
+- `core §4 *Wire contract*` is now `contract §7 *Wire contract*`. Other core citations follow the new numbers: old §5 and §7 are §3, old §8 is §4, and old §11 is §7.
+- ROOT-18's Section is now contract §6. ROOT-16's is §4. No rule of this law changed.

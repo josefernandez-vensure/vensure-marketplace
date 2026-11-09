@@ -51,7 +51,7 @@ Six root rules are **duplicated** by a stack-law rule: a stack law's inventory n
 |---|---|---|---|---|---|
 | ROOT-01 | No module references another module's internals; only its published contracts; left the core law in 4.0, as server architecture. Merged into BE-01 (`rancho-dotnet`) | §3 | server | retired | — |
 | ROOT-02 | Domain events MUST NOT cross a module boundary; left the core law in 4.0, as server architecture. Merged into BE-07 (`rancho-dotnet`) | §3 | server | retired | — |
-| ROOT-03 | "An event with both audiences is two events" | §3 | server | dropped | — |
+| ROOT-03 | "An event with both audiences is two events"; left the core law in 4.0, as server architecture: `rancho-dotnet` §4 *Integration event contracts* states it, reached by review | §3 | server | dropped | — |
 | ROOT-04 | One schema per module; no cross-schema joins, no cross-module FKs; left the core law in 4.0, as server architecture. Merged into BE-37 (`rancho-dotnet`) | §3 | server | retired | — |
 | ROOT-05 | Frontend folders mirror backend modules; left the core law under A-02. Merged into FE-28 (`rancho-react`): every feature is declared in the feature registry | §3 | client | retired | — |
 | ROOT-06 | A frontend feature does not import another; left the core law under A-02. Merged into FE-03 (`rancho-react`) | §3 | client | retired | — |

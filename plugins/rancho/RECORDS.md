@@ -235,3 +235,50 @@ From a consuming project's report that agents wrote a test for every project, fo
 - §10: a rule whose inventory row says it is covered by another row's check needs no check beyond what its own row names. A row such as BE-13 that is covered by BE-01 and also names a check of its own keeps that check.
 - No mark and no inventory row: whether a test proves only what the build proves is a reviewer's question.
 - `vaca` `references/structure.md`, Definition of Done: tests for the behavior the task adds, and the tree's verification commands passing. A setup or scaffolding task adds no behavior.
+
+## 4.0: the core law becomes an index
+
+From the owner's review: the core law, which binds every tree, was written in the vocabulary of one server architecture and leaked .NET names, so a client tree read rules it could not follow and a tree bound to none inherited HTTP rules. The case, the decisions and the outcome are in `RECORDS-4.0-ledger.md` at the repository root.
+
+- Decisions:
+  - The contract law lives beside the core law, in `skills/law/references/contract.md`, so its rules keep their `ROOT` ids and both stacks depend on one owner (`AUTHORING.md` §2).
+  - Server architecture moves into `rancho-dotnet` now. With one server stack, nobody can know what every server stack would need (`AUTHORING.md` §7), so a rule a second server stack shares comes back to the core when that stack exists.
+  - "Expected outcomes are values, not exceptions" is the .NET law's, not a core principle.
+- The core law is: §0 Prime Directive, §1 Rule Language, §2 The Laws and Which One Binds a Tree, §3 Access, §4 Data Boundaries, §5 Observability, §6 Verification, §7 Changing the Law and Exceptions.
+- §2 indexes the laws by role and says when to read each. A new stack law adds its row.
+- The principles are stated as outcomes, with no mechanism vocabulary:
+  - Validation and authorization are identical for every caller; validation on the user's device is UX.
+  - Authorization has two parts.
+  - An uploaded file is untrusted until the server has proven its type, chosen its name and seen a scan pass.
+  - A class is declared once and inherited.
+  - The egress table keeps each boundary's rule. Its owner is named by the stack law of the tree.
+- §4's no-exception sentence no longer lists integration events: BE-61 keeps them free of `Restricted`, absolutely.
+- §5's correlation id list drops "an outbox delivery" for "a message and each delivery of it". Exemplars, a mechanism, are the .NET law's (`rancho-dotnet` §10).
+- §7's suppression sentence no longer names .NET and TypeScript. Each stack law states its suppression forms.
+- Row history:
+  - ROOT-09, ROOT-11, ROOT-12, ROOT-13: moved to the contract law; their Section is now contract §1, §2, §2 and §3.
+  - ROOT-18: moved to the contract law, contract §6.
+  - ROOT-14: Section §7 → §3.
+  - ROOT-16: Section §8 → §4.
+  - ROOT-19: Section §9 → §5.
+  - ROOT-01: retired, merged into BE-01. BE-01's allowlist already admitted no reference to another module's internals; its Check takes ROOT-01's assembly assertion.
+  - ROOT-02: retired, merged into BE-07, which was its canonical row.
+  - ROOT-04: retired, merged into BE-37, which takes its schema check and gap.
+  - ROOT-07: retired, merged into BE-80, with BE-82, which takes ROOT-07's walk of every Request DTO's property graph.
+  - ROOT-08: retired, merged into BE-108, which was its canonical row.
+  - ROOT-15: retired, merged into BE-01, which was its canonical row.
+  - ROOT-17: retired, merged into BE-61, which was its canonical row.
+  - ROOT-20: retired, merged into BE-54, which was its canonical row.
+- Inventory Summary: 7 ⚙ marks; 20 rows - 7 `build`, 0 `required-test`, 2 `dropped`, 11 `retired`.
+- `AUTHORING.md`:
+  - Its sections mirror the new numbers (§6, §7).
+  - A Core map covers core §3 onward and the contract law.
+  - A stack law MUST NOT weaken the contract law.
+- `tools/check-law.py`:
+  - Reads the contract law's marks.
+  - Reports the load of a tree bound to none, and of each stack stream with the contract law.
+- Obligation check: after stage 3, an independent read of the old core law, sentence by sentence, against the new core, the contract law and the .NET law. It found nothing missing outright. It found these, all fixed:
+  - Exemplars: the core's "never through a metric dimension" had moved only partly into the .NET law. It is back in core §5.
+  - "A class is declared once" contradicted the .NET law's two declarations, on a domain type and its `Contracts` twin. Core §4 now says a class is declared where the value is defined, and where a stack law declares it twice, a check proves the two agree.
+  - ROOT-03's row now says where its rule went (`rancho-dotnet` §4). It stays `dropped`, since no BE row marks it.
+  - Narrowings in the .NET law: the explicit principal, logging-parameter agreement, integration events with no exception, and `no-store` for streams. Recorded in `rancho-dotnet` RECORDS, *4.0*.

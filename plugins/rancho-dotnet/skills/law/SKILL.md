@@ -368,6 +368,7 @@ public static readonly Operation <Operation> = new(
 
 - Bare `[Authorize]` and unattributed endpoints are defects. ⚙ BE-50
 - `AuthorizationOptions.FallbackPolicy` MUST deny. ⚙ BE-51
+- The acting principal MUST be explicit in the dispatch context. Domain and application code MUST NOT read it from an ambient source - `HttpContext`, `IHttpContextAccessor`, `Thread.CurrentPrincipal`, `ClaimsPrincipal.Current`, or any other. ⚙ BE-01
 - The authorization behavior evaluates policies via `IAuthorizationService`, against the explicit principal from the dispatch context.
 - The object check (core §3) is made after the load and before the handler acts, through a resource-authorization port declared in `Platform.Application`:
   - the port takes the resource and the policy, and reads the acting principal from the dispatch context;
@@ -425,7 +426,7 @@ Each egress boundary of core §4 has one owner here, and no other path across it
 
 - Logging is structured, through source-generated `LoggerMessage` methods. A message template MUST be a constant and MUST NOT interpolate a value. A log scope is begun with a state object (`ILogger.BeginScope<TState>`), never a template. ⚙ BE-57
 - Redaction is Microsoft's: `EnableRedaction()` on the logging builder, and the erasing redactor for `Confidential` and `Restricted`.
-- Every parameter of a logging method carries its class attribute, except the first `ILogger`, `LogLevel` and `Exception` parameters. An exception passed to a logging method is governed by core §4's exception rule and the processor in §10, not by redaction.
+- Every parameter of a logging method carries its class attribute, except the first `ILogger`, `LogLevel` and `Exception` parameters, and the architecture test proves each declaration agrees with the class of the value's type (BE-54). An exception passed to a logging method is governed by core §4's exception rule and the processor in §10, not by redaction.
 - Every project that declares a logging method references `Microsoft.Extensions.Telemetry.Abstractions`, whose logging generator replaces the in-box one and reads the class attributes.
 - `PersonId` is loggable; `NationalId` is not (core §4).
 - Exception messages, `ProblemDetails`, and validation errors MUST NOT echo a classified value.
@@ -438,7 +439,7 @@ In `annex-agents.md`.
 
 Its cache rules: `annex-caching.md`.
 
-- Integration events and outbox rows MUST NOT carry `Restricted` payloads. Reference by id. ⚙ BE-61
+- Integration events and outbox rows MUST NOT carry `Restricted` payloads, and no boundary entry admits one. Reference by id. ⚙ BE-61
 - `Restricted` columns MUST be encrypted at rest:
   - the encryption MUST live in Infrastructure - in the mapping, or below it in the database driver, such as SQL Server Always Encrypted - and MUST be transparent to every path that reads the column;
   - a read type that maps an encrypted column carries the same converter, and SQL (§4) MUST NOT read a column encrypted in the mapping;
@@ -505,7 +506,7 @@ Its agent rule: `annex-agents.md`.
 - Every pipeline behavior MUST emit a span. Authorization, validation, and handler time MUST be separable in a trace.
 - Metrics MUST cover dispatch count and duration per message type, authorization denials, validation failures, outbox depth and delivery lag, cache hit rate, limit and budget rejections (§9), and agent run duration and spend.
 - Metric dimensions MUST come from a declared closed set of keys. ⚙ BE-94
-- Metrics are exported with exemplars, sampled by the trace (`ExemplarFilterType.TraceBased`).
+- Metrics are exported with exemplars, sampled by the trace (`ExemplarFilterType.TraceBased`). No metric dimension carries a trace or span id.
 - Liveness MUST NOT depend on a downstream. Readiness MUST check the database and the outbox dispatcher.
 
 ### Audit trail
@@ -551,7 +552,7 @@ In `annex-realtime.md`.
   - `Platform` declares the problem types the pipeline and the framework return - validation, authorization, idempotency, preconditions, rate limits, unsupported media, and any other - and overrides ASP.NET Core's per-status defaults with them through `CustomizeProblemDetails`.
   - The result translator maps each validation failure's message path to the request path it came from (contract §7 *Wire contract*): a message property keeps its request path unless the endpoint's mapping declares a different one.
 - Where the client is on another origin, the CORS policy admits the request headers the wire contract uses - `traceparent`, `tracestate`, `If-Match`, `If-None-Match`, `Idempotency-Key`, or any other it adds - and exposes the response headers a client reads, such as `ETag`, `Location` and `Retry-After`.
-- The endpoint registrar sets `Cache-Control: no-store` on every endpoint whose Response DTO resolves to `Confidential` or `Restricted` (BE-55), and `Cache-Control: private` on every other endpoint whose representation depends on the principal (contract §7 *Wire contract*). Which endpoints depend on the principal is reached by review.
+- The endpoint registrar sets `Cache-Control: no-store` on every endpoint whose Response DTO resolves to `Confidential` or `Restricted` (BE-55), and on every endpoint whose declared stream carries data of either class, such as a stored file of that class (§13 uploads), and `Cache-Control: private` on every other endpoint whose representation depends on the principal (contract §7 *Wire contract*). Which endpoints depend on the principal is reached by review.
 - Uploads:
   - An upload endpoint's Request DTO carries the file as a stream with its metadata. Its size limit is enforced at the request boundary - the endpoint's request size limit - before the body is buffered.
   - It dispatches a command that does not persist to store the file in quarantine, under a name the server derives from the uploader's principal and the command's client-supplied id - an id the validation behavior has parsed - with a keyed hash, such as an HMAC under a server key; never from the client's file name (§4).

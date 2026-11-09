@@ -2,7 +2,36 @@
 
 ## Unreleased
 
-- §10: a test MUST NOT prove only what a successful build already
+- **Breaking for every project: release as 4.0.0**, together with
+  `rancho-dotnet` 3.0.0 and `rancho-react` 2.1.0. The case and the
+  outcome are in `RECORDS-4.0-ledger.md` at the repository root, and the
+  history of each row is in this plugin's `RECORDS.md`, *4.0*.
+- **What changed:** the core law is an index and its principles.
+  - §2 lists every law and when to read it: the new contract law, and
+    each stack law with its annexes.
+  - §3–§5 keep the principles every tree holds: access, data classes and
+    egress, the attributable unit of work, and the audit trail.
+  - Sections renumber: §3 Access, §4 Data Boundaries, §5 Observability,
+    §6 Verification, §7 Changing the Law, and Exceptions.
+  - The **contract law**, `skills/law/references/contract.md`, holds what
+    a server and a client agree on across HTTP. Its rules keep their
+    `ROOT` ids: ROOT-09, -11, -12, -13 and -18.
+  - Server architecture moves into `rancho-dotnet`: modules, the outbox,
+    the pipeline, error translation, upload handling, and the owner of
+    each egress boundary. ROOT-01, -02, -04, -07, -08, -15, -17 and -20
+    retire into the BE rows that state them.
+  - The core inventory has 7 marks, down from 15.
+  - The reading order gains the contract law. `vaca`, `vaca-stream` and
+    the prime directive follow it.
+- **What did not change:** no obligation is dropped. Each one is in the
+  core, the contract law, or the server stack law.
+- **Upgrade:**
+  - Update core section citations in the project's own records. Old
+    §7, §8, §9, §10 and §11 are now §3, §4, §5, §6 and §7. Old §3–§6 are
+    now in the contract law or the server stack law (ledger, *Outcome*).
+  - In `ENFORCEMENT-STATUS.md`, move each retired ROOT row's check onto
+    the BE row it merged into.
+- §6 Verification (§10 before 4.0): a test MUST NOT prove only what a successful build already
   proves - that a file, folder, project or type exists, that a reference
   resolves, or that the code compiles. A rule whose inventory row says it
   is covered by another row's check needs no check beyond what its own

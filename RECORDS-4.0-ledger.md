@@ -1,4 +1,4 @@
-# Proposal: the core law becomes an index (rancho 4.0)
+# Law 4.0 ledger: the core law becomes an index
 
 Accepted on 2026-11-09, with the three recommended decisions below. The work lands as one PR, with one commit per stage of *Order of work*, each passing `check-law.py`.
 
@@ -184,3 +184,35 @@ One PR, one commit per stage, each passing `check-law.py`.
 2. **Move the server architecture down.** Move §3, §5, the rest of §6, and the mechanism parts of §7, §8 and §9 into `rancho-dotnet`. Retire the eight ROOT rows.
 3. **Rewrite the core as the index:** principles, index table and renumbering.
 4. **Follow-through:** `AUTHORING.md`, both Core maps, the citations, `vaca`, the READMEs and the CHANGELOGs, released together.
+
+## Outcome
+
+As built, against the plan above:
+
+- **Order:** the stages landed as planned, one commit each: 1, the contract law; 2, server architecture into `rancho-dotnet`; 3, the core rewritten; 4, the follow-through.
+- **ROOT ids:** as planned. ROOT-07 retired into BE-80, and its Request DTO walk moved into BE-82's Check. ROOT-01's assembly assertion moved into BE-01's Check, and ROOT-04's schema check and gap into BE-37's.
+- **New core numbering:** §0 Prime Directive, §1 Rule Language, §2 The Laws and Which One Binds a Tree, §3 Access, §4 Data Boundaries, §5 Observability, §6 Verification, §7 Changing the Law and Exceptions. `AUTHORING.md`'s mirrored sections are now §1, §2, §6 and §7.
+- **Old-to-new citations:**
+
+  | Old | New |
+  |---|---|
+  | §3 | `rancho-dotnet` §2, §3, §4, §5 |
+  | §4 | the contract law, `rancho-dotnet` §4 and §13 |
+  | §5 | §3 (outcome), `rancho-dotnet` §4 *Pipeline behaviors* |
+  | §6 | contract §5, `rancho-dotnet` §4 and §13 |
+  | §7 | §3 |
+  | §8 | §4, contract §6, `rancho-dotnet` §7 |
+  | §9 | §5, contract §7 *Trace context* |
+  | §10 | §6 |
+  | §11 | §7 |
+
+- **Load**, from `check-law.py`:
+
+  | Stream | Before | After |
+  |---|---|---|
+  | `none` | ~6.5k | ~3.8k |
+  | `rancho-react` | ~12.4k | ~11.5k |
+  | `rancho-dotnet` | ~19.5k | ~19.5k |
+
+  A `none` tree loads more than the ~2–2.5k estimate, because the principles keep the class table and the egress table in full.
+- **Obligation check:** after stage 3, an independent read of the old core law, sentence by sentence, against the new core, the contract law and the .NET law. Its findings and their fixes are in `plugins/rancho/RECORDS.md`, *4.0*.

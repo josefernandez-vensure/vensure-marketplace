@@ -80,7 +80,7 @@ The test decides the class. The following illustrate it and do not enumerate it:
 The authenticated boundary is the organization's systems and an authenticated user's signed-in session, including the URLs and storage of the browser it runs in; the client stack law states what keeps that browser inside it.
 
 - **Unclassified is `Restricted`.** Deny by default applies to data, not only to operations. ⚙ ROOT-16
-- A value's class is declared once, on the type that defines the value. Every type that carries the value inherits its class and MUST NOT redeclare it. Between a server and a client, the class travels with the contract (contract §6). How a class is declared and proven is the stack law's.
+- A value's class is declared where the value is defined, and every type that carries the value inherits its class and MUST NOT redeclare it. Where a stack law declares a class in two places, such as a domain type and its published twin, a check proves the two agree. Between a server and a client, the class travels with the contract (contract §6). How a class is declared and proven is the stack law's.
 
 ### Egress boundaries
 
@@ -108,7 +108,7 @@ Every request, message, job, and agent run MUST be attributable end to end.
 
 - Every unit of work MUST carry a correlation id: a request, a message and each delivery of it, a background job, an agent run and each of its steps. ⚙ ROOT-19
 - The correlation id is the W3C Trace Context trace id. It MUST cross every boundary the work crosses - service to service, module to module, user to agent, and server to client (contract §7 *Trace context*).
-- Logs, metrics, and traces MUST share that one identity.
+- Logs, metrics, and traces MUST share that one identity. Metrics are joined to traces through exemplars, never through a metric dimension.
 - An agent run MUST be reconstructable from telemetry alone: which user, which operations, which rows, what it cost.
 - Telemetry MUST NOT be optional per environment. Sampling rates and log levels MAY differ; whether each signal is emitted MUST NOT.
 - What may be emitted is governed by §4. The mechanism is each stack law's.
