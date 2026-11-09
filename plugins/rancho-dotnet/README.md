@@ -67,7 +67,7 @@ binding rules: one stack law per tree, and an unbound tree stops work.
 
 ## Changing it
 
-Under core §11: change the rule here first, then bring the codebase into
+Under core §7: change the rule here first, then bring the codebase into
 compliance. A rule every server stack law would need belongs in the core law,
 not here. A new ⚙ gets a `BE-` row in `references/enforcement.md`; the prefix
 belongs to this plugin.

@@ -41,9 +41,9 @@ Every core rule whose role is `server` or `both` and whose status is `build`. Th
 | ROOT-11 | Every collection endpoint not bounded by construction paginated; a bounded one declares `maxItems` | contract §2 | `arch` | build | Canonical: BE-19 | — | — |
 | ROOT-12 | One page shape across the API | contract §2 | `arch` | build | Canonical: BE-20. Also `ci`: in the OpenAPI document, every operation taking `cursor` or `pageSize` returns the one page schema | A per-feature envelope that is not generic and takes no paging parameter is reached by review | https://spec.openapis.org/oas/v3.1.0#parameter-object |
 | ROOT-13 | Every state-changing endpoint declares an idempotency mechanism | contract §3 | `contract` | build | Canonical: BE-26 | — | — |
-| ROOT-16 | Unclassified is `Restricted` | §8 | `arch` | build | Canonical: BE-55 | — | — |
+| ROOT-16 | Unclassified is `Restricted` | §4 | `arch` | build | Canonical: BE-55 | — | — |
 | ROOT-18 | A field's class travels with its contract: the OpenAPI document carries the class of every request and response property and every parameter | contract §6 | `ci` | build | Canonical: BE-83. The client half is the client stack law's | — | — |
-| ROOT-19 | Every unit of work carries a correlation id | §9 | `proj` | build | Canonical: BE-90 for dispatched messages, with BE-91 for outbox deliveries | BE-90 reaches a dispatched message and the HTTP request that builds its context. A background job, and an agent run and its steps, where they do not dispatch, are reached by review and by §14 **Correlation** (BE-92) | https://www.w3.org/TR/trace-context/ |
+| ROOT-19 | Every unit of work carries a correlation id | §5 | `proj` | build | Canonical: BE-90 for dispatched messages, with BE-91 for outbox deliveries | BE-90 reaches a dispatched message and the HTTP request that builds its context. A background job, and an agent run and its steps, where they do not dispatch, are reached by review and by §14 **Correlation** (BE-92) | https://www.w3.org/TR/trace-context/ |
 
 ## Stack law - `../SKILL.md` and its annexes
 

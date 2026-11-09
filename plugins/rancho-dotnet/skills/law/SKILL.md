@@ -25,21 +25,17 @@ If `/rancho:law` is not available in the session, stop and say so. This file alo
 
 ## Role
 
-`server`. A tree bound here publishes the API contract (the contract law, `references/contract.md` in `/rancho:law`), owns its modules and their persistence, and owns every egress boundary in core §8.
+`server`. A tree bound here publishes the API contract (the contract law, `references/contract.md` in `/rancho:law`), owns its modules and their persistence, and owns every egress boundary in core §4.
 
 ## Core map
 
 | Core | Carried here by |
 |---|---|
-| §3 Module Boundary Law | §2 Project Reference Law · §4 Transactions and consistency, Integration event contracts · §5 Persistence |
+| §3 Access | §6 Authorization · §4 Pipeline behaviors (validation runs on the message) · §8 AI Agents · §11 Configuration and Secrets · §13 API Layer (uploads) |
+| §4 Data Boundaries | §7 Data Classification, with its egress owners · §5 Read-side caching · §12 Real-time |
+| §5 Observability | §10 Observability, with its audit trail |
+| §6 Verification | §14 Testing · §16 Verification · `references/enforcement.md` |
 | Contract law | §13 API Layer · §4 Pagination, Idempotency · §9 Transport · §7 Data Classification (`x-data-class`) · §10 Observability (*Correlation*) |
-| §4 Endpoints | §13 API Layer · §4 Commands and Queries |
-| §5 Validation | §4 Pipeline behaviors |
-| §6 Error Contract | §2 (`Result` placement) · §3 Aggregates · §4 Commands and Queries, Pipeline behaviors · §5 Persistence · §13 API Layer · §15 Forbidden |
-| §7 Security Baseline | §2 (the request context stays in `Api`) · §6 Authorization · §8 AI Agents · §10 Observability (*Audit trail*) · §11 Configuration and Secrets · §13 API Layer |
-| §8 Data Boundaries | §7 Data Classification · §5 Read-side caching · §12 Real-time |
-| §9 Observability | §10 Observability |
-| §10 Verification | §14 Testing · §16 Verification · `references/enforcement.md` |
 
 Gaps: none.
 
@@ -66,7 +62,7 @@ tests/
 .NET 10 (LTS) · EF Core · SQL Server · Redis · SignalR · Mediator 3.x, source-generated · FluentValidation · Serilog · Microsoft.Extensions.Compliance · OpenTelemetry · Azure Key Vault · Microsoft Agent Framework (agents annex) · xUnit v3 · NSubstitute · Shouldly · Testcontainers · ArchUnitNET
 
 - `TreatWarningsAsErrors` and `Nullable` are enabled solution-wide, once in `Directory.Build.props`, never per project, and MUST stay enabled.
-- Suppressing a warning requires a comment naming the rule and the reason. Where the warning enforces a rule of the law, the reason is its exceptions-register entry's id (core §11).
+- Suppressing a warning requires a comment naming the rule and the reason. Where the warning enforces a rule of the law, the reason is its exceptions-register entry's id (core §7).
 - Verify third-party licenses before pinning.
 - Create solutions, projects, project references and package references with the `dotnet` CLI, never by writing the file:
   - `dotnet new sln`, which writes an `.slnx` file.
@@ -237,7 +233,7 @@ Fixed order. Changing it requires written justification.
    - A command that persists aggregate state: open the unit of work; then, if the command declares a key, resolve the attempt identity: where a record exists, answer with it as a replay, or `422` when the fingerprints differ, without invoking the handler.
      Where no record answers: run the handler, write the idempotency record where a key is used, dispatch domain events to their reactions, and commit on success. Roll back on any failure or exception.
    - After a successful commit: hand the committed domain events to their post-commit effects, such as cache invalidation. A failure there is logged as an error, and the committed result is still returned.
-   - On any failure result - the handler's, or one at commit: look up the attempt identity first, as above, and answer with the record where one exists. Otherwise return the failure - a commit-time one as a `Result` conflict, or as a precondition failure for a stale expected version or a create-only unique-index violation (§13; core §6).
+   - On any failure result - the handler's, or one at commit: look up the attempt identity first, as above, and answer with the record where one exists. Otherwise return the failure - a commit-time one as a `Result` conflict, or as a precondition failure for a stale expected version or a create-only unique-index violation (§13).
    - Where a key is used: a failure result the behavior returns is recorded after the rollback, in a transaction of its own on the module's context, so a replay returns it (contract §3). A violation of the unique index there is answered by the attempt identity, as above. An exception is not recorded.
    - A command that does not persist: open nothing. After the handler returns, fail the dispatch if the module's context holds a staged change.
 
@@ -373,16 +369,16 @@ public static readonly Operation <Operation> = new(
 - Bare `[Authorize]` and unattributed endpoints are defects. ⚙ BE-50
 - `AuthorizationOptions.FallbackPolicy` MUST deny. ⚙ BE-51
 - The authorization behavior evaluates policies via `IAuthorizationService`, against the explicit principal from the dispatch context.
-- The object check (core §7) is made after the load and before the handler acts, through a resource-authorization port declared in `Platform.Application`:
+- The object check (core §3) is made after the load and before the handler acts, through a resource-authorization port declared in `Platform.Application`:
   - the port takes the resource and the policy, and reads the acting principal from the dispatch context;
   - its implementation calls `IAuthorizationService.AuthorizeAsync(principal, resource, policy)`;
   - each module's resource authorization handlers - `AuthorizationHandler<TRequirement, TResource>` over its aggregates - live in its `Infrastructure` as framework extension points (BE-34), read the aggregate through its public members, and are registered by its registration entry point.
 - A query applies the principal's record scope in its read - a global query filter on its read types, or a predicate in its SQL - never by filtering the result. The scope (the records the principal may see, such as its tenant's or its own) is resolved into the dispatch context at the composition root or by the authority adapter; the read takes it from there.
-- A transport-level authorization filter - `[Authorize(<policy>)]`, middleware, or a vendor package's equivalent - MAY enforce in addition, but MUST NOT be the only enforcement point. Every operation's policy decision MUST be reachable from the authorization behavior (core §7).
+- A transport-level authorization filter - `[Authorize(<policy>)]`, middleware, or a vendor package's equivalent - MAY enforce in addition, but MUST NOT be the only enforcement point. Every operation's policy decision MUST be reachable from the authorization behavior (core §3).
 - Identity-provider claims are mapped to policies at the composition root, and externally-sourced permissions in the adapter that wraps the authority (below). Application and domain code MUST NOT read raw claims. ⚙ BE-53
 - Where permissions come from - a token claim, a directory, a remote authorization service - is a composition-root concern. Application and domain code name a policy, never a permission source or a role literal.
 - A claim read from a token before its signature is validated MAY select how the token is validated - such as which issuer's keys, or which remote validation endpoint - and MUST NOT be trusted for anything else: not identity, not tenancy, not a permission lookup. Once the token is validated, the claim that made the selection MUST agree with the validated token, or the token is refused.
-- An external authority is reached through one Infrastructure adapter, behind a port, that wraps its client and declares its SDK. The adapter translates the authority's permission codes into the application's policy vocabulary, and its failures into outcomes (core §6). The authority's types and codes MUST NOT be referenced outside that adapter's project. ⚙ BE-102
+- An external authority is reached through one Infrastructure adapter, behind a port, that wraps its client and declares its SDK. The adapter translates the authority's permission codes into the application's policy vocabulary, and its failures into outcomes (§4 *Commands and Queries*). The authority's types and codes MUST NOT be referenced outside that adapter's project. ⚙ BE-102
 
 ### External authorities
 
@@ -397,7 +393,7 @@ Which provider and which authority the organization runs is recorded in `DECISIO
 
 ### Declaring a class
 
-- A class is declared on the value's type - the Value Object or strongly-typed id in `Domain` - and on the module's published type for the same concept in `Contracts`; an architecture test MUST prove the two agree (core §8). A property projected from a classified source, such as a column a query handler reads into a `string`, names that source by its `Contracts` twin (§3) in its declaration; the same test proves they agree. Classes are `DataClassification`s from Microsoft.Extensions.Compliance, defined once in `SharedKernel`: one attribute derived from `DataClassificationAttribute` per class of core §8 - `Public`, `Internal`, `Confidential`, `Restricted`. ⚙ BE-54
+- A class is declared on the value's type - the Value Object or strongly-typed id in `Domain` - and on the module's published type for the same concept in `Contracts`; an architecture test MUST prove the two agree (core §4). A property projected from a classified source, such as a column a query handler reads into a `string`, names that source by its `Contracts` twin (§3) in its declaration; the same test proves they agree. Classes are `DataClassification`s from Microsoft.Extensions.Compliance, defined once in `SharedKernel`: one attribute derived from `DataClassificationAttribute` per class of core §4 - `Public`, `Internal`, `Confidential`, `Restricted`. ⚙ BE-54
 - An architecture test MUST assert that every property reachable from an egress boundary resolves to a class. A property whose type carries no declaration is `Restricted`, and fails at the boundary. ⚙ BE-55
 - The OpenAPI document MUST carry the class as `x-data-class` (contract §7 *Wire contract*) on every property of every schema it contains - Request and Response DTOs, problem details, the page - and on every parameter's schema. The emitter MUST fail rather than emit a property whose class it cannot resolve. ⚙ BE-83
 
@@ -416,7 +412,7 @@ public sealed record NationalId
 
 ### Egress owners
 
-Each egress boundary of core §8 has one owner here, and no other path across it:
+Each egress boundary of core §4 has one owner here, and no other path across it:
 
 - a Response DTO to an HTTP client: the endpoint, through the registrar (§13); to a real-time client: the hub (`annex-realtime.md`);
 - a model's context: the agent tool projection (`annex-agents.md`);
@@ -429,9 +425,9 @@ Each egress boundary of core §8 has one owner here, and no other path across it
 
 - Logging is structured, through source-generated `LoggerMessage` methods. A message template MUST be a constant and MUST NOT interpolate a value. A log scope is begun with a state object (`ILogger.BeginScope<TState>`), never a template. ⚙ BE-57
 - Redaction is Microsoft's: `EnableRedaction()` on the logging builder, and the erasing redactor for `Confidential` and `Restricted`.
-- Every parameter of a logging method carries its class attribute, except the first `ILogger`, `LogLevel` and `Exception` parameters. An exception passed to a logging method is governed by core §8's exception rule and the processor in §10, not by redaction.
+- Every parameter of a logging method carries its class attribute, except the first `ILogger`, `LogLevel` and `Exception` parameters. An exception passed to a logging method is governed by core §4's exception rule and the processor in §10, not by redaction.
 - Every project that declares a logging method references `Microsoft.Extensions.Telemetry.Abstractions`, whose logging generator replaces the in-box one and reads the class attributes.
-- `PersonId` is loggable; `NationalId` is not (core §8).
+- `PersonId` is loggable; `NationalId` is not (core §4).
 - Exception messages, `ProblemDetails`, and validation errors MUST NOT echo a classified value.
 
 ### The model-visible surface
@@ -504,8 +500,8 @@ Its agent rule: `annex-agents.md`.
 
 ### Metrics and traces
 
-- OpenTelemetry (core §9).
-- An OpenTelemetry processor, and its equivalent in the logging pipeline, removes `exception.message` from every exception whose type the solution does not declare, keeping `exception.type` and the stack trace (core §8). Automatic instrumentation passes through the same processors.
+- OpenTelemetry (core §5).
+- An OpenTelemetry processor, and its equivalent in the logging pipeline, removes `exception.message` from every exception whose type the solution does not declare, keeping `exception.type` and the stack trace (core §4). Automatic instrumentation passes through the same processors.
 - Every pipeline behavior MUST emit a span. Authorization, validation, and handler time MUST be separable in a trace.
 - Metrics MUST cover dispatch count and duration per message type, authorization denials, validation failures, outbox depth and delivery lag, cache hit rate, limit and budget rejections (§9), and agent run duration and spend.
 - Metric dimensions MUST come from a declared closed set of keys. ⚙ BE-94
@@ -514,13 +510,13 @@ Its agent rule: `annex-agents.md`.
 
 ### Audit trail
 
-- The audit trail (core §9) is a store no application role may update or delete, written through one port, `IAuditTrail`, declared in `Platform.Application` and implemented in `Platform.Infrastructure`: one table in each module's schema, for the success records that module's unit of work writes (§5), and one the port's own context writes.
+- The audit trail (core §5) is a store no application role may update or delete, written through one port, `IAuditTrail`, declared in `Platform.Application` and implemented in `Platform.Infrastructure`: one table in each module's schema, for the success records that module's unit of work writes (§5), and one the port's own context writes.
 - A persisting command's success is recorded through its unit of work, as the outbox row is. Every other record is written through the port, outside any unit of work:
   - a denial, whether by the policy or by the object check;
   - a command's failure, written after its rollback;
   - a command that does not persist (§4), through a context or connection of the port's own, never the module's;
   - a read of `Restricted` data;
-  - an export, report or file handed to a user (core §8).
+  - an export, report or file handed to a user (core §4).
 - A failure to write an audit record fails the operation it records. A denial stays a denial.
 
 ## 11. Configuration and Secrets
@@ -543,7 +539,7 @@ In `annex-realtime.md`.
 - Endpoints are registered by discovery over those types at the composition root. Hand-registering one is a defect. ⚙ BE-81
 - The framework endpoints - the readiness and liveness probes (§10), a hub's `MapHub` (real-time annex) and the OpenAPI document - are mapped by the framework, not by an endpoint type: a declared list at the composition root, outside the two rules above. They stay under the rate limit (§9, the `GlobalLimiter`). Each carries a named policy (§6), such as an anonymous one for the probes, or falls to the denying fallback.
 - The registrar applies each endpoint's authorization and rate-limit metadata from the operation declaration of the message it dispatches; an endpoint declares neither itself.
-- An endpoint MUST map its Request DTO to a message, dispatch it, and translate `Result` to HTTP (core §4). It MUST NOT reference any type other than its DTOs, the message it dispatches, and every type those are composed of; the shared endpoint abstraction; the dispatcher and the `Result` it returns; the result translator; and the framework's primitives, such as `Task`, `CancellationToken`, and HTTP result types. No type reachable from an endpoint's signature, a Request DTO's property graph included, is a `Domain` type. ⚙ BE-82
+- An endpoint MUST map its Request DTO to a message, dispatch it, and translate `Result` to HTTP (contract §5). It MUST NOT reference any type other than its DTOs, the message it dispatches, and every type those are composed of; the shared endpoint abstraction; the dispatcher and the `Result` it returns; the result translator; and the framework's primitives, such as `Task`, `CancellationToken`, and HTTP result types. No type reachable from an endpoint's signature, a Request DTO's property graph included, is a `Domain` type. ⚙ BE-82
 - Success shapes: `200` with a Response DTO, `201` with a location, `204` for no content, or a stream the endpoint declares. A write that leaves a versioned resource in place returns a body carrying its new `etag`, never `204`; a delete returns `204` (contract §7 *Wire contract*). Failures are `ProblemDetails`.
 - Preconditions:
   - An endpoint maps `If-Match` to the message's expected version, and `If-None-Match: *` to the message's create-only flag, as it maps any other request field.
@@ -563,8 +559,8 @@ In `annex-realtime.md`.
   - Only a principal whose policy grants the upload may send one. The operation declares an allowlist of file types, enforced before anything is stored.
   - A file's type is proven from its content, never from its name or `Content-Type` alone, and never by a signature check alone.
   - The quarantine is outside any path the server serves, where a file cannot execute. A file is released only once its malware scan passes and, where its type allows, its content has been disarmed and reconstructed.
-  - The operation that accepts a file declares the file's class (core §8); a file whose class is not declared is `Restricted`. A stored file is returned only by an operation whose policy grants that class, under core §8's export rule.
-- An exception that escapes the pipeline is a defect. The global exception handler logs it with full context, within core §8's telemetry rule, and answers `500` as problem details. Code never catches a domain exception to turn it into a `4xx`; it adds the missing guard instead.
+  - The operation that accepts a file declares the file's class (core §4); a file whose class is not declared is `Restricted`. A stored file is returned only by an operation whose policy grants that class, under core §4's export rule.
+- An exception that escapes the pipeline is a defect. The global exception handler logs it with full context, within core §4's telemetry rule, and answers `500` as problem details. Code never catches a domain exception to turn it into a `4xx`; it adds the missing guard instead.
 - A change to a Request or Response DTO that does not regenerate and commit the OpenAPI document is incomplete.
 
 ## 14. Testing
@@ -616,7 +612,7 @@ A missing required test is a defect exactly as a violated rule is (core §1). Th
 - Reading the system clock in domain or application code - `DateTime.Now`, `DateTimeOffset.UtcNow`, `DateTime.Today`, or any other ambient read. Inject `TimeProvider` into the handler, and pass the time to the aggregate as an argument. ⚙ BE-132
 - `async void` outside event handlers ⚙ BE-133
 - `.Result`, `.Wait()`, `.GetAwaiter().GetResult()` ⚙ BE-134
-- Catching `Exception` without rethrowing, except at a declared fault-isolation boundary: one iteration of a hosted-service loop, one outbox delivery, a post-commit effect (§4), or any other unit whose failure must not stop the host. The boundary is declared by a marker on the method - an attribute the solution declares once in `SharedKernel` - and MUST log at `Error` with the exception, within core §8's telemetry rule, and MUST let `OperationCanceledException` propagate on shutdown. ⚙ BE-135
+- Catching `Exception` without rethrowing, except at a declared fault-isolation boundary: one iteration of a hosted-service loop, one outbox delivery, a post-commit effect (§4), or any other unit whose failure must not stop the host. The boundary is declared by a marker on the method - an attribute the solution declares once in `SharedKernel` - and MUST log at `Error` with the exception, within core §4's telemetry rule, and MUST let `OperationCanceledException` propagate on shutdown. ⚙ BE-135
 - `#region` ⚙ BE-136
 - Commented-out code
 

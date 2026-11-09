@@ -27,7 +27,7 @@ This annex is part of the .NET stack law, `../SKILL.md`, and uses its section nu
 - A tool's output is a tool DTO: a projection of the dispatched message's Response DTO, made only by the tool projector. The model-visible DTOs are the tool DTO and the tool's Request DTO, never the UI Response DTO a tool DTO projects.
 - Every model-visible DTO MUST be explicitly marked as such. ⚙ BE-58
 - Reusing a UI Response DTO for a tool because the shape happens to fit is how a `Confidential` field reaches a vendor. Where the two audiences differ in class, they are two types.
-- An architecture test MUST assert that no tool DTO contains a `Confidential` or `Restricted` property, and no tool Request DTO a `Restricted` one, transitively through every nested type and collection. ⚙ BE-59 A `Confidential` tool argument is admitted where the operation's policy grants it (core §8).
+- An architecture test MUST assert that no tool DTO contains a `Confidential` or `Restricted` property, and no tool Request DTO a `Restricted` one, transitively through every nested type and collection. ⚙ BE-59 A `Confidential` tool argument is admitted where the operation's policy grants it (core §4).
 - Free text a user can write into - notes, comments, descriptions, reasons - MUST be treated as `Confidential` when it is model-visible: a tool DTO does not carry it, and a tool argument carries it only where the operation's policy grants it.
 - A tool that needs a sensitive value in order to work is the wrong design. Move the work behind an operation and give the model the outcome, not the input: a model that must "check the national id" instead invokes an operation that checks it.
 - Redaction MUST happen in the projection to the tool DTO, never in a prompt instruction. Prompt text is not a control (§8).
@@ -51,7 +51,7 @@ effective = user's permissions  ∩  agent manifest  ∩  operations not marked 
 
 For an autonomous run, the service principal's permissions stand in for the user's.
 
-- An agent principal MUST hold a subset of the calling user's permissions - or, for an autonomous run, of its service principal's - never wider - and MUST always carry the actor claim that identifies the agent (core §7).
+- An agent principal MUST hold a subset of the calling user's permissions - or, for an autonomous run, of its service principal's - never wider - and MUST always carry the actor claim that identifies the agent (core §3).
 - Human-initiated runs use on-behalf-of: the agent carries a down-scoped principal derived from the caller's token.
 - The principal MUST carry an actor claim identifying the agent. Writes audit the agent, not only the user.
 - An agent-actor principal MUST NOT start another agent run. That is the recursion cap.

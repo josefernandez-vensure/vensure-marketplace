@@ -2,7 +2,7 @@
 
 Every rule marked ⚙ in the core law and in the contract law (`contract.md`, beside this file), and the role whose stack laws carry it.
 
-`../SKILL.md` §1 defines ⚙ as **"can be made to fail the build."** A check is written in a technology, so a core rule's check lives in a stack law: this file names the role each rule binds, and every stack law of that role lists the rule, with its mechanism and check, under **Core rules carried** in its own inventory (core §10, in `AUTHORING.md` at the plugin root). A ⚙ with no entry here is unaccounted for and MUST be added.
+`../SKILL.md` §1 defines ⚙ as **"can be made to fail the build."** A check is written in a technology, so a core rule's check lives in a stack law: this file names the role each rule binds, and every stack law of that role lists the rule, with its mechanism and check, under **Core rules carried** in its own inventory (core §6, in `AUTHORING.md` at the plugin root). A ⚙ with no entry here is unaccounted for and MUST be added.
 
 The records of how the law came to read as it does - rewordings, amendments, prerequisites, and the history of each row - are in `RECORDS.md` at the plugin root.
 
@@ -62,10 +62,10 @@ Six root rules are **duplicated** by a stack-law rule: a stack law's inventory n
 | ROOT-11 | Every collection endpoint not bounded by construction paginated; a bounded one declares `maxItems` | contract §2 | server | build | https://spec.openapis.org/oas/v3.1.0#schema-object |
 | ROOT-12 | One page shape across the API | contract §2 | server | build | https://spec.openapis.org/oas/v3.1.0#parameter-object |
 | ROOT-13 | Every state-changing endpoint declares an idempotency mechanism | contract §3 | server | build | https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/ |
-| ROOT-14 | Deny by default, everywhere | §7 | both | dropped | — |
+| ROOT-14 | Deny by default, everywhere | §3 | both | dropped | — |
 | ROOT-15 | Acting principal explicit; no ambient HTTP context in application or domain; left the core law in 4.0, as server architecture. Merged into BE-01 (`rancho-dotnet`) | §7 | server | retired | — |
-| ROOT-16 | Unclassified is `Restricted` | §8 | both | build | — |
+| ROOT-16 | Unclassified is `Restricted` | §4 | both | build | — |
 | ROOT-17 | Integration events MUST NOT carry `Restricted` payloads; left the core law in 4.0, as server architecture. Merged into BE-61 (`rancho-dotnet`) | §8 | server | retired | — |
 | ROOT-18 | A field's class travels with its contract: the OpenAPI document carries the class of every request and response property and every parameter, and the client enforces it at its own boundaries | contract §6 | both | build | https://spec.openapis.org/oas/v3.1.0#specification-extensions |
-| ROOT-19 | Every unit of work carries a correlation id | §9 | server | build | https://www.w3.org/TR/trace-context/ |
+| ROOT-19 | Every unit of work carries a correlation id | §5 | server | build | https://www.w3.org/TR/trace-context/ |
 | ROOT-20 | A class declared on a domain type and on its published contract type is proven by a check to agree; left the core law in 4.0, as server architecture. Merged into BE-54 (`rancho-dotnet`) | §8 | server | retired | — |
