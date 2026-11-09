@@ -12,8 +12,8 @@ rancho/
 ├── .claude-plugin/plugin.json   manifest — the only file that goes in here
 ├── skills/                      skills as <name>/SKILL.md    [law, vaca]
 │   ├── law/
-│   │   ├── SKILL.md             the core law
-│   │   └── references/          enforcement.md: the core inventory
+│   │   ├── SKILL.md             the core law: the index of laws and the principles
+│   │   └── references/          contract.md: the contract law; enforcement.md: the core inventory
 │   └── vaca/
 │       ├── SKILL.md             Vensure Agentic Code Assistant
 │       ├── references/          one file per phase, plus conventions.md
@@ -265,8 +265,12 @@ that is a reason to take the dependency, not to write a longer regex.
 
 ## The law
 
-`skills/law/` holds the core engineering law: what must be true in every tree,
-whatever it is built with. How one technology satisfies it is a **stack law**,
+`skills/law/` holds the core engineering law: how to use the law, an index of
+the laws with when to read each, and the principles that must hold in every
+tree, whatever it is built with. Beside it, `references/contract.md` is the
+**contract law**: what a server and a client must agree on across HTTP, read in
+every tree whose stack law declares a role. How one technology satisfies both,
+and everything internal to its tree, is a **stack law**,
 shipped as a plugin of its own - `rancho-dotnet` (role `server`) and
 `rancho-react` (role `client`) today. The core law's §2 states that a stack
 law may add rules and never weaken one; `AUTHORING.md` (§2) states the contract
@@ -275,8 +279,8 @@ it, a gap list, Stack, Testing, and Verification sections, and its own
 enforcement inventory.
 
 Only the frontmatter `description` is always in context; the body loads when
-the skill triggers. Claude reads the core law, then the bound stack law in
-full, then each annex of that stack law whose trigger the tree already meets, or
+the skill triggers. Claude reads the core law, then the contract law where the
+bound stack law declares a role, then the bound stack law in full, then each annex of that stack law whose trigger the tree already meets, or
 the work would meet - the `references/annex-*.md` files beside the stack law's `SKILL.md`, each naming
 its trigger at its top and in the stack law. An inventory,
 `references/enforcement.md`, is consulted only by rule id. A stack law loads
@@ -324,8 +328,9 @@ defect the law tells Claude to stop on and report, never to guess past.
 
 A new technology is a new plugin, `plugins/rancho-<stack>/`, holding
 `skills/law/SKILL.md` and `skills/law/references/enforcement.md`. It declares a
-role, maps every core section, lists its gaps, carries every core rule its
-role binds under **Core rules carried**, and takes an id prefix of its own.
+role, maps every core section from §3 and the contract law, lists its gaps,
+carries every core rule its role binds under **Core rules carried**, and takes an
+id prefix of its own. It adds its row to the index in the core law's §2.
 `rancho-dotnet` and `rancho-react` are the worked examples. It depends on the
 core law and never on another stack law, so either tree of a project can change
 stack without touching the other.
@@ -340,6 +345,6 @@ more than one stack law - are in `RECORDS.md`; each stack-law plugin keeps the
 records that concern it alone in its own. Ids are permanent across the split.
 
 Changing a rule: change the law first, then bring the codebase into compliance.
-Per §11 (in `AUTHORING.md`), the document is never edited to accommodate code that violates it. A
+Per §7 (in `AUTHORING.md`), the document is never edited to accommodate code that violates it. A
 stack-law rule is changed in its own plugin; a rule every stack law of a role
 would need is changed here.

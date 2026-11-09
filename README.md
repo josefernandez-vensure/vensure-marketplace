@@ -60,13 +60,14 @@ every project. The skills are usable independently.
 
 | | Invoke | What it does |
 |---|---|---|
-| skill `law` | `/rancho:law` | The core engineering law: module boundaries, API and error contracts, validation placement, data classification and egress, AI-agent permissions, observability, and how each tree is bound to its stack law. The enforcement inventory loads on demand. |
+| skill `law` | `/rancho:law` | The core engineering law: how to use the law, which law binds each tree and when to read it, and the principles every tree keeps - access, data classification and egress, AI-agent permissions, observability and audit. Beside it, the contract law: what a server and a client agree on across HTTP. The enforcement inventory loads on demand. |
 | skill `vaca` | `/rancho:vaca` | Vensure Agentic Code Assistant. Spec-driven delivery: PRD → epic → GitHub issues → parallel agents → shipped code. |
 | command | `/rancho:help` | The VACA reference card: the five phases, the phrases that drive each, and where VACA keeps its state. |
 
 The two are meant to work together. VACA decides *what* gets built and in what
 order; the law decides what the finished code must look like. Agents that VACA
-launches read the core law, then the stack law bound to the tree they work in,
+launches read the core law, then the contract law where the tree's stack law
+declares a role, then the stack law bound to the tree they work in,
 then each of its annexes whose trigger the tree meets, before writing anything.
 
 A `SessionStart` hook states that the law is binding and points at the skill. It
@@ -85,7 +86,7 @@ it: the reference card, then one feature from ideation to archive.
 
 ### Stack laws
 
-A stack law carries the core law in one technology. Each is a plugin of its
+A stack law carries the core law and the contract law in one technology. Each is a plugin of its
 own, enabled per project, and each holds one skill, `law`.
 
 | Plugin | Invoke | Role | What it governs |
@@ -437,7 +438,7 @@ vensure-marketplace/
 │   ├── rancho-react/         stack law, role client: skills/law/
 │   └── rancho/
 │       ├── .claude-plugin/plugin.json
-│       ├── skills/law/       the core law: SKILL.md + references/
+│       ├── skills/law/       the core law: SKILL.md + references/ (contract law, inventory)
 │       ├── skills/vaca/      SKILL.md + references/ + scripts/
 │       ├── commands/help.md  the /rancho:help command
 │       ├── hooks/hooks.json  SessionStart: the prime directive

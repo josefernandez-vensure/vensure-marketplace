@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- **Release as 2.1.0**, together with `rancho` 4.0.0. The case is in
+  `RECORDS-4.0-ledger.md` at the repository root.
+- The core law's wire rules moved into the contract law,
+  `references/contract.md` in `/rancho:law`. This law reads it and cites
+  it: `contract §7 *Wire contract*` replaces `core §4 *Wire contract*`.
+- The Core map maps the new core sections (§3 Access, §4 Data
+  Boundaries, §5 Observability, §6 Verification) and the contract law.
+  Other citations follow the new numbers.
+- ROOT-16 and ROOT-18 are unchanged. ROOT-18's section is now
+  `contract §6`.
+- **Upgrade:** none, beyond reading the contract law, and updating core
+  section numbers wherever the project's own records cite them.
+
 ## 2.0.0
 
 - **Breaking.** Released together with `rancho` 3.0.0, whose core law it

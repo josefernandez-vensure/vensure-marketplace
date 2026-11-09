@@ -13,15 +13,16 @@ This repository is governed by an engineering law. It is not advisory.
 - **When two rules, or a rule and a recorded decision, leave no compliant
   answer, stop and ask.** A comment arguing that a rule does not apply is a
   defect, never an exemption; the one exemption is an entry in
-  `LAW-EXCEPTIONS.md` (core §0, §11).
+  `LAW-EXCEPTIONS.md` (core §0, §7).
 - MUST / MUST NOT is absolute. SHOULD / SHOULD NOT is the default and a
   deviation requires a one-line justification. MAY needs no justification.
   Silence is not permission. What a rule marked with the gear glyph means is
   stated in core §1.
 
 **Before writing, placing, or reviewing any code in this repository, read the
-full core law via the `/rancho:law` skill** - and then, in full, the stack law
-bound to the tree you are working in. The nearest `CLAUDE.md` at or above the
+full core law via the `/rancho:law` skill** - and then, in full, the contract
+law beside it (`references/contract.md`) wherever the bound stack law declares
+a role, and the stack law bound to the tree you are working in. The nearest `CLAUDE.md` at or above the
 files that holds a `Stack law:` line names it, as `Stack law: /<plugin>:law`
 (core §2). A tree bound as
 `Stack law: none - <reason>` is not a defect: only the core law binds it, so

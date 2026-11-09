@@ -2,13 +2,40 @@
 
 ## Unreleased
 
+- **Breaking: release as 3.0.0**, together with `rancho` 4.0.0. The case
+  is in `RECORDS-4.0-ledger.md` at the repository root.
+- **What changed:** this law now carries the server architecture that
+  left the core law. That is:
+  - cross-module writes as integration events, never an inline call;
+  - the two-audience event as two types;
+  - one schema per module, as BE-37;
+  - validation on the message for every caller, with DTO annotations
+    never the only validation;
+  - outcomes as values, and exceptions translated only by an adapter;
+  - the global `500` handler;
+  - the whole upload rule;
+  - a property's own class, and inheritance;
+  - the owner of each core egress boundary (§7 *Egress owners*).
+
+  BE-82 adds that no type reachable from an endpoint's signature is a
+  `Domain` type, a Request DTO's property graph included. BE-01 and
+  BE-37 take the checks of ROOT-01 and ROOT-04.
+- **Core rules carried:** 7, down from 15. ROOT-01, -02, -04, -07, -08,
+  -15, -17 and -20 retired into BE-01, BE-07, BE-37, BE-80, BE-108,
+  BE-01, BE-61 and BE-54.
+- The Core map maps the new core sections (§3–§6) and the contract law.
+  Citations follow the new numbers.
+- **Upgrade:** a project moves each check or test named for a retired
+  ROOT id onto its BE row in `ENFORCEMENT-STATUS.md`. It adds BE-37's
+  schema check and BE-82's Request DTO walk if it had them under ROOT-04
+  and ROOT-07.
 - §1: solutions, projects, project references and package references
   are created with the `dotnet` CLI - `dotnet new`, `dotnet sln add`,
   `dotnet reference add`, `dotnet package add` - never by writing the
   file. A project file is edited by hand only for what the CLI cannot
   express, such as the project's kind (§2). Solution-wide properties are
   set once in `Directory.Build.props`. No mark: reached by review.
-- Carries core §10's new rule: no test proves only what a successful
+- Carries core §6's new rule (§10 before 4.0): no test proves only what a successful
   `dotnet build` already proves.
 - **What changed:** rules that only restated a broader rule are retired,
   each merged into the row that carries it: BE-02, BE-05, BE-13, BE-18

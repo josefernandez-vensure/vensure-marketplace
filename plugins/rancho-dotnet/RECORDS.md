@@ -810,3 +810,36 @@ Restatements retired. The owner asked for fewer, broader rules: a narrow rule th
 - BE-14, BE-16: Already retired into BE-108 in 2.1.0.
 - Core inventory: no core rule duplicates another core rule, so no `ROOT` row changes. ROOT-02 is not ROOT-01: a domain event can cross a module boundary by serialization, without a reference. The `Canonical:` rows under **Core rules carried** pair a core rule with the stack rule that carries it, as core §10 requires, and stay.
 - Inventory Summary: 95 ⚙ marks; 141 rows - 96 `build`, 32 `required-test`, 1 `dropped`, 12 `retired`. No rule restates another rule in the file.
+
+## 4.0: server architecture from the core law
+
+The core law became an index and its principles (`rancho` RECORDS, *4.0*; `RECORDS-4.0-ledger.md`). The server architecture it stated moved here.
+
+- What this law already stated, and kept: module isolation (BE-01), domain events in their module (BE-07), projection (BE-108), the framework endpoints (§13), the transport limit and agent budgets (§9 and the agents annex), and the translation boundaries (§3, §4, §13).
+- What was added:
+  - §4 *Commands and Queries*:
+    - Expected outcomes are `Result` values; an exception is never control flow, and only an adapter translates one.
+    - A change in another module is that module's reaction to an integration event; a handler never dispatches another module's command.
+  - §4 *Pipeline behaviors*: validation runs on the message for every caller. A DTO's annotations may repeat it and are never the only validation. A handler does not re-validate shape.
+  - §4 *Integration event contracts*: an event with two audiences is two types.
+  - §5: BE-37 states one schema per module, no read of another module's schema, no cross-module foreign key, and reference by id. Its row takes ROOT-04's check and gap.
+  - §7:
+    - A property whose type carries no class declares one, and every other carrier inherits.
+    - *Egress owners* names the one owner of each core §4 boundary.
+  - §13:
+    - The global exception handler answers `500` as problem details, and a domain exception is never caught to make a `4xx`.
+    - *Uploads* takes the rest of the core's upload rule: the grant, the type allowlist, type by content, quarantine outside a served path, disarm and reconstruct, and the file's class.
+    - BE-82 states that no type reachable from an endpoint's signature is a `Domain` type, a Request DTO's property graph included. ROOT-07's walk moved into BE-82's Check.
+- Rows:
+  - BE-01: Rule and Check take ROOT-01's.
+  - BE-37: Rule, Check, Gap and Source take ROOT-04's.
+  - BE-82: Check takes ROOT-07's Request DTO walk.
+- Core rules carried: 7, down from 15. ROOT-01, -02, -04, -07, -08, -15, -17 and -20 are retired in the core inventory.
+- The Core map maps core §3 Access, §4 Data Boundaries, §5 Observability, §6 Verification, and the contract law.
+- Citations follow the new core numbers and the contract law's.
+- Obligation check fixes, from an independent read of the old core law against this law:
+  - §6 states that the acting principal is explicit in the dispatch context, never read from an ambient source. That was ROOT-15, whose text left the core. It is marked BE-01, whose Check gains `Thread.CurrentPrincipal` and `ClaimsPrincipal.Current`. That makes 96 marks.
+  - §7: a logging-method parameter's class is proven to agree with its value's type (BE-54), as the core stated.
+  - §7: integration events admit no boundary entry for `Restricted` (BE-61). The core's no-exception list named them.
+  - §10: no metric dimension carries a trace or span id.
+  - §13: `no-store` also covers a declared stream that carries `Confidential` or `Restricted` data. This gap predates 4.0: the contract has always applied `no-store` to every response carrying such data, and the registrar rule reached only a Response DTO.

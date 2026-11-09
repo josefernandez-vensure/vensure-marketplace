@@ -72,6 +72,7 @@ if [ ! -d ".claude" ]; then
 fi
 
 echo "Code written under VACA is governed by the engineering law: /rancho:law,"
+echo "its contract law, for every tree whose stack law declares a role,"
 echo "the stack law each tree's CLAUDE.md names, as: Stack law: /<plugin>:law,"
 echo "and each annex of that stack law whose trigger the tree already meets,"
 echo "or the work would meet. A tree bound as: Stack law: none - <reason>"
