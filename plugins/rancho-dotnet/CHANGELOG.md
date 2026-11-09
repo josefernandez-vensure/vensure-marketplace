@@ -11,6 +11,44 @@
 - Carries core §10's new rule: no test proves only what a successful
   `dotnet build` already proves.
 
+## 2.2.0
+
+- Law 3.2. Released alone: `rancho` 3.0.0 and `rancho-react` 2.0.0 are
+  unchanged. The ledger is `RECORDS-3.2-ledger.md` at the repository root.
+- **What changed:** the .NET law is rewritten as short instructions. Long
+  paragraphs become lists, multi-part rules become sub-bullets, each
+  Testing entry names its own subject and id, and §15 lists one
+  prohibition per line. Rule ids, ⚙ marks and inventory rows are
+  unchanged.
+- **What did not change:** no rule. An independent checklist of the old
+  law's 924 obligations, conditions, exceptions, named tools, marks and
+  Testing entries was checked item by item against the rewrite, and
+  every finding was fixed and re-checked.
+- **Upgrade:** nothing to do.
+
+## 2.1.0
+
+- Law 3.1. Released alone: `rancho` 3.0.0 and `rancho-react` 2.0.0 are
+  unchanged. Every sentence and inventory row changed is listed in
+  `RECORDS-3.1-ledger.md` at the repository root; the rationale is in
+  this plugin's `RECORDS.md`, `## 2.1.0`.
+- **What changed:**
+  - Duplicate rules merged, one rule and one row per obligation: BE-42
+    into BE-79, BE-41 into BE-13, BE-43 into BE-38, and the five
+    query-side bullets of §4 into one (BE-14 and BE-16 into BE-108;
+    BE-12 and BE-15 keep their rows). The retired ids keep their rows,
+    status `retired`. 141 rows, 101 marks.
+  - Rationale moved out of `SKILL.md` into `RECORDS.md`, annex pointers
+    shortened, two restatements replaced by pointers. The load per .NET
+    stream goes from ~19.9k to ~19.4k tokens; the ~16k target is not
+    reached and needs a decision on structure (`RECORDS.md`).
+- **What did not change:** no obligation, condition, exception, named
+  tool or Testing entry was removed. A ⚙ mark left only with the rule it
+  marked, merged into the row that survives.
+- **Upgrade:** a project renames any test or check named for BE-14,
+  BE-16, BE-41, BE-42 or BE-43 to the surviving id (BE-108, BE-13,
+  BE-79, BE-38), and updates those rows in its `ENFORCEMENT-STATUS.md`.
+
 ## 2.0.0
 
 - **Breaking.** Released together with `rancho` 3.0.0, whose core law it
