@@ -773,3 +773,16 @@ Law 3.2. The .NET law is rewritten as short instructions, after the owner asked 
 §2, from "Code the dispatcher's source generator emits into `Api` is written by the generator, not in `Api`, and is outside this rule.":
 
 > is written by the generator, not in `Api`,
+
+## After 3.0: scaffolding with the CLI
+
+From a consuming project's report that agents wrote `.sln`, `.csproj` and package references by hand instead of using the `dotnet` CLI.
+
+- §1: solutions, projects, project references and package references are created with the `dotnet` CLI, never by writing the file. The law stated the end state - the layout, the reference table (§2), solution-wide `TreatWarningsAsErrors` and `Nullable` - and never how to reach it, so agents fell back to writing files. A hand-written package reference carries a version from the agent's memory, which may be stale or may not exist; `dotnet package add` resolves it from the configured sources. A hand-written solution or project drifts from the SDK's current templates, such as the `.slnx` format `dotnet new sln` writes from .NET 10. The rule names the noun-first forms (`dotnet reference add`, `dotnet package add`), which .NET 10 introduced and recommends; the verb-first forms still work.
+- §1: a project file is edited by hand only for what the CLI cannot express, such as the project's kind (§2) or an analyzer reference's assets (§2). Solution-wide properties are set once in `Directory.Build.props`, so a project created from a template does not restate them.
+- No mark: no build check can tell a file the CLI wrote from one written by hand. Reached by review.
+- Source for `dotnet new sln` writing `.slnx` from .NET 10: https://learn.microsoft.com/dotnet/core/compatibility/sdk/10.0/dotnet-new-sln-slnx-default
+- Source for the noun-first `dotnet package add` and `dotnet reference add`: https://learn.microsoft.com/dotnet/core/whats-new/dotnet-10/sdk#more-consistent-command-order
+- Source for `dotnet package add` installing the latest version unless one is given: https://learn.microsoft.com/nuget/consume-packages/install-use-packages-dotnet-cli
+- Source for xUnit v3's `dotnet new` templates: https://www.nuget.org/packages/xunit.v3.templates
+- Merged after 2.2.0: the rule is written as §1 bullets in 2.2.0's style, and the `Directory.Build.props` clause joins the existing `TreatWarningsAsErrors` bullet instead of restating it.

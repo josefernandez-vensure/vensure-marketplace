@@ -226,3 +226,12 @@ Release review fixes, from the core review of the release candidate.
 - §4: endpoints the framework maps to operate the service - a health probe, the OpenAPI document, a hub's connection - carry no Request DTO and are a declared list in the server stack law, still under the rate limit and the authorization fallback. Closes release review .NET S4 (core half; .NET §13 states the list).
 - §8 egress table: the cache-entry boundary has a second owner, the adapter for an external authority, for that authority's decisions: the authorization behavior needs those decisions, so they cannot pass through a decorated query. Closes release review .NET S2.
 - Re-review fix: core §4's framework endpoints carry a named authorization policy or fall to the deny-by-default fallback, matching .NET §13. vaca-stream's binding sentence names the nearest `CLAUDE.md` that holds a `Stack law:` line.
+
+## After 3.0: tests the build already proves
+
+From a consuming project's report that agents wrote a test for every project, folder and file they created, which a failing build would already have caught.
+
+- §10: a test MUST NOT prove only what a successful build already proves - that a file, folder, project or type exists, that a reference resolves, or that the code compiles. Two instructions led agents there. `vaca`'s task Definition of Done asked for "Tests written and passing" on every task, a scaffolding task included, and the only test a scaffolding task can have is one of its structure. Core §1 counts a marked rule with no check as unbuilt, which agents read as one test per row, even for a row whose Check says it is covered by another (such as BE-05, covered by BE-01). The rule names the class of test - one whose only claim the verification commands already make - so an architecture test, which proves what compiling does not, such as a package reference a project's row omits, is outside it.
+- §10: a rule whose inventory row says it is covered by another row's check needs no check beyond what its own row names. A row such as BE-13 that is covered by BE-01 and also names a check of its own keeps that check.
+- No mark and no inventory row: whether a test proves only what the build proves is a reviewer's question.
+- `vaca` `references/structure.md`, Definition of Done: tests for the behavior the task adds, and the tree's verification commands passing. A setup or scaffolding task adds no behavior.
