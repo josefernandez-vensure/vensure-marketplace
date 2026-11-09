@@ -64,9 +64,15 @@ tests/
 
 .NET 10 (LTS) · EF Core · SQL Server · Redis · SignalR · Mediator 3.x, source-generated · FluentValidation · Serilog · Microsoft.Extensions.Compliance · OpenTelemetry · Azure Key Vault · Microsoft Agent Framework (agents annex) · xUnit v3 · NSubstitute · Shouldly · Testcontainers · ArchUnitNET
 
-- `TreatWarningsAsErrors` and `Nullable` are enabled solution-wide and MUST stay enabled.
+- `TreatWarningsAsErrors` and `Nullable` are enabled solution-wide, once in `Directory.Build.props`, never per project, and MUST stay enabled.
 - Suppressing a warning requires a comment naming the rule and the reason. Where the warning enforces a rule of the law, the reason is its exceptions-register entry's id (core §11).
 - Verify third-party licenses before pinning.
+- Create solutions, projects, project references and package references with the `dotnet` CLI, never by writing the file:
+  - `dotnet new sln`, which writes an `.slnx` file.
+  - `dotnet new` with the project's template, such as `classlib`, `webapi`, or xUnit v3's `xunit3` from `xunit.v3.templates`.
+  - `dotnet sln add` and `dotnet reference add`.
+  - `dotnet package add`, which resolves the version from the configured package sources.
+- Edit a project file by hand only for what the CLI cannot express, such as the project's kind or an analyzer reference's assets (§2).
 
 ## 2. Project Reference Law
 

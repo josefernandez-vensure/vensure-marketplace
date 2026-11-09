@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- §10: a test MUST NOT prove only what a successful build already
+  proves - that a file, folder, project or type exists, that a reference
+  resolves, or that the code compiles. A rule whose inventory row says it
+  is covered by another row's check needs no check beyond what its own
+  row names. No mark and no inventory row: reached by review.
+- `vaca`'s task Definition of Done asks for tests of the behavior a task
+  adds, and for the tree's verification commands to pass. A setup or
+  scaffolding task adds no behavior; the verification commands prove it.
+
 ## 3.0.0
 
 - **Breaking for every project.** Released together with `rancho-dotnet`

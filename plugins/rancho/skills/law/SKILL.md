@@ -202,6 +202,8 @@ Every failed authorization, every executed command, and every read of `Restricte
 
 Every stack law names its verification commands. Before a change is complete, the verification commands of every tree the change touches MUST pass: its stack law's, or for a tree bound to none, those its `CLAUDE.md` names (§2). Never report work as done on unverified code.
 
+A test MUST NOT prove only what a successful build already proves - that a file, folder, project or type exists, that a reference resolves, or that the code compiles. The verification commands prove those, and such a test is a defect. A rule whose inventory row says it is covered by another row's check needs no check beyond what its own row names.
+
 A check MUST NOT be stricter than its rule. Narrow the check, or ask for the rule to be widened (§11). A check narrower than its rule is a known gap, recorded where the check is listed - in the plugin's enforcement inventory for a check the law describes, in the project's `ENFORCEMENT-STATUS.md` for one the project builds; it never makes the rest of the rule optional.
 
 ## 11. Changing the Law, and Exceptions

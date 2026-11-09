@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- §1: solutions, projects, project references and package references
+  are created with the `dotnet` CLI - `dotnet new`, `dotnet sln add`,
+  `dotnet reference add`, `dotnet package add` - never by writing the
+  file. A project file is edited by hand only for what the CLI cannot
+  express, such as the project's kind (§2). Solution-wide properties are
+  set once in `Directory.Build.props`. No mark: reached by review.
+- Carries core §10's new rule: no test proves only what a successful
+  `dotnet build` already proves.
 - **What changed:** rules that only restated a broader rule are retired,
   each merged into the row that carries it: BE-02, BE-05, BE-13, BE-18
   and BE-52 into BE-01; BE-76 into BE-74; BE-77 into BE-82. Where a
