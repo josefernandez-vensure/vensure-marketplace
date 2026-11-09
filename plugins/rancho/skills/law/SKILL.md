@@ -53,20 +53,20 @@ A stack law MAY add rules. It MUST NOT weaken one stated here or in the contract
 
 This section governs server modules. Client boundaries are a different decomposition, stated by the client stack law.
 
-- A module MUST NOT reference another module's internals - its domain model, its use cases, or its adapters. Only its published contracts. ⚙ ROOT-01
+- A module MUST NOT reference another module's internals - its domain model, its use cases, or its adapters. Only its published contracts.
 - Cross-module **writes** MUST be asynchronous: publish an integration event, committed with the state change through the outbox. Calling another module's write path inline is forbidden.
 - Cross-module **reads** MAY be synchronous through the other module's published query contract.
-- Domain events MUST NOT cross a module boundary. Integration events always do. ⚙ ROOT-02
+- Domain events MUST NOT cross a module boundary. Integration events always do.
 - An event with both audiences is two events, not one shared type.
-- One database schema per module. Cross-schema joins and cross-module foreign keys are forbidden. References across modules are by id only. ⚙ ROOT-04
+- One database schema per module. Cross-schema joins and cross-module foreign keys are forbidden. References across modules are by id only.
 
 ## 4. Endpoints
 
 What a server and a client agree on across HTTP is the contract law, `references/contract.md`. This section states what a server's endpoints owe beyond it.
 
-- Every endpoint MUST accept a Request DTO, and MUST return a Response DTO, no body, or a stream it declares, such as a file or an export. Domain types MUST NOT appear in any signature reachable from HTTP. ⚙ ROOT-07 An endpoint the framework maps to operate the service - a health probe, the OpenAPI document, a real-time hub's connection - carries no Request DTO and is a declared list in the server stack law; it stays under the rate limit, and carries a named authorization policy or falls to the deny-by-default fallback.
+- Every endpoint MUST accept a Request DTO, and MUST return a Response DTO, no body, or a stream it declares, such as a file or an export. Domain types MUST NOT appear in any signature reachable from HTTP. An endpoint the framework maps to operate the service - a health probe, the OpenAPI document, a real-time hub's connection - carries no Request DTO and is a declared list in the server stack law; it stays under the rate limit, and carries a named authorization policy or falls to the deny-by-default fallback.
 - Request DTOs MUST map to a Command or Query. Endpoints map, dispatch, and translate. They contain no business logic.
-- Query results MUST be projected directly to Response DTOs. Loading an aggregate to build a read model is forbidden. ⚙ ROOT-08
+- Query results MUST be projected directly to Response DTOs. Loading an aggregate to build a read model is forbidden.
 - Transport limits (contract §4) do not bound an in-process caller. Agent runs carry their own budgets, stated by the server stack law.
 
 ## 5. Validation
@@ -97,7 +97,7 @@ Four translation boundaries. Each is owned by exactly one layer. No layer may sk
 - Deny by default, everywhere. Authorized-by-omission is a defect, never a default.
 - Authorization attaches to the **message** (Command/Query), not the transport. HTTP and in-process callers get identical checks.
 - Authorization has two parts, and both are required. The message's policy decides whether the principal may perform the operation at all. An object check decides whether it may perform it on the records it names: an operation that acts on a record the caller identifies MUST check that the principal may act on that record, unless its policy grants every record. A query MUST return only the records the principal may see, filtered where the records are read, never after.
-- The acting principal MUST be explicit in the dispatch context. Reading ambient HTTP context from application or domain code is forbidden. ⚙ ROOT-15
+- The acting principal MUST be explicit in the dispatch context. Reading ambient HTTP context from application or domain code is forbidden.
 - AI agents MUST hold a subset of the calling user's permissions - or, for an autonomous run, of the service principal declared for its manifest - never wider, and always carry the actor claim that identifies the agent. Full rules in the server stack law.
 - Secrets MUST NOT appear in source, config files, or logs.
 
@@ -125,7 +125,7 @@ The test decides the class. The following illustrate it and do not enumerate it:
 The authenticated boundary is the organization's systems and an authenticated user's signed-in session, including the URLs and storage of the browser it runs in; the client stack law states what keeps that browser inside it.
 
 - **Unclassified is `Restricted`.** Deny by default applies to data, not only to operations. ⚙ ROOT-16
-- A class is declared on the domain value object or id that carries it, and on the module's published contract type for the same concept. A check MUST prove the two agree. ⚙ ROOT-20 Every other type that carries a classified value inherits its class, and MUST NOT redeclare it - not per DTO, per call site, or per endpoint. A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, a field of a shared platform type, or a value projected from a classified source - declares its class on the property. Where it is projected from a classified source, the same check proves the two agree. A parameter of a logging method declares the class of the value it logs, and the same check proves the declaration agrees with the value's type. Mechanism in the server stack law.
+- A class is declared on the domain value object or id that carries it, and on the module's published contract type for the same concept. A check MUST prove the two agree. Every other type that carries a classified value inherits its class, and MUST NOT redeclare it - not per DTO, per call site, or per endpoint. A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, a field of a shared platform type, or a value projected from a classified source - declares its class on the property. Where it is projected from a classified source, the same check proves the two agree. A parameter of a logging method declares the class of the value it logs, and the same check proves the declaration agrees with the value's type. Mechanism in the server stack law.
 - A field's class MUST travel with its contract, as the contract law states (contract §6).
 
 ### Egress boundaries
@@ -148,7 +148,7 @@ A boundary whose own rule forbids `Restricted` outright - a model's context, a c
 - A model's context is egress in **both** directions: tool arguments, tool output, system and user prompts, retrieved documents, and retained conversation history.
 - Once a value is sent to a model, the response is notification and rotation, not deletion.
 - Agents reference sensitive records **by id**. The id is resolved to values by an authorized read in the user's own session, not by widening what the model may see.
-- Integration events MUST NOT carry `Restricted` payloads. Reference by id. ⚙ ROOT-17
+- Integration events MUST NOT carry `Restricted` payloads. Reference by id.
 
 ## 9. Observability
 

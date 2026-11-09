@@ -191,7 +191,9 @@ public <Outcome> <Operation>(<Args> args, DateTimeOffset now)
 - SQL MUST NOT be built from input by any means but the parameterized form. The raw-string APIs - `SqlQueryRaw`, `FromSqlRaw`, `ExecuteSqlRaw`, or any other - MUST NOT be used in a module. ⚙ BE-113 A migration's SQL (§5) is written, not built from input, and is outside this rule.
 - `Repository` is reserved for the aggregate write path. A read-side type that returns DTOs MUST NOT be called a repository: name it `<Feature>Reader`. Usually the query handler is the read data access, and no separate type is warranted. ⚙ BE-17
 - One handler per message. Handlers MUST NOT call other handlers directly. Shared logic belongs in the domain or a named application service.
-- A handler MAY dispatch another module's published query through the dispatcher (core §3). That dispatch runs the full pipeline, on its own module's connection, never enlisted in the command's transaction.
+- Expected outcomes are `Result` values, never exceptions, and an exception is never control flow. Only an adapter MAY catch an exception its framework or SDK raises for an expected outcome - such as a concurrency conflict, a unique-key violation, or an unreachable or failing remote service - and it translates the exception into an outcome there. Nothing above the adapter catches one. Where the framework raises it at commit, the adapter is the unit of work, and the unit-of-work behavior translates its outcome (*Pipeline behaviors*, item 4). An exception that escapes a handler is a defect (§13).
+- A change another module must make is that module's reaction to an integration event (*Transactions and consistency*). A handler MUST NOT dispatch another module's command or reach its write path inline.
+- A handler MAY dispatch another module's published query through the dispatcher. That dispatch runs the full pipeline, on its own module's connection, never enlisted in the command's transaction.
 
 ```csharp
 // Illustrative. Translation happens here and nowhere else: a switch expression over an enum outcome, with no discard arm.
@@ -228,6 +230,9 @@ Fixed order. Changing it requires written justification.
 1. **Logging / correlation**
 2. **Authorization** - resolves the message's declared policy and evaluates it against the explicit principal. Every Command and Query MUST declare a named policy; a message with none MUST fail to dispatch. ⚙ BE-25
 3. **Validation** - FluentValidation. A failure short-circuits to a `Result` failure; the handler is never invoked.
+   - It runs on the message, so every caller gets it: an endpoint, an agent, a job, a test.
+   - A Request DTO's annotations MAY repeat it, for early failure and for the OpenAPI document. They MUST NOT be the only validation.
+   - A handler assumes its message is structurally valid, and MUST NOT re-validate its shape.
 4. **Unit of work and idempotency** - commands only. One behavior.
    - A command that persists aggregate state: open the unit of work; then, if the command declares a key, resolve the attempt identity: where a record exists, answer with it as a replay, or `422` when the fingerprints differ, without invoking the handler.
      Where no record answers: run the handler, write the idempotency record where a key is used, dispatch domain events to their reactions, and commit on success. Roll back on any failure or exception.
@@ -274,6 +279,7 @@ An integration event is a published contract.
 - Adding an optional field to an existing version is permitted. Renaming, removing, retyping, or changing the meaning of a field is not: that is a new version.
 - Introducing `<Event>V2` MUST NOT retire `<Event>V1` until no consumer subscribes to it and no outbox row holds one. Both are published during the overlap.
 - A consumer MUST tolerate fields it does not know and MUST NOT fail on one it does not use. Producers ship before consumers.
+- An event with both audiences - a reaction in its own module and another module - is two types, a domain event and an integration event, never one shared type.
 - Event payloads MUST be ids, primitives, and value objects that serialize stably. A domain type MUST NOT appear in an integration event. ⚙ BE-86
 
 ### Placement of interfaces and implementations
@@ -307,12 +313,12 @@ Placement is decided by **dependencies, never by the name**. `Service`, `Manager
 ## 5. Persistence
 
 - EF Core, code-first (migrations: §5 *Migrations*). SQL Server is the default store; a second store requires a documented reason in the module's README.
-- One `DbContext` per module. It maps no type another module declares. ⚙ BE-37
+- One `DbContext` per module, on the module's own database schema. It maps no type another module declares, reads no other module's schema, and declares no foreign key to another module's table: another module's record is referenced by its id only. ⚙ BE-37
 - Mapping MUST live in `IEntityTypeConfiguration<T>` classes in Infrastructure; the domain MUST NOT know it is persisted. A Domain type MUST NOT carry a mapping attribute, EF attributes included; a mapped one MUST NOT have a public parameterless constructor or a public setter - use EF's private-constructor and backing-field support. ⚙ BE-38 If a mapping needs the domain type changed, the mapping is wrong, not the domain type.
 - Lazy loading MUST be disabled.
 - Integration tests run against real SQL Server via Testcontainers. No other provider may stand in for it - the EF InMemory provider, SQLite in memory, or any other. ⚙ BE-39
 - Every aggregate MUST carry an application-managed version, mapped as its concurrency token, which the aggregate increments on every change to itself or to anything inside it.
-- A concurrency conflict or a unique-key violation MUST surface as an outcome, never as an exception above the persistence adapter: the repository or unit of work that receives `DbUpdateConcurrencyException`, or the provider's unique-key error, catches only that, where it is raised, and translates it (core §6; §4 *Pipeline behaviors*).
+- A concurrency conflict or a unique-key violation MUST surface as an outcome, never as an exception above the persistence adapter: the repository or unit of work that receives `DbUpdateConcurrencyException`, or the provider's unique-key error, catches only that, where it is raised, and translates it (§4 *Commands and Queries*, *Pipeline behaviors*).
 
 ### Migrations
 
@@ -405,6 +411,19 @@ public sealed record NationalId
 ```
 
 - A `Confidential` or `Restricted` type MUST redact in `ToString()`. It MUST NOT define an implicit conversion to `string`. ⚙ BE-56
+
+- A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, or a field of a shared platform type - declares its class on the property. Every other type that carries a classified value inherits its class and MUST NOT redeclare it: not on a DTO, a message, an event, or a call site.
+
+### Egress owners
+
+Each egress boundary of core §8 has one owner here, and no other path across it:
+
+- a Response DTO to an HTTP client: the endpoint, through the registrar (§13); to a real-time client: the hub (`annex-realtime.md`);
+- a model's context: the agent tool projection (`annex-agents.md`);
+- a log, metric, trace or error report: the logging behavior (§4), and the processors and exporters every signal passes through, automatic instrumentation included (§10);
+- a cache entry: the cache decorator (`annex-caching.md`), and for an external authority's decisions, the adapter for that authority (§6);
+- a payload to a third-party integration: its Infrastructure adapter, with a per-integration allowlist of fields, declared and reviewed;
+- an export, report or file handed to a user: its export endpoint, under the policy of the equivalent read, and audited (§10 *Audit trail*).
 
 ### Logging
 
@@ -524,7 +543,7 @@ In `annex-realtime.md`.
 - Endpoints are registered by discovery over those types at the composition root. Hand-registering one is a defect. ⚙ BE-81
 - The framework endpoints - the readiness and liveness probes (§10), a hub's `MapHub` (real-time annex) and the OpenAPI document - are mapped by the framework, not by an endpoint type: a declared list at the composition root, outside the two rules above. They stay under the rate limit (§9, the `GlobalLimiter`). Each carries a named policy (§6), such as an anonymous one for the probes, or falls to the denying fallback.
 - The registrar applies each endpoint's authorization and rate-limit metadata from the operation declaration of the message it dispatches; an endpoint declares neither itself.
-- An endpoint MUST map its Request DTO to a message, dispatch it, and translate `Result` to HTTP (core §4). It MUST NOT reference any type other than its DTOs, the message it dispatches, and every type those are composed of; the shared endpoint abstraction; the dispatcher and the `Result` it returns; the result translator; and the framework's primitives, such as `Task`, `CancellationToken`, and HTTP result types. ⚙ BE-82
+- An endpoint MUST map its Request DTO to a message, dispatch it, and translate `Result` to HTTP (core §4). It MUST NOT reference any type other than its DTOs, the message it dispatches, and every type those are composed of; the shared endpoint abstraction; the dispatcher and the `Result` it returns; the result translator; and the framework's primitives, such as `Task`, `CancellationToken`, and HTTP result types. No type reachable from an endpoint's signature, a Request DTO's property graph included, is a `Domain` type. ⚙ BE-82
 - Success shapes: `200` with a Response DTO, `201` with a location, `204` for no content, or a stream the endpoint declares. A write that leaves a versioned resource in place returns a body carrying its new `etag`, never `204`; a delete returns `204` (contract §7 *Wire contract*). Failures are `ProblemDetails`.
 - Preconditions:
   - An endpoint maps `If-Match` to the message's expected version, and `If-None-Match: *` to the message's create-only flag, as it maps any other request field.
@@ -540,7 +559,12 @@ In `annex-realtime.md`.
 - Uploads:
   - An upload endpoint's Request DTO carries the file as a stream with its metadata. Its size limit is enforced at the request boundary - the endpoint's request size limit - before the body is buffered.
   - It dispatches a command that does not persist to store the file in quarantine, under a name the server derives from the uploader's principal and the command's client-supplied id - an id the validation behavior has parsed - with a keyed hash, such as an HMAC under a server key; never from the client's file name (§4).
-  - A persisting command, run under the uploader's principal recorded with the quarantined file, records it once the scan passes (core §7 *File uploads*).
+  - A persisting command, run under the uploader's principal recorded with the quarantined file, records it once the scan passes.
+  - Only a principal whose policy grants the upload may send one. The operation declares an allowlist of file types, enforced before anything is stored.
+  - A file's type is proven from its content, never from its name or `Content-Type` alone, and never by a signature check alone.
+  - The quarantine is outside any path the server serves, where a file cannot execute. A file is released only once its malware scan passes and, where its type allows, its content has been disarmed and reconstructed.
+  - The operation that accepts a file declares the file's class (core §8); a file whose class is not declared is `Restricted`. A stored file is returned only by an operation whose policy grants that class, under core §8's export rule.
+- An exception that escapes the pipeline is a defect. The global exception handler logs it with full context, within core §8's telemetry rule, and answers `500` as problem details. Code never catches a domain exception to turn it into a `4xx`; it adds the missing guard instead.
 - A change to a Request or Response DTO that does not regenerate and commit the OpenAPI document is incomplete.
 
 ## 14. Testing
