@@ -35,7 +35,7 @@ If `/rancho:law` is not available in the session, stop and say so. This file alo
 | §4 API Contract | §13 API Layer · §4 Pagination, Idempotency · §9 Transport |
 | §5 Validation | §4 Pipeline behaviors |
 | §6 Error Contract | §2 (`Result` placement) · §3 Aggregates · §4 Commands and Queries, Pipeline behaviors · §5 Persistence · §13 API Layer · §15 Forbidden |
-| §7 Security Baseline | §6 Authorization · §8 AI Agents · §10 Observability (*Audit trail*) · §11 Configuration and Secrets · §13 API Layer |
+| §7 Security Baseline | §2 (the request context stays in `Api`) · §6 Authorization · §8 AI Agents · §10 Observability (*Audit trail*) · §11 Configuration and Secrets · §13 API Layer |
 | §8 Data Boundaries | §7 Data Classification · §5 Read-side caching · §12 Real-time |
 | §9 Observability | §10 Observability |
 | §10 Verification | §14 Testing · §16 Verification · `references/enforcement.md` |
@@ -99,7 +99,7 @@ Four facts decide every reference. The table below is their consequence, not a s
 - The table allowlists **direct** `ProjectReference` entries, not the transitive closure. A project MAY declare a reference it could also reach transitively; it MUST NOT declare one its row omits. ⚙ BE-01
 - A test project MUST NOT be referenced by a project of any other kind. A fixture built to prove a check fails MUST NOT appear in the solution file or under the production source root.
 - An analyzer reference - one that contributes analyzers only, and no assembly the project compiles against or runs with - is admitted in every project and is outside the table. A package reference qualifies with `IncludeAssets="analyzers"` and `PrivateAssets="all"`; a project reference with `OutputItemType="Analyzer"` and `ReferenceOutputAssembly="false"`.
-- The Domain project MUST NOT reference EF Core, Mediator, ASP.NET, `IHttpContextAccessor`, or any application type. ⚙ BE-02
+- Outside `Api`, a project references no ASP.NET Core type beyond the packages its row admits, even through a transitive reference: `HttpContext`, `IHttpContextAccessor` and every other transport type stay in `Api`. A module `Application` uses no data-access API, `System.Data` included, and does not reference the unit-of-work port. ⚙ BE-01
 - `Platform.*` carries the dispatch pipeline: `Result`, the message abstractions, the solution-wide page shape and cursor type, and the behaviors. `Result` lives in `Platform.Application`, not in `SharedKernel`.
 - `Contracts` references `Platform.Application`: a published query message MUST name both its `Result` response and the abstraction it is dispatched by. Nothing else from `Platform.Application` may appear in a contract's public surface, except the page and cursor types a published collection query returns.
 - `Api` names only the registration entry points of Infrastructure projects. Each module's Infrastructure exposes exactly one, `Add<Module>Module(IServiceCollection, IConfiguration)`; `Platform.Infrastructure` exposes one `Add<Feature>` extension per platform feature, such as the outbox or correlation logging. `Api` MUST NOT name any other Infrastructure type - no client, credential, `DbContext`, repository, adapter, SDK type, or any other - and after startup MUST NOT name or invoke an Infrastructure type directly: dispatch reaches an Infrastructure handler through the dispatcher, not through `Api`. Each Infrastructure project builds and registers its own clients, its `DbContext` included. ⚙ BE-105, BE-106 Code the dispatcher's source generator emits into `Api` is outside this rule.
@@ -133,7 +133,7 @@ A module has one Domain, shared by all of its features: features are use cases o
 - Aggregate state MUST be private: no public setters; collections exposed as `IReadOnlyCollection<T>` over a private backing field. ⚙ BE-04
 - State MUST change only through methods named in domain vocabulary: `Approve` is the rule, `SetStatus` a defect.
 - An aggregate MUST be valid at every instant of its public lifetime. Constructors and methods enforce invariants. No "validate later" step, no `IsValid` property.
-- An aggregate method MUST NOT return `Result`, a DTO, or any application type. It returns a domain outcome, a domain value, or nothing. ⚙ BE-05
+- An aggregate method returns a domain outcome, a domain value, or nothing.
 - Expected business rejections MUST be domain outcome values - an enum or sealed outcome type in domain vocabulary - and MUST NOT be exceptions.
 - Invariant breaches MUST throw.
 - Aggregates MUST NOT reference repositories, `DbContext`, `HttpClient`, or any I/O. ⚙ BE-06
@@ -180,7 +180,7 @@ public <Outcome> <Operation>(<Args> args, DateTimeOffset now)
 ### Commands and Queries
 
 - A Command mutates. A Query reads. A Command MUST NOT return data beyond an identifier, its outcome, and the new version of the aggregate it changed (core §4 *Wire contract*). ⚙ BE-11
-- Command handlers MUST mutate state only by loading an aggregate through its repository, calling its methods, and persisting through the repository. There is no other write path: writing through `DbContext` or SQL from a command handler is forbidden. ⚙ BE-13
+- A command handler MUST change state only by loading an aggregate through its repository, calling its methods, and persisting through the repository.
 - Queries:
   - A Query MUST NOT mutate: its handler MUST NOT call `SaveChangesAsync`. ⚙ BE-12
   - A query handler MUST bypass the domain and project straight into its Response DTO, untracked: it MUST NOT reference a `Domain` type, materialize an aggregate, or use an aggregate repository. ⚙ BE-108
@@ -191,7 +191,6 @@ public <Outcome> <Operation>(<Args> args, DateTimeOffset now)
 - `Repository` is reserved for the aggregate write path. A read-side type that returns DTOs MUST NOT be called a repository: name it `<Feature>Reader`. Usually the query handler is the read data access, and no separate type is warranted. ⚙ BE-17
 - One handler per message. Handlers MUST NOT call other handlers directly. Shared logic belongs in the domain or a named application service.
 - A handler MAY dispatch another module's published query through the dispatcher (core §3). That dispatch runs the full pipeline, on its own module's connection, never enlisted in the command's transaction.
-- Handlers MUST NOT reference `HttpContext`, `IHttpContextAccessor`, or any transport type. ⚙ BE-18
 
 ```csharp
 // Illustrative. Translation happens here and nowhere else: a switch expression over an enum outcome, with no discard arm.
@@ -226,7 +225,7 @@ Its agent rule: `annex-agents.md`.
 Fixed order. Changing it requires written justification.
 
 1. **Logging / correlation**
-2. **Authorization** - resolves the message's declared policy and evaluates it against the explicit principal. A message with no declared policy MUST fail to dispatch. ⚙ BE-25
+2. **Authorization** - resolves the message's declared policy and evaluates it against the explicit principal. Every Command and Query MUST declare a named policy; a message with none MUST fail to dispatch. ⚙ BE-25
 3. **Validation** - FluentValidation. A failure short-circuits to a `Result` failure; the handler is never invoked.
 4. **Unit of work and idempotency** - commands only. One behavior.
    - A command that persists aggregate state: open the unit of work; then, if the command declares a key, resolve the attempt identity: where a record exists, answer with it as a replay, or `422` when the fingerprints differ, without invoking the handler.
@@ -307,7 +306,7 @@ Placement is decided by **dependencies, never by the name**. `Service`, `Manager
 ## 5. Persistence
 
 - EF Core, code-first (migrations: §5 *Migrations*). SQL Server is the default store; a second store requires a documented reason in the module's README.
-- One `DbContext` per module, one schema per module. A `DbContext` MUST NOT map another module's tables. ⚙ BE-37
+- One `DbContext` per module. It maps no type another module declares. ⚙ BE-37
 - Mapping MUST live in `IEntityTypeConfiguration<T>` classes in Infrastructure; the domain MUST NOT know it is persisted. A Domain type MUST NOT carry a mapping attribute, EF attributes included; a mapped one MUST NOT have a public parameterless constructor or a public setter - use EF's private-constructor and backing-field support. ⚙ BE-38 If a mapping needs the domain type changed, the mapping is wrong, not the domain type.
 - Lazy loading MUST be disabled.
 - Integration tests run against real SQL Server via Testcontainers. No other provider may stand in for it - the EF InMemory provider, SQLite in memory, or any other. ⚙ BE-39
@@ -331,7 +330,7 @@ Placement is decided by **dependencies, never by the name**. `Service`, `Manager
 - A repository MUST load the complete aggregate - the root, its entities, and its value objects - in one operation. Partial loads are forbidden.
 - The repository owns the graph shape. A command handler MUST NOT specify includes, projections, or tracking behavior, and MUST NOT know how the aggregate is assembled.
 - Persistence is whole-aggregate. Add, update, and remove operate on the root; the aggregate's internals are persisted and deleted with it.
-- A repository MUST NOT expose `IQueryable`, `DbSet`, or any other EF type. ⚙ BE-40
+- A repository MUST NOT expose `IQueryable`. ⚙ BE-40
 - A generic `IRepository<TRoot, TId>` MAY provide the universal operations: get by id, add, remove. Anything beyond them MUST be declared on a per-aggregate interface with an intention-revealing name.
 
 ### EF Core mapping for DDD
@@ -364,7 +363,7 @@ public static readonly Operation <Operation> = new(
     Human:       HumanRequirement.Required);              // unreachable without a live user
 ```
 
-- Every Command and Query MUST declare a named policy. Bare `[Authorize]` and unattributed endpoints are defects. ⚙ BE-50
+- Bare `[Authorize]` and unattributed endpoints are defects. ⚙ BE-50
 - `AuthorizationOptions.FallbackPolicy` MUST deny. ⚙ BE-51
 - The authorization behavior evaluates policies via `IAuthorizationService`, against the explicit principal from the dispatch context.
 - The object check (core §7) is made after the load and before the handler acts, through a resource-authorization port declared in `Platform.Application`:
@@ -373,7 +372,6 @@ public static readonly Operation <Operation> = new(
   - each module's resource authorization handlers - `AuthorizationHandler<TRequirement, TResource>` over its aggregates - live in its `Infrastructure` as framework extension points (BE-34), read the aggregate through its public members, and are registered by its registration entry point.
 - A query applies the principal's record scope in its read - a global query filter on its read types, or a predicate in its SQL - never by filtering the result. The scope (the records the principal may see, such as its tenant's or its own) is resolved into the dispatch context at the composition root or by the authority adapter; the read takes it from there.
 - A transport-level authorization filter - `[Authorize(<policy>)]`, middleware, or a vendor package's equivalent - MAY enforce in addition, but MUST NOT be the only enforcement point. Every operation's policy decision MUST be reachable from the authorization behavior (core §7).
-- `IHttpContextAccessor` MUST NOT be referenced outside the composition root (core §7). ⚙ BE-52
 - Identity-provider claims are mapped to policies at the composition root, and externally-sourced permissions in the adapter that wraps the authority (below). Application and domain code MUST NOT read raw claims. ⚙ BE-53
 - Where permissions come from - a token claim, a directory, a remote authorization service - is a composition-root concern. Application and domain code name a policy, never a permission source or a role literal.
 - A claim read from a token before its signature is validated MAY select how the token is validated - such as which issuer's keys, or which remote validation endpoint - and MUST NOT be trusted for anything else: not identity, not tenancy, not a permission lookup. Once the token is validated, the claim that made the selection MUST agree with the validated token, or the token is refused.
@@ -405,7 +403,7 @@ public sealed record NationalId
 }
 ```
 
-- A `Confidential` or `Restricted` type MUST redact in `ToString()` and MUST NOT define an implicit conversion to `string`. ⚙ BE-56
+- A `Confidential` or `Restricted` type MUST redact in `ToString()`. It MUST NOT define an implicit conversion to `string`. ⚙ BE-56
 
 ### Logging
 
@@ -526,7 +524,6 @@ In `annex-realtime.md`.
 - The framework endpoints - the readiness and liveness probes (§10), a hub's `MapHub` (real-time annex) and the OpenAPI document - are mapped by the framework, not by an endpoint type: a declared list at the composition root, outside the two rules above. They stay under the rate limit (§9, the `GlobalLimiter`). Each carries a named policy (§6), such as an anonymous one for the probes, or falls to the denying fallback.
 - The registrar applies each endpoint's authorization and rate-limit metadata from the operation declaration of the message it dispatches; an endpoint declares neither itself.
 - An endpoint MUST map its Request DTO to a message, dispatch it, and translate `Result` to HTTP (core §4). It MUST NOT reference any type other than its DTOs, the message it dispatches, and every type those are composed of; the shared endpoint abstraction; the dispatcher and the `Result` it returns; the result translator; and the framework's primitives, such as `Task`, `CancellationToken`, and HTTP result types. ⚙ BE-82
-- Endpoints MUST NOT reference domain types. ⚙ BE-77
 - Success shapes: `200` with a Response DTO, `201` with a location, `204` for no content, or a stream the endpoint declares. A write that leaves a versioned resource in place returns a body carrying its new `etag`, never `204`; a delete returns `204` (core §4 *Wire contract*). Failures are `ProblemDetails`.
 - Preconditions:
   - An endpoint maps `If-Match` to the message's expected version, and `If-None-Match: *` to the message's create-only flag, as it maps any other request field.
@@ -567,7 +564,7 @@ A missing required test is a defect exactly as a violated rule is (core §1). Th
   - Every command that does not persist MUST have a test proving its record is written (BE-118).
   - The authorization behavior and the resource-authorization port MUST have a test proving a denial is recorded (BE-118).
 - **Pagination**:
-  - Every paginated query MUST have a test proving a request above its maximum is rejected, and a test proving no row is skipped or repeated across a page boundary (BE-124).
+  - Every paginated query MUST have a test proving no row is skipped or repeated across a page boundary (BE-124).
   - Every collection bounded by construction whose size a request determines MUST have a test proving a request beyond its bound is rejected, never truncated (BE-124).
 - **Idempotency**: every command declaring a key MUST have four tests, one proving each of:
   - a replayed key returns the recorded result without executing twice (BE-125);

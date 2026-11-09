@@ -10,6 +10,27 @@
   set once in `Directory.Build.props`. No mark: reached by review.
 - Carries core §10's new rule: no test proves only what a successful
   `dotnet build` already proves.
+- **What changed:** rules that only restated a broader rule are retired,
+  each merged into the row that carries it: BE-02, BE-05, BE-13, BE-18
+  and BE-52 into BE-01; BE-76 into BE-74; BE-77 into BE-82. Where a
+  retired row checked something the broad row could not reach, that part
+  moved into the broad row: BE-01 gains an `arch` half (no ASP.NET Core
+  type outside `Api` beyond the admitted packages, even transitively; no
+  `System.Data` and no unit-of-work port in a module `Application`), and
+  BE-74 gains BE-76's client-interface and `IHubContext<T>` checks.
+  Restating halves are trimmed from BE-37 (schema: ROOT-04), BE-40 (EF
+  types: BE-01), BE-50 (named policy: now stated with BE-25), BE-56
+  (`ToString()`: BE-126's test) and BE-124 (page size: BE-22). BE-32 no
+  longer claims to be covered by BE-01, which does not reach an ambient
+  transaction. 141 rows: 96 `build`, 12 `retired`; 95 marks.
+- **What did not change:** no obligation is dropped; each is carried by
+  the row named above. Rationale and row history are in `RECORDS.md`,
+  `## Unreleased`.
+- **Upgrade:** a project folds any check or test named for BE-02, BE-05,
+  BE-13, BE-18 or BE-52 into its BE-01 check, BE-76's into BE-74's and
+  BE-77's into BE-82's, and updates those rows in its
+  `ENFORCEMENT-STATUS.md`. The per-query page-size test BE-124 asked for
+  is no longer required; BE-22's sweep carries it.
 
 ## 2.2.0
 
