@@ -3,7 +3,8 @@
 Run from the repository root:  python -I tools/check-law.py
 
 It reads each law plugin's skills/law/SKILL.md, its annexes
-(skills/law/references/annex-*.md) and its inventory
+(skills/law/references/annex-*.md), the core's contract law
+(plugins/rancho/skills/law/references/contract.md) and each inventory
 (skills/law/references/enforcement.md), and fails on bookkeeping that does not
 agree: marks without ids, ids without rows, rows nothing marks, required tests
 the Testing section does not name, broken canonical pointers, core rules a
@@ -45,6 +46,8 @@ def strip_code(text):
 def law_files(plugin):
     base = Path("plugins") / plugin / "skills" / "law"
     files = [base / "SKILL.md"] + sorted((base / "references").glob("annex-*.md"))
+    if plugin == "rancho":
+        files.append(base / "references" / "contract.md")
     return base, files
 
 
@@ -191,7 +194,7 @@ def main():
 
         # annex triggers
         named = set(re.findall(r"annex-[\w-]+\.md", skill_text))
-        present = {f.name for f in files[1:]}
+        present = {f.name for f in files[1:] if f.name.startswith("annex-")}
         for a in present - named:
             fail(str(base / "SKILL.md"), f"names no trigger for {a}")
         for a in named - present:
@@ -217,9 +220,11 @@ def main():
             w = words(f)
             print(f"  {f}: {w} words, ~{round(w * 1.4 / 1000, 1)}k tokens")
         load[plugin] = words(d["base"] / "SKILL.md")
+    contract = words(data["rancho"]["base"] / "references" / "contract.md")
+    print(f"  load per stream bound to none (core SKILL.md): ~{round(load['rancho'] * 1.4 / 1000, 1)}k tokens")
     for plugin in ("rancho-dotnet", "rancho-react"):
-        w = load["rancho"] + load[plugin]
-        print(f"  load per {plugin} stream (core + stack SKILL.md, no annexes): ~{round(w * 1.4 / 1000, 1)}k tokens")
+        w = load["rancho"] + contract + load[plugin]
+        print(f"  load per {plugin} stream (core + contract + stack SKILL.md, no annexes): ~{round(w * 1.4 / 1000, 1)}k tokens")
 
     if errors:
         print(f"\n{len(errors)} problem(s):")

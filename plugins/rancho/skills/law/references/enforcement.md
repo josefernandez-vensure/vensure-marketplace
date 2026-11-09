@@ -1,6 +1,6 @@
 # Enforcement Inventory - Core
 
-Every rule marked ⚙ in the core law, and the role whose stack laws carry it.
+Every rule marked ⚙ in the core law and in the contract law (`contract.md`, beside this file), and the role whose stack laws carry it.
 
 `../SKILL.md` §1 defines ⚙ as **"can be made to fail the build."** A check is written in a technology, so a core rule's check lives in a stack law: this file names the role each rule binds, and every stack law of that role lists the rule, with its mechanism and check, under **Core rules carried** in its own inventory (core §10, in `AUTHORING.md` at the plugin root). A ⚙ with no entry here is unaccounted for and MUST be added.
 
@@ -20,7 +20,7 @@ This legend is shared: every inventory, core and stack, is read by it.
 |---|---|
 | Id | The rule's permanent id. |
 | Rule | The rule in short. The law's own sentence governs; the row only names it. |
-| Section | The section of the law that states the rule (§N). |
+| Section | The section of the law that states the rule (§N). A row of the core inventory whose rule the contract law states, or a stack row carrying one, gives `contract §N`. |
 | Binds | Core rows only: the role (`../SKILL.md` §2) whose stack laws MUST carry the rule - `server`, `client`, or `both`. |
 | Mechanism | Stack rows only: the tool the check is written in. The codes belong to the stack laws; each stack inventory defines the codes for the tools its technology checks with. |
 | Status | One of the four below. |
@@ -45,7 +45,7 @@ The core law carries **15 ⚙ marks**, one on each `build` row below. Its invent
 
 Eleven root rules are **duplicated** by a stack-law rule: a stack law's inventory names the canonical id in the root rule's row (`Canonical: X`). One check satisfies each pair. A root row whose check is only reached by another (`Covered by X`) is not counted.
 
-## Root - `../SKILL.md`
+## Root - `../SKILL.md` and `contract.md`
 
 | Id | Rule | Section | Binds | Status | Source |
 |---|---|---|---|---|---|
@@ -57,15 +57,15 @@ Eleven root rules are **duplicated** by a stack-law rule: a stack law's inventor
 | ROOT-06 | A frontend feature does not import another; left the core law under A-02. Merged into FE-03 (`rancho-react`) | §3 | client | retired | — |
 | ROOT-07 | Endpoints take a Request DTO and return a Response DTO, no body, or a declared stream; no domain type reachable from HTTP | §4 | server | build | — |
 | ROOT-08 | Query results projected directly to Response DTOs | §4 | server | build | — |
-| ROOT-09 | OpenAPI document generated and committed | §4 | server | build | — |
+| ROOT-09 | OpenAPI document generated and committed | contract §1 | server | build | — |
 | ROOT-10 | A generated client response is not cast; left the core law under A-02. Merged into FE-07 (`rancho-react`) | §4 | client | retired | — |
-| ROOT-11 | Every collection endpoint not bounded by construction paginated; a bounded one declares `maxItems` | §4 | server | build | https://spec.openapis.org/oas/v3.1.0#schema-object |
-| ROOT-12 | One page shape across the API | §4 | server | build | https://spec.openapis.org/oas/v3.1.0#parameter-object |
-| ROOT-13 | Every state-changing endpoint declares an idempotency mechanism | §4 | server | build | https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/ |
+| ROOT-11 | Every collection endpoint not bounded by construction paginated; a bounded one declares `maxItems` | contract §2 | server | build | https://spec.openapis.org/oas/v3.1.0#schema-object |
+| ROOT-12 | One page shape across the API | contract §2 | server | build | https://spec.openapis.org/oas/v3.1.0#parameter-object |
+| ROOT-13 | Every state-changing endpoint declares an idempotency mechanism | contract §3 | server | build | https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/ |
 | ROOT-14 | Deny by default, everywhere | §7 | both | dropped | — |
 | ROOT-15 | Acting principal explicit; no ambient HTTP context in application or domain | §7 | server | build | — |
 | ROOT-16 | Unclassified is `Restricted` | §8 | both | build | — |
 | ROOT-17 | Integration events MUST NOT carry `Restricted` payloads | §8 | server | build | — |
-| ROOT-18 | A field's class travels with its contract: the OpenAPI document carries the class of every request and response property and every parameter, and the client enforces it at its own boundaries | §8 | both | build | https://spec.openapis.org/oas/v3.1.0#specification-extensions |
+| ROOT-18 | A field's class travels with its contract: the OpenAPI document carries the class of every request and response property and every parameter, and the client enforces it at its own boundaries | contract §6 | both | build | https://spec.openapis.org/oas/v3.1.0#specification-extensions |
 | ROOT-19 | Every unit of work carries a correlation id | §9 | server | build | https://www.w3.org/TR/trace-context/ |
 | ROOT-20 | A class declared on a domain type and on its published contract type is proven by a check to agree | §8 | server | build | — |

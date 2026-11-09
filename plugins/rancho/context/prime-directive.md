@@ -20,8 +20,9 @@ This repository is governed by an engineering law. It is not advisory.
   stated in core §1.
 
 **Before writing, placing, or reviewing any code in this repository, read the
-full core law via the `/rancho:law` skill** - and then, in full, the stack law
-bound to the tree you are working in. The nearest `CLAUDE.md` at or above the
+full core law via the `/rancho:law` skill** - and then, in full, the contract
+law beside it (`references/contract.md`) wherever the bound stack law declares
+a role, and the stack law bound to the tree you are working in. The nearest `CLAUDE.md` at or above the
 files that holds a `Stack law:` line names it, as `Stack law: /<plugin>:law`
 (core §2). A tree bound as
 `Stack law: none - <reason>` is not a defect: only the core law binds it, so

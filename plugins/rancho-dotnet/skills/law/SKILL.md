@@ -25,14 +25,15 @@ If `/rancho:law` is not available in the session, stop and say so. This file alo
 
 ## Role
 
-`server`. A tree bound here publishes the API contract (core §4), owns its modules and their persistence, and owns every egress boundary in core §8.
+`server`. A tree bound here publishes the API contract (the contract law, `references/contract.md` in `/rancho:law`), owns its modules and their persistence, and owns every egress boundary in core §8.
 
 ## Core map
 
 | Core | Carried here by |
 |---|---|
 | §3 Module Boundary Law | §2 Project Reference Law · §4 Transactions and consistency, Integration event contracts · §5 Persistence |
-| §4 API Contract | §13 API Layer · §4 Pagination, Idempotency · §9 Transport |
+| Contract law | §13 API Layer · §4 Pagination, Idempotency · §9 Transport · §7 Data Classification (`x-data-class`) · §10 Observability (*Correlation*) |
+| §4 Endpoints | §13 API Layer · §4 Commands and Queries |
 | §5 Validation | §4 Pipeline behaviors |
 | §6 Error Contract | §2 (`Result` placement) · §3 Aggregates · §4 Commands and Queries, Pipeline behaviors · §5 Persistence · §13 API Layer · §15 Forbidden |
 | §7 Security Baseline | §2 (the request context stays in `Api`) · §6 Authorization · §8 AI Agents · §10 Observability (*Audit trail*) · §11 Configuration and Secrets · §13 API Layer |
@@ -179,7 +180,7 @@ public <Outcome> <Operation>(<Args> args, DateTimeOffset now)
 
 ### Commands and Queries
 
-- A Command mutates. A Query reads. A Command MUST NOT return data beyond an identifier, its outcome, and the new version of the aggregate it changed (core §4 *Wire contract*). ⚙ BE-11
+- A Command mutates. A Query reads. A Command MUST NOT return data beyond an identifier, its outcome, and the new version of the aggregate it changed (contract §7 *Wire contract*). ⚙ BE-11
 - A command handler MUST change state only by loading an aggregate through its repository, calling its methods, and persisting through the repository.
 - Queries:
   - A Query MUST NOT mutate: its handler MUST NOT call `SaveChangesAsync`. ⚙ BE-12
@@ -208,14 +209,14 @@ Translation is a switch expression, never a switch statement.
 
 ### Pagination
 
-- Every query returning a collection whose size is not bounded by construction MUST be paginated; one bounded by construction declares its bound (core §4). A handler returning an unbounded collection, such as a `List<T>` or an `IEnumerable<T>`, is a defect. ⚙ BE-19 A declared stream (core §4 *Wire contract*) is not a collection.
+- Every query returning a collection whose size is not bounded by construction MUST be paginated; one bounded by construction declares its bound (contract §2). A handler returning an unbounded collection, such as a `List<T>` or an `IEnumerable<T>`, is a defect. ⚙ BE-19 A declared stream (contract §7 *Wire contract*) is not a collection.
 - A bounded set a UI grid shows in full is bounded by construction only where it declares its bound and rejects a request beyond it.
 - One shared page shape for the whole solution. A per-feature paging envelope is a defect. ⚙ BE-20
 - Every paginated query MUST declare a maximum page size, under a solution-wide ceiling. A request above the maximum MUST be rejected by the validation behavior. Silent clamping is forbidden. ⚙ BE-21, BE-22
 - Omitting the page size MUST yield the operation's declared default, never "all".
 - Ordering MUST be deterministic: a paginated query MUST declare it as a descriptor whose last term is a unique key, not only as an `OrderBy` chain. The executed `ORDER BY` and keyset predicate MUST be generated from the descriptor, never written beside it. ⚙ BE-23
 - One cursor type solution-wide, whose payload is exactly the sort key and the id. ⚙ BE-24
-- Cursors are opaque to the client (core §4 *Wire contract*) and MUST be validated server-side.
+- Cursors are opaque to the client (contract §7 *Wire contract*) and MUST be validated server-side.
 - A cursor is encrypted and authenticated. It is encoded and decoded only through a cursor codec port declared in `Platform.Application` and implemented in `Platform.Infrastructure` with ASP.NET Core Data Protection, under a purpose per query. A cursor that fails to decode is a validation failure, never an exception that escapes. The key ring is persisted in the database through `PersistKeysToDbContext`, or in Blob storage with its keys protected by Key Vault, never in a cache, and is shared by every instance. ⚙ BE-119
 
 Its agent rule: `annex-agents.md`.
@@ -232,7 +233,7 @@ Fixed order. Changing it requires written justification.
      Where no record answers: run the handler, write the idempotency record where a key is used, dispatch domain events to their reactions, and commit on success. Roll back on any failure or exception.
    - After a successful commit: hand the committed domain events to their post-commit effects, such as cache invalidation. A failure there is logged as an error, and the committed result is still returned.
    - On any failure result - the handler's, or one at commit: look up the attempt identity first, as above, and answer with the record where one exists. Otherwise return the failure - a commit-time one as a `Result` conflict, or as a precondition failure for a stale expected version or a create-only unique-index violation (§13; core §6).
-   - Where a key is used: a failure result the behavior returns is recorded after the rollback, in a transaction of its own on the module's context, so a replay returns it (core §4). A violation of the unique index there is answered by the attempt identity, as above. An exception is not recorded.
+   - Where a key is used: a failure result the behavior returns is recorded after the rollback, in a transaction of its own on the module's context, so a replay returns it (contract §3). A violation of the unique index there is answered by the attempt identity, as above. An exception is not recorded.
    - A command that does not persist: open nothing. After the handler returns, fail the dispatch if the module's context holds a staged change.
 
 ### Idempotency
@@ -240,7 +241,7 @@ Fixed order. Changing it requires written justification.
 A command that executes twice on a retry is a defect in the command, not in the caller.
 
 - Every command MUST declare its idempotency mechanism in its operation declaration (§6): naturally idempotent, client-supplied id, or idempotency key. An undeclared command MUST fail to dispatch, exactly as an undeclared policy does. ⚙ BE-26
-- Where a key is used, the identity of an attempt is `(principal, operation, key)`. The same key with a different payload MUST fail with `422`, never overwrite (core §4).
+- Where a key is used, the identity of an attempt is `(principal, operation, key)`. The same key with a different payload MUST fail with `422`, never overwrite (contract §3).
 - The idempotency record MUST be written through the same unit of work as the state change. Redis MUST NOT be the store. ⚙ BE-27
 - The store MUST carry a unique index on the attempt identity. ⚙ BE-28 The unit-of-work behavior answers a violation of that index at commit by the attempt identity, as it answers any failure result (§4 *Pipeline behaviors*, item 4) - never as a conflict.
 - The idempotency record stores a fingerprint of the request payload: an HMAC under a server key, never a plain hash, and the fingerprint's class is `Internal`.
@@ -392,7 +393,7 @@ Which provider and which authority the organization runs is recorded in `DECISIO
 
 - A class is declared on the value's type - the Value Object or strongly-typed id in `Domain` - and on the module's published type for the same concept in `Contracts`; an architecture test MUST prove the two agree (core §8). A property projected from a classified source, such as a column a query handler reads into a `string`, names that source by its `Contracts` twin (§3) in its declaration; the same test proves they agree. Classes are `DataClassification`s from Microsoft.Extensions.Compliance, defined once in `SharedKernel`: one attribute derived from `DataClassificationAttribute` per class of core §8 - `Public`, `Internal`, `Confidential`, `Restricted`. ⚙ BE-54
 - An architecture test MUST assert that every property reachable from an egress boundary resolves to a class. A property whose type carries no declaration is `Restricted`, and fails at the boundary. ⚙ BE-55
-- The OpenAPI document MUST carry the class as `x-data-class` (core §4 *Wire contract*) on every property of every schema it contains - Request and Response DTOs, problem details, the page - and on every parameter's schema. The emitter MUST fail rather than emit a property whose class it cannot resolve. ⚙ BE-83
+- The OpenAPI document MUST carry the class as `x-data-class` (contract §7 *Wire contract*) on every property of every schema it contains - Request and Response DTOs, problem details, the page - and on every parameter's schema. The emitter MUST fail rather than emit a property whose class it cannot resolve. ⚙ BE-83
 
 ```csharp
 // Illustrative.
@@ -443,7 +444,7 @@ Limits attach to the caller and to the run, not to the transport. Both are requi
 - Limits are keyed on the acting principal, falling back to a client identity for anonymous endpoints. Keying on IP alone is not a limit.
 - The endpoint registrar applies the write policy to every command endpoint. An operation declaration MAY name a stricter policy and MUST NOT remove the write policy: the stricter policy chains the write limiter with its own through `RateLimiter.CreateChained`, inside the named policy, rather than replacing it.
 - An expensive read's operation declaration MUST name a tighter policy than the default.
-- A rejection (core §4 *Limits*) carries `Retry-After` wherever the limiter can estimate when permits return - a token bucket, a fixed or a sliding window; a concurrency limiter's does not. ASP.NET Core writes neither: `OnRejected` sets `429` and copies `MetadataName.RetryAfter` into the header.
+- A rejection (contract §4 *Limits*) carries `Retry-After` wherever the limiter can estimate when permits return - a token bucket, a fixed or a sliding window; a concurrency limiter's does not. ASP.NET Core writes neither: `OnRejected` sets `429` and copies `MetadataName.RetryAfter` into the header.
 - A limit is enforced per instance unless a shared limiter enforces it. A limit stated for the whole service is divided by the instance count or enforced by a shared limiter.
 
 ### Agent runs
@@ -460,7 +461,7 @@ In `annex-agents.md`.
 ### Correlation
 
 - The correlation id MUST live in the dispatch context beside the principal, as a required constructor parameter. ⚙ BE-90 Its value is the current `Activity`'s trace id.
-- Every problem details response carries the trace id as `traceId`, written from `Activity.Current.TraceId`, not from ASP.NET Core's default (`Activity.Id` or `TraceIdentifier`) (core §4 *Wire contract*).
+- Every problem details response carries the trace id as `traceId`, written from `Activity.Current.TraceId`, not from ASP.NET Core's default (`Activity.Id` or `TraceIdentifier`) (contract §7 *Wire contract*).
 - Where a request from outside the trust boundary can reach the application with the caller's `traceparent` - directly, or through an ingress that forwards the header - the application adopts no caller's trace. The composition root:
   - installs a `DistributedContextPropagator` that starts every such request's trace and records the caller's `traceparent` as a link (`Activity.AddLink`);
   - sets OpenTelemetry's default propagator to a plain `TraceContextPropagator` (`Sdk.SetDefaultTextMapPropagator`).
@@ -524,18 +525,18 @@ In `annex-realtime.md`.
 - The framework endpoints - the readiness and liveness probes (§10), a hub's `MapHub` (real-time annex) and the OpenAPI document - are mapped by the framework, not by an endpoint type: a declared list at the composition root, outside the two rules above. They stay under the rate limit (§9, the `GlobalLimiter`). Each carries a named policy (§6), such as an anonymous one for the probes, or falls to the denying fallback.
 - The registrar applies each endpoint's authorization and rate-limit metadata from the operation declaration of the message it dispatches; an endpoint declares neither itself.
 - An endpoint MUST map its Request DTO to a message, dispatch it, and translate `Result` to HTTP (core §4). It MUST NOT reference any type other than its DTOs, the message it dispatches, and every type those are composed of; the shared endpoint abstraction; the dispatcher and the `Result` it returns; the result translator; and the framework's primitives, such as `Task`, `CancellationToken`, and HTTP result types. ⚙ BE-82
-- Success shapes: `200` with a Response DTO, `201` with a location, `204` for no content, or a stream the endpoint declares. A write that leaves a versioned resource in place returns a body carrying its new `etag`, never `204`; a delete returns `204` (core §4 *Wire contract*). Failures are `ProblemDetails`.
+- Success shapes: `200` with a Response DTO, `201` with a location, `204` for no content, or a stream the endpoint declares. A write that leaves a versioned resource in place returns a body carrying its new `etag`, never `204`; a delete returns `204` (contract §7 *Wire contract*). Failures are `ProblemDetails`.
 - Preconditions:
   - An endpoint maps `If-Match` to the message's expected version, and `If-None-Match: *` to the message's create-only flag, as it maps any other request field.
   - The repository's load reports a stale expected version as an outcome, which the handler translates to a `Result` precondition failure before it acts. The repository also uses the expected version as the concurrency token's original value.
   - For a create-only message, a violation of the aggregate id's unique index at commit is a precondition failure, not a conflict; the unit-of-work behavior returns it as a precondition failure (§4 *Pipeline behaviors*, item 4).
   - The result translator maps every precondition failure to `412`.
 - Problem types:
-  - Every problem type a module returns is a URI the module declares, with its status, title and whether it is user-facing. The OpenAPI document's `x-problem-types` is generated from those declarations (core §4 *Wire contract*).
+  - Every problem type a module returns is a URI the module declares, with its status, title and whether it is user-facing. The OpenAPI document's `x-problem-types` is generated from those declarations (contract §7 *Wire contract*).
   - `Platform` declares the problem types the pipeline and the framework return - validation, authorization, idempotency, preconditions, rate limits, unsupported media, and any other - and overrides ASP.NET Core's per-status defaults with them through `CustomizeProblemDetails`.
-  - The result translator maps each validation failure's message path to the request path it came from (core §4 *Wire contract*): a message property keeps its request path unless the endpoint's mapping declares a different one.
+  - The result translator maps each validation failure's message path to the request path it came from (contract §7 *Wire contract*): a message property keeps its request path unless the endpoint's mapping declares a different one.
 - Where the client is on another origin, the CORS policy admits the request headers the wire contract uses - `traceparent`, `tracestate`, `If-Match`, `If-None-Match`, `Idempotency-Key`, or any other it adds - and exposes the response headers a client reads, such as `ETag`, `Location` and `Retry-After`.
-- The endpoint registrar sets `Cache-Control: no-store` on every endpoint whose Response DTO resolves to `Confidential` or `Restricted` (BE-55), and `Cache-Control: private` on every other endpoint whose representation depends on the principal (core §4 *Wire contract*). Which endpoints depend on the principal is reached by review.
+- The endpoint registrar sets `Cache-Control: no-store` on every endpoint whose Response DTO resolves to `Confidential` or `Restricted` (BE-55), and `Cache-Control: private` on every other endpoint whose representation depends on the principal (contract §7 *Wire contract*). Which endpoints depend on the principal is reached by review.
 - Uploads:
   - An upload endpoint's Request DTO carries the file as a stream with its metadata. Its size limit is enforced at the request boundary - the endpoint's request size limit - before the body is buffered.
   - It dispatches a command that does not persist to store the file in quarantine, under a name the server derives from the uploader's principal and the command's client-supplied id - an id the validation behavior has parsed - with a keyed hash, such as an HMAC under a server key; never from the client's file name (§4).

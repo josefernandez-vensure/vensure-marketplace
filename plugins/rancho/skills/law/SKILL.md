@@ -35,19 +35,19 @@ This document is the **core law**: what MUST be true in every tree, whatever it 
 - Every tree that holds code MUST be bound to exactly one stack law, or to none as below. The binding is one line in the `CLAUDE.md` at the root of that tree: `Stack law: /<plugin>:law`. A repository that is a single tree binds it in its root `CLAUDE.md`.
 - A stack law governs code written with a technology its Stack section names. A tree whose code no stack law governs - such as infrastructure-as-code or CI scripts - is bound instead with `Stack law: none - <reason>`, and only this document binds it. Its `CLAUDE.md` MUST name its verification commands. A tree MUST NOT be bound to none when a stack law governs any of its code.
 - The tree a file belongs to is the nearest directory at or above it whose `CLAUDE.md` holds a `Stack law:` line.
-- Before writing, placing, or reviewing code in a tree bound to a stack law, read this document, then that stack law **in full**, and then each annex of that stack law whose trigger the tree meets, or the work would meet, as the stack law states.
+- Before writing, placing, or reviewing code in a tree bound to a stack law, read this document; then, where that stack law declares a role, the contract law, `references/contract.md` in this skill; then that stack law **in full**; and then each annex of that stack law whose trigger the tree meets, or the work would meet, as the stack law states.
 - A tree with no binding, a binding to a stack law that is not available in the session, or two bindings for one tree is a defect in the repository. Stop and say so. A stack law MUST NOT be chosen by guessing from file extensions or folder names.
 
 Every stack law declares one **role**:
 
-| Role | What it does with the API contract (§4) |
+| Role | What it does with the contract law |
 |---|---|
 | `server` | Publishes it: owns modules, endpoints, persistence, and every egress boundary in §8. |
 | `client` | Consumes it: generates its types from the published document, and owns what reaches the user's device. |
 
-The core law states obligations that bind every tree, or that span the boundary between a server and a client. A stack law states what is internal to its own tree. What every stack law must carry is in `AUTHORING.md` at the plugin root.
+The core law states obligations that bind every tree. The contract law states those that span the boundary between a server and a client. A stack law states what is internal to its own tree. What every stack law must carry is in `AUTHORING.md` at the plugin root.
 
-A stack law MAY add rules. It MUST NOT weaken one stated here. A stack law that contradicts this document is the defect, exactly as code that contradicts it is.
+A stack law MAY add rules. It MUST NOT weaken one stated here or in the contract law. A stack law that contradicts this document is the defect, exactly as code that contradicts it is.
 
 ## 3. Module Boundary Law
 
@@ -60,43 +60,14 @@ This section governs server modules. Client boundaries are a different decomposi
 - An event with both audiences is two events, not one shared type.
 - One database schema per module. Cross-schema joins and cross-module foreign keys are forbidden. References across modules are by id only. ⚙ ROOT-04
 
-## 4. API Contract
+## 4. Endpoints
 
-- REST by default. RPC-style endpoints - `POST /<resource>/<verb>`, or `POST /<resource>/{id}/<verb>` for a transition of one resource, such as approving it - are permitted for an operation that is not a plain create, replace, update or delete. GraphQL is forbidden.
+What a server and a client agree on across HTTP is the contract law, `references/contract.md`. This section states what a server's endpoints owe beyond it.
+
 - Every endpoint MUST accept a Request DTO, and MUST return a Response DTO, no body, or a stream it declares, such as a file or an export. Domain types MUST NOT appear in any signature reachable from HTTP. ⚙ ROOT-07 An endpoint the framework maps to operate the service - a health probe, the OpenAPI document, a real-time hub's connection - carries no Request DTO and is a declared list in the server stack law; it stays under the rate limit, and carries a named authorization policy or falls to the deny-by-default fallback.
 - Request DTOs MUST map to a Command or Query. Endpoints map, dispatch, and translate. They contain no business logic.
 - Query results MUST be projected directly to Response DTOs. Loading an aggregate to build a read model is forbidden. ⚙ ROOT-08
-- The OpenAPI document is generated and committed. ⚙ ROOT-09
-- Client API types are generated from that document, never hand-written. How a client consumes them - and that contract drift surfaces as a compile error rather than a runtime surprise - is the client stack law's.
-
-### Collections
-
-- Every endpoint returning a collection whose size is not bounded by construction MUST be paginated. A collection bounded by construction - such as a lookup by a capped list of ids, or a fixed registry - MUST declare its bound as `maxItems` on its array schema, and a request that would exceed it is rejected, never truncated. ⚙ ROOT-11
-- One page shape across the whole API. A per-feature paging envelope is a defect. ⚙ ROOT-12
-- The maximum page size is enforced by the server. A request above it MUST be rejected, never silently truncated.
-
-### Idempotency
-
-- Every state-changing endpoint MUST declare how it is idempotent: naturally, by client-supplied id, or by idempotency key. Undeclared is a defect. ⚙ ROOT-13
-- Where a key is used it travels as the `Idempotency-Key` header, and a replay MUST return the original response rather than executing again. A replay is answered from the record of the first attempt before any precondition, such as `If-Match`, is evaluated: a retried write whose version has since moved returns its recorded response, not `412`.
-- A request to an operation that declares a key and carries none is refused with `400`. The same key with a different payload is refused with `422`. A duplicate that arrives while the first attempt has not completed is answered as a replay once it completes, or with `409` where the server cannot wait for it - never with a `500`.
-
-### Limits
-
-- Every endpoint MUST be covered by a rate limit policy. A rejection is `429`, with `Retry-After` wherever the limiter can estimate it, shaped as problem details (§6).
-- Transport limits do not bound an in-process caller. Agent runs carry their own budgets, stated by the server stack law.
-
-### Wire contract
-
-Every format a client and a server must agree on is stated here.
-
-- **Data class.** Every property schema and every parameter's schema in the OpenAPI document carries `x-data-class`, whose value is `public`, `internal`, `confidential` or `restricted` (§8). The extension sits on the parameter's schema, not on the Parameter Object. Every property schema the document contains carries it, framework schemas included, such as problem details and the page.
-- **Page.** Every paginated response has one shape: `items`, the page; `nextCursor`, an opaque string, or `null` on the last page; and `totalCount` only where the operation opts in. A request pages with the `pageSize` and `cursor` query parameters. Paging is keyset: the cursor is the only position a request may send. The server encrypts and authenticates the cursor, and the `x-data-class` of `nextCursor` and of the `cursor` parameter is `internal`, whatever the cursor's payload.
-- **Stream.** A stream is one representation - a file or an export - sent as a body of its declared media type, never an unbounded JSON array of records. It is not a collection under *Collections*, and it is under the export rule of §8.
-- **Problem details.** A problem's `type` is its identifier: a client decides by `type` and `status`, never by `title` or `detail`. Every problem a server returns has a `type` it declares, never a default per status. The OpenAPI document lists every type in a top-level `x-problem-types` object keyed by type URI, each value carrying `status`, `title` and `userFacing`. The validation problem type, returned with field errors, is user-facing. Field errors travel in `errors`, an object whose keys are paths into the request - into the body as JSON property names as sent, joined by `.`, with `[n]` for an array index, such as `address.lines[0]`; or a query or path parameter's name - and whose values are arrays of messages. `traceId` carries the trace id: the 32-hex-digit trace-id of §9, not a whole `traceparent`.
-- **Concurrency.** A resource whose writes can conflict carries a version the application manages, which changes on every change to the resource and anything inside it. Its `ETag` is that version, as a strong entity tag. A response whose representation depends on the principal is sent `Cache-Control: private` or stricter, so no shared cache serves one principal's representation to another. A read returns the `ETag`, and a Response DTO of such a resource carries it as `etag`, so a client editing from a list can send it. `etag` holds exactly the `ETag` header's value, quotes included, and a client sends it back unchanged as `If-Match`. A write to an existing resource MUST carry it as `If-Match`, evaluated before the write is performed: a write without one, or with `If-Match: *`, is refused with `428`, and one whose version is stale with `412`. A create that names its own id carries `If-None-Match: *`, refused with `412` if the resource exists. A successful write that leaves the resource in place returns its new `etag` in its body; a successful delete returns no body (`204`).
-- **Trace context.** Requests carry the W3C `traceparent` header, and `tracestate` when present (§9).
-- **Cross-origin.** Where a client is served from another origin, the server's CORS policy admits every request header this contract uses and exposes every response header a client reads, such as `ETag`, `Location` and `Retry-After`. The server stack law states the policy.
+- Transport limits (contract §4) do not bound an in-process caller. Agent runs carry their own budgets, stated by the server stack law.
 
 ## 5. Validation
 
@@ -113,14 +84,13 @@ Four translation boundaries. Each is owned by exactly one layer. No layer may sk
 |---|---|---|
 | Domain outcome to result value | Application handler | The domain speaks in domain vocabulary and MUST NOT reference the result type. |
 | Commit outcome to result value | The one pipeline step that commits the unit of work | A conflict detected when the unit of work commits - after the handler has returned - is a result value, never an exception. |
-| Result value to problem details | API endpoint | Every failure response is RFC 9457 problem details (`ProblemDetails`). |
+| Result value to problem details | API endpoint | The failure response is the contract law's problem details (contract §5). |
 | Exception to 500 | Global middleware | Exceptions signal bugs, never business outcomes. |
 
 - The pipeline's own steps - such as authorization, validation, and idempotency - return result values of their own, without reaching the handler. They are outcomes, not translations, and need no boundary.
 - Expected business outcomes MUST be return values. Exceptions MUST NOT be control flow, except where an adapter translates its framework's exceptions (below).
 - An exception escaping a handler is a defect: log with full context within §8's telemetry rule, return 500. Never catch a domain exception to convert it into a 4xx - add the missing guard instead.
 - An adapter MAY catch the exceptions its framework or SDK uses to signal an expected outcome - such as a concurrency conflict, a unique-key violation, or an unreachable or failing remote service - and MUST translate them into an outcome at that adapter. Nothing above the adapter catches them. Where the framework raises them at commit, the adapter is the unit of work, and its outcome is translated by the step that commits.
-- Error payloads MUST NOT leak exception messages, stack traces, SQL, or internal type names.
 
 ## 7. Security Baseline
 
@@ -156,7 +126,7 @@ The authenticated boundary is the organization's systems and an authenticated us
 
 - **Unclassified is `Restricted`.** Deny by default applies to data, not only to operations. ⚙ ROOT-16
 - A class is declared on the domain value object or id that carries it, and on the module's published contract type for the same concept. A check MUST prove the two agree. ⚙ ROOT-20 Every other type that carries a classified value inherits its class, and MUST NOT redeclare it - not per DTO, per call site, or per endpoint. A property whose type carries no class of its own - such as a page size, a cursor, a computed flag, a field of a shared platform type, or a value projected from a classified source - declares its class on the property. Where it is projected from a classified source, the same check proves the two agree. A parameter of a logging method declares the class of the value it logs, and the same check proves the declaration agrees with the value's type. Mechanism in the server stack law.
-- A field's class MUST travel with its contract: the OpenAPI document carries the class of every property of every request and response, and of every parameter. The client receives each class from the contract and enforces it at its own boundaries; the mechanism is the client stack law's. ⚙ ROOT-18
+- A field's class MUST travel with its contract, as the contract law states (contract §6).
 
 ### Egress boundaries
 
@@ -164,7 +134,7 @@ Each boundary has exactly one owner. There is no other path across it.
 
 | Boundary | Owner | Rule |
 |---|---|---|
-| Response DTO to an HTTP or real-time client | API endpoint / real-time hub | `Confidential` and above require the operation's policy to grant that field. An HTTP response carrying `Confidential` or `Restricted` data is sent `Cache-Control: no-store`. |
+| Response DTO to an HTTP or real-time client | API endpoint / real-time hub | `Confidential` and above require the operation's policy to grant that field. |
 | Anything placed in a model's context | Agent tool projection | `Restricted` MUST NOT cross. |
 | Log, metric, trace, or error report | The telemetry pipeline: the logging behavior, and the processors and exporters every signal passes through, automatic instrumentation included | `Confidential` and above MUST NOT be written. Log the id, never the value. |
 | Cache entry | Cache decorator; for an external authority's decisions, the adapter for that authority, as the server stack law states | `Restricted` MUST NOT be cached. `Confidential` only under a principal-scoped key. |
@@ -185,7 +155,7 @@ A boundary whose own rule forbids `Restricted` outright - a model's context, a c
 Every request, message, job, and agent run MUST be attributable end to end.
 
 - Every unit of work MUST carry a correlation id: an HTTP request, a dispatched message, an outbox delivery, a background job, an agent run and each of its steps. ⚙ ROOT-19
-- The correlation id is the W3C Trace Context trace id. A server adopts the caller's `traceparent` only for a request that arrives through an edge that only callers inside its trust boundary - other services of the same deployment - can reach. Trust is decided by the edge, before authentication runs, never by the caller's credentials. A browser, or any other external caller, is outside it: the server starts a new trace and links it to the caller's wherever the caller's `traceparent` reaches it; an ingress that strips the header leaves nothing to link. The server's trace id reaches that caller as `traceId` on a problem details response. Metrics are joined to traces through exemplars, never through a metric dimension.
+- The correlation id is the W3C Trace Context trace id. How it crosses between a caller and a server is the contract law's (contract §7 *Trace context*). Metrics are joined to traces through exemplars, never through a metric dimension.
 - The correlation id MUST cross every boundary the work crosses - module to module through the outbox, user to agent, server to client on every problem details response.
 - Logs, metrics, and traces MUST share that one identity.
 - An agent run MUST be reconstructable from telemetry alone: which user, which operations, which rows, what it cost.
