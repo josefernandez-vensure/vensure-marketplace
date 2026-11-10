@@ -1,0 +1,17 @@
+{
+  "name": "rancho-modular-dotnet",
+  "displayName": "Rancho — Modular .NET Law",
+  "version": "0.1.0",
+  "description": "A minimal law for .NET modular monoliths: modules as services, one aggregate per transaction, sagas across modules. The project's own code is the reference for everything the law does not state.",
+  "license": "MIT",
+  "author": {
+    "name": "Vensure Engineering"
+  },
+  "keywords": [
+    "governance",
+    "law",
+    "dotnet",
+    "ddd",
+    "modular-monolith"
+  ]
+}
