@@ -1,0 +1,5 @@
+M:Microsoft.Extensions.Logging.LoggerExtensions.BeginScope(Microsoft.Extensions.Logging.ILogger,System.String,System.Object[]);Begin a scope with a state object.
+T:Serilog.Log;Log through ILogger and a [LoggerMessage] method.
+T:Serilog.ILogger;Log through ILogger and a [LoggerMessage] method.
+T:System.Transactions.TransactionScope;A transaction never spans a module; the unit of work owns it.
+T:System.Transactions.CommittableTransaction;A transaction never spans a module; the unit of work owns it.

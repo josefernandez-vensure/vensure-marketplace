@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Vensure",
+  "classifications": ["Web", "API", "Modular Monolith"],
+  "identity": "Vensure.Rancho.ModularDotnet",
+  "name": "Rancho modular .NET service",
+  "shortName": "rancho-dotnet",
+  "description": "A modular .NET service whose build and architecture tests enforce the rancho modular .NET law.",
+  "sourceName": "Starter",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "sources": [
+    {
+      "exclude": ["README.md", "**/bin/**", "**/obj/**", "**/.vs/**", "**/TestResults/**", ".template.config/**"]
+    }
+  ]
+}

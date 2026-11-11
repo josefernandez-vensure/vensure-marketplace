@@ -1,0 +1,13 @@
+<Project>
+
+  <Import Project="build/ProjectKinds.targets" />
+
+  <!-- Banned APIs. Test projects are exempt. -->
+  <ItemGroup Condition="'$(ProjectKind)' != 'Tests'">
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)build/BannedSymbols.txt" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(ProjectKind)' == 'SharedKernel' or '$(ProjectKind)' == 'Domain' or '$(ProjectKind)' == 'Contracts' or '$(ProjectKind)' == 'Application' or '$(ProjectKind)' == 'Platform.Application'">
+    <AdditionalFiles Include="$(MSBuildThisFileDirectory)build/BannedSymbols.Inner.txt" />
+  </ItemGroup>
+
+</Project>
