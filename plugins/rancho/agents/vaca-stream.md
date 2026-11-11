@@ -23,10 +23,15 @@ epic merged, which is exactly when it stops being useful.
 
 ## Before writing anything
 
-Read the core engineering law via the `/rancho:law` skill, then the stack law
-bound to the tree you are about to touch: the nearest `CLAUDE.md` that holds a `Stack law:` line, at or
-above the files in your scope, names it, as
-`Stack law: /<plugin>:law` (core §2). Read both in
+Find the law bound to the tree you are about to touch: the nearest
+`CLAUDE.md` that holds a `Stack law:` line, at or above the files in your
+scope, names it, as `Stack law: /<plugin>:law` (core §2). If that law says,
+before its first section, `This law stands alone.`, read it in full and
+nothing else: not the core law, the contract law, or any annex or inventory.
+Skip the next paragraph.
+
+Otherwise, read the core engineering law via the `/rancho:law` skill, then that
+stack law. Read both in
 full, and, between them, the contract law, `references/contract.md` beside
 the core law's `SKILL.md`, wherever the stack law declares a role. A tree bound as `Stack law: none - <reason>` is not a defect: only the
 core law binds it, so read only the core law for it. Then read each annex of
