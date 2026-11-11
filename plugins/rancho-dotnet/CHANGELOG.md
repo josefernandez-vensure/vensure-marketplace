@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 3.0.0
 
-- **Breaking: release as 3.0.0**, together with `rancho` 4.0.0. The case
-  is in `RECORDS-4.0-ledger.md` at the repository root.
+- **Breaking.** Released together with `rancho` 4.0.0, whose core law it
+  carries, and `rancho-react` 2.1.0. The case is in `RECORDS-4.0-ledger.md`
+  at the repository root.
 - **What changed:** this law now carries the server architecture that
   left the core law. That is:
   - cross-module writes as integration events, never an inline call;
@@ -52,7 +53,7 @@
   transaction. 141 rows: 96 `build`, 12 `retired`; 95 marks.
 - **What did not change:** no obligation is dropped; each is carried by
   the row named above. Rationale and row history are in `RECORDS.md`,
-  `## Unreleased`.
+  `## 4.0: restatements retired`.
 - **Upgrade:** a project folds any check or test named for BE-02, BE-05,
   BE-13, BE-18 or BE-52 into its BE-01 check, BE-76's into BE-74's and
   BE-77's into BE-82's, and updates those rows in its

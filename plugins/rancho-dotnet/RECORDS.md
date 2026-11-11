@@ -787,7 +787,7 @@ From a consuming project's report that agents wrote `.sln`, `.csproj` and packag
 - Source for xUnit v3's `dotnet new` templates: https://www.nuget.org/packages/xunit.v3.templates
 - Merged after 2.2.0: the rule is written as §1 bullets in 2.2.0's style, and the `Directory.Build.props` clause joins the existing `TreatWarningsAsErrors` bullet instead of restating it.
 
-## Unreleased
+## 4.0: restatements retired
 
 Restatements retired. The owner asked for fewer, broader rules: a narrow rule that only restates a broader one adds wording, a second check and a second test for each project to write. Each row below was read against the row that carries it. Where the narrow row's check reached something the broad row could not, that part was folded into the broad rule's text or Check, not kept as a rule of its own.
 
