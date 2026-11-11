@@ -90,7 +90,7 @@
       "displayName": "Rancho — Modular .NET Law",
       "source": "./plugins/rancho-modular-dotnet",
       "description": "A minimal law for .NET modular monoliths: modules as services, one aggregate per transaction, sagas across modules. The project's own code is the reference for everything the law does not state.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Vensure Engineering"
       },

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- States `This law stands alone.` at its top. With a `rancho` that recognizes standalone laws, a tree bound to it reads this law alone, not the core law.
+
 ## 0.1.0
 
 - First draft, not yet trialled on a real change.
