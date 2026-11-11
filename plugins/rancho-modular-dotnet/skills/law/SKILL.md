@@ -5,6 +5,8 @@ description: The modular .NET law - modules as services, project layout and refe
 
 # Modular .NET Law
 
+This law stands alone. In a tree bound to it, no other law applies: read this one in full, and nothing else.
+
 This law states how code here is structured, and the few decisions this codebase makes differently from a sensible default. The codebase is the reference for everything else.
 
 ## 0. The codebase is the reference
