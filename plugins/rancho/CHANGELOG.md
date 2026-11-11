@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 4.0.0
 
 - **Standalone laws.** Core §2 admits a law plugin that says
   `This law stands alone.` before its first section, such as
@@ -12,8 +12,8 @@
     verification commands, and no inventory.
   - Trees bound to `rancho-dotnet`, `rancho-react` or none read exactly as
     before.
-- **Breaking for every project: release as 4.0.0**, together with
-  `rancho-dotnet` 3.0.0 and `rancho-react` 2.1.0. The case and the
+- **Breaking for every project.** Released together with `rancho-dotnet`
+  3.0.0 and `rancho-react` 2.1.0; upgrade the three at once. The case and the
   outcome are in `RECORDS-4.0-ledger.md` at the repository root, and the
   history of each row is in this plugin's `RECORDS.md`, *4.0*.
 - **What changed:** the core law is an index and its principles.

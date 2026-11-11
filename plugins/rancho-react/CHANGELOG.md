@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 2.1.0
 
-- **Release as 2.1.0**, together with `rancho` 4.0.0. The case is in
-  `RECORDS-4.0-ledger.md` at the repository root.
+- Released together with `rancho` 4.0.0, whose core law it carries, and
+  `rancho-dotnet` 3.0.0. The case is in `RECORDS-4.0-ledger.md` at the
+  repository root.
 - The core law's wire rules moved into the contract law,
   `references/contract.md` in `/rancho:law`. This law reads it and cites
   it: `contract §7 *Wire contract*` replaces `core §4 *Wire contract*`.

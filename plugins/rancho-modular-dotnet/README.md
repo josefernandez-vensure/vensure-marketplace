@@ -10,6 +10,8 @@ The law grows only from evidence. When Claude gets something wrong in a real cha
 /plugin install rancho-modular-dotnet --marketplace josefernandez-vensure/vensure-marketplace
 ```
 
+Use it with `rancho` 4.0.0 or later. Earlier versions don't recognise a standalone law, and read the core law in its trees as well.
+
 ## Binding a tree
 
 Put this in the `CLAUDE.md` at the root of the .NET tree:
