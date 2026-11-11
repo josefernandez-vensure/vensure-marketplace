@@ -93,7 +93,7 @@ own, enabled per project, and each holds one skill, `law`.
 |---|---|---|---|
 | `rancho-dotnet` | `/rancho-dotnet:law` | server | .NET 10: DDD modules and project references, EF Core, authorization, data classification, AI agents, quotas, observability, configuration, real-time, the API layer. |
 | `rancho-react` | `/rancho-react:law` | client | React: feature boundaries, generated API types, TanStack Query, forms, components and styling, routing, authentication, browser data boundaries. |
-| `rancho-modular-dotnet` | `/rancho-modular-dotnet:law` | server | Draft, 0.1.0. A minimal, standalone law for .NET modular monoliths: modules as services, one aggregate per transaction, sagas across modules. The project's own reference code is the guide for everything it does not state. It does not carry the core law. |
+| `rancho-modular-dotnet` | `/rancho-modular-dotnet:law` | server | Draft, 0.2.0. A minimal, standalone law for .NET modular monoliths: modules as services, one aggregate per transaction, sagas across modules. The project's own reference code is the guide for everything it does not state. It does not carry the core law, and publishes the contract law the client stack laws consume. |
 
 A project binds each of its trees with one line in the `CLAUDE.md` at the
 tree's root:

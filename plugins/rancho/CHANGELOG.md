@@ -1,5 +1,25 @@
 # Changelog
 
+## 4.1.0
+
+- **A standalone law may declare a role** (core §2), in a `## Role`
+  section, as a stack law does. Its trees then read the contract law in
+  full beside it, and it MUST NOT weaken it. A standalone law replaces the
+  core law and a stack law, never the contract that a server and a client
+  share. In 4.0.0 a standalone server read nothing but its own law, so
+  nothing bound it to the contract its clients consume.
+  - The contract law's introduction says how it reads in a tree the core
+    law does not bind. Its core citations point to what the standalone law
+    states on the same subject. Such a law uses the four data classes and
+    the W3C trace id, and builds its own checks.
+  - `AUTHORING.md` §2, the prime directive, `vaca`, `vaca-stream` and
+    VACA's help follow.
+  - Trees bound to `rancho-dotnet`, `rancho-react` or none read exactly
+    as before.
+- **Upgrade:** none for trees bound to a stack law or to none. A project
+  that binds a tree to `rancho-modular-dotnet` upgrades it to 0.2.0
+  together with this release.
+
 ## 4.0.0
 
 - **Standalone laws.** Core §2 admits a law plugin that says

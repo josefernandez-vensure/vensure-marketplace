@@ -1,13 +1,17 @@
 ---
 name: law
-description: The modular .NET law - modules as services, project layout and references, where each kind of type lives, the domain and application model, reactions and sagas, persistence, the API and its wire contract, security, data classification, and verification. The tree's own reference code is the guide for everything else. Read in full before writing, reviewing, or placing code in a tree whose CLAUDE.md names `Stack law: /rancho-modular-dotnet:law`.
+description: The modular .NET law - modules as services, project layout and references, where each kind of type lives, the domain and application model, reactions and sagas, persistence, the API and its wire contract, security, data classification, and verification. The tree's own reference code is the guide for everything else. Read in full, with the contract law it publishes, before writing, reviewing, or placing code in a tree whose CLAUDE.md names `Stack law: /rancho-modular-dotnet:law`.
 ---
 
 # Modular .NET Law
 
-This law stands alone. In a tree bound to it, no other law applies: read this one in full, and nothing else.
+This law stands alone. In a tree bound to it, the core law and every stack law do not apply. Read this law in full, and the contract law it publishes (*Role*). Read nothing else.
 
 This law states how code here is structured, and the few decisions this codebase makes differently from a sensible default. The codebase is the reference for everything else.
+
+## Role
+
+`server`. This tree publishes the contract law, `references/contract.md` in the `/rancho:law` skill. That law is what this tree and its clients agree on across HTTP, whatever each is built with. Read it in full, alongside this law. Where it cites the core law, read what this law states on the same subject: the data classes (§9) and the trace id (§10). If `/rancho:law` is not available in the session, stop and say so.
 
 ## 0. The codebase is the reference
 
@@ -160,11 +164,15 @@ In this order: **logging → authorization → validation → unit of work and i
 
 ### Wire contract
 
-- **Page:** `{ items, nextCursor, totalCount? }`, requested with `pageSize` and `cursor`. Keyset paging over a declared ordering ending in a unique key. One cursor type, encrypted with Data Protection. A page size above the operation's maximum is rejected, never clamped. A collection that isn't paged declares its bound.
-- **Concurrency:** reads return `ETag` (and `etag` in the DTO). Writes to an existing resource require `If-Match`: missing or `*` is `428`, stale is `412`. A create naming its own id sends `If-None-Match: *`.
-- **Idempotency:** the `Idempotency-Key` header, where the operation declares a key.
-- **Rate limits:** every endpoint is limited per principal; a rejection is `429` problem details with `Retry-After` where known.
-- **Data class:** every property and parameter schema carries `x-data-class` (§9).
+The wire is the contract law's (*Role*): paging, idempotency, limits, errors and problem types, data classes, concurrency, trace context, and cross-origin. This law states only how this tree meets it:
+
+- **Page:** keyset paging over a declared ordering ending in a unique key. One cursor type, encrypted with Data Protection.
+- **Concurrency:** the `ETag` is the aggregate's version (§4).
+- **Idempotency:** the operation declaration (§5) states the mechanism, and the unit of work applies it.
+- **Rate limits:** per principal, by the operation's `RateLimit`.
+- **Data class:** `x-data-class` comes from the class declared on the type (§9).
+- **Problem types:** each module declares its problem types, and `x-problem-types` lists them all.
+- **Cross-origin:** `Api` holds the CORS policy.
 
 ## 8. Security and configuration
 

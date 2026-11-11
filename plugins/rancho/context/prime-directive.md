@@ -22,8 +22,10 @@ This repository is governed by an engineering law. It is not advisory.
 **First, find the law bound to the tree you are working in.** The nearest
 `CLAUDE.md` at or above the files that holds a `Stack law:` line names it, as
 `Stack law: /<plugin>:law`. If that law says, before its first section,
-`This law stands alone.`, read it in full and nothing else: not the core law,
-the contract law, or any annex or inventory. The rules above are the core
+`This law stands alone.`, read it in full, and, if it declares a role, the
+contract law (`references/contract.md` beside the `/rancho:law` skill's
+`SKILL.md`) in full. Read nothing else: not the core law, and no annex or
+inventory. The rules above are the core
 law's and give way to that law's own. The rest of this section does not apply
 to that tree.
 

@@ -26,9 +26,10 @@ epic merged, which is exactly when it stops being useful.
 Find the law bound to the tree you are about to touch: the nearest
 `CLAUDE.md` that holds a `Stack law:` line, at or above the files in your
 scope, names it, as `Stack law: /<plugin>:law` (core §2). If that law says,
-before its first section, `This law stands alone.`, read it in full and
-nothing else: not the core law, the contract law, or any annex or inventory.
-Skip the next paragraph.
+before its first section, `This law stands alone.`, read it in full, and, if
+it declares a role, the contract law (`references/contract.md` beside the core
+law's `SKILL.md`) in full. Read nothing else: not the core law, and no annex
+or inventory. Skip the next paragraph.
 
 Otherwise, read the core engineering law via the `/rancho:law` skill, then that
 stack law. Read both in

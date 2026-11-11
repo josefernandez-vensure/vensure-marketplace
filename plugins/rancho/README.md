@@ -286,7 +286,8 @@ its trigger at its top and in the stack law. An inventory,
 `references/enforcement.md`, is consulted only by rule id. A stack law loads
 from its own plugin, and only in a project that enables that plugin. A tree
 bound to a standalone law, one that says `This law stands alone.` before its
-first section, such as `/rancho-modular-dotnet:law`, reads that law alone.
+first section, such as `/rancho-modular-dotnet:law`, reads that law, and the
+contract law too where that law declares a role. It reads nothing else.
 `AUTHORING.md` and `RECORDS.md` are for whoever changes the law; a coding agent
 does not read them.
 
