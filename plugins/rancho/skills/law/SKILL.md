@@ -30,13 +30,14 @@ A rule no build check can reach carries no mark. Where a test can prove it, it i
 
 ## 2. The Laws, and Which One Binds a Tree
 
-This document is the **core law**: what MUST be true in every tree, whatever it is built with. The **contract law**, `references/contract.md` in this skill, states what a server and a client MUST agree on across HTTP. A **stack law** states how one technology satisfies both, and everything internal to its own tree. Each stack law is its own plugin, carrying a `law` skill, and a project enables the stack laws it builds with.
+This document is the **core law**: what MUST be true in every tree, whatever it is built with. The **contract law**, `references/contract.md` in this skill, states what a server and a client MUST agree on across HTTP. A **stack law** states how one technology satisfies both, and everything internal to its own tree. Each stack law is its own plugin, carrying a `law` skill, and a project enables the stack laws it builds with. A **standalone law** is a law plugin that replaces all three in the trees bound to it.
 
 | Law | Role | Read it |
 |---|---|---|
 | The contract law, `references/contract.md` | `server` and `client` | In every tree whose stack law declares a role |
 | `/rancho-dotnet:law` | `server` | In every tree bound to it, with each annex whose trigger the work meets |
 | `/rancho-react:law` | `client` | In every tree bound to it, with each annex whose trigger the work meets |
+| A standalone law, such as `/rancho-modular-dotnet:law` | none | Alone and in full, in every tree bound to it. Nothing else in this table applies there |
 
 A role says what a stack law does with the contract law:
 
@@ -50,10 +51,11 @@ Binding:
 - Every tree that holds code MUST be bound to exactly one stack law, or to none as below. The binding is one line in the `CLAUDE.md` at the root of that tree: `Stack law: /<plugin>:law`. A repository that is a single tree binds it in its root `CLAUDE.md`.
 - A stack law governs code written with a technology its Stack section names. A tree whose code no stack law governs - such as infrastructure-as-code or CI scripts - is bound instead with `Stack law: none - <reason>`, and only this document binds it. Its `CLAUDE.md` MUST name its verification commands. A tree MUST NOT be bound to none when a stack law governs any of its code.
 - The tree a file belongs to is the nearest directory at or above it whose `CLAUDE.md` holds a `Stack law:` line.
-- Before writing, placing, or reviewing code in a tree bound to a stack law, read this document; then, where that stack law declares a role, the contract law; then that stack law **in full**; and then each annex of that stack law whose trigger the tree meets, or the work would meet, as the stack law states.
+- A law is standalone when it says, before its first section, `This law stands alone.` It is bound like a stack law, as `Stack law: /<plugin>:law`. Before writing, placing, or reviewing code in a tree bound to it, read that law in full and nothing else: this document and the contract law do not bind that tree.
+- Before writing, placing, or reviewing code in a tree bound to any other stack law, read this document; then, where that stack law declares a role, the contract law; then that stack law **in full**; and then each annex of that stack law whose trigger the tree meets, or the work would meet, as the stack law states.
 - A tree with no binding, a binding to a stack law that is not available in the session, or two bindings for one tree is a defect in the repository. Stop and say so. A stack law MUST NOT be chosen by guessing from file extensions or folder names.
 
-What every stack law must carry is in `AUTHORING.md` at the plugin root. A stack law MAY add rules. It MUST NOT weaken one stated here or in the contract law. A stack law that contradicts this document is the defect, exactly as code that contradicts it is.
+What every stack law must carry is in `AUTHORING.md` at the plugin root. A stack law MAY add rules. It MUST NOT weaken one stated here or in the contract law. A stack law that contradicts this document is the defect, exactly as code that contradicts it is. A standalone law is outside this paragraph.
 
 ## 3. Access
 

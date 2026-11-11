@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Standalone laws.** Core §2 admits a law plugin that says
+  `This law stands alone.` before its first section, such as
+  `rancho-modular-dotnet`. A tree bound to one reads that law alone: not the
+  core law, the contract law, annexes or inventories.
+  - The prime directive, `vaca`, `vaca-stream` and VACA's help check for the
+    line before anything else.
+  - `AUTHORING.md` §2 says what such a law carries: the line and its own
+    verification commands, and no inventory.
+  - Trees bound to `rancho-dotnet`, `rancho-react` or none read exactly as
+    before.
 - **Breaking for every project: release as 4.0.0**, together with
   `rancho-dotnet` 3.0.0 and `rancho-react` 2.1.0. The case and the
   outcome are in `RECORDS-4.0-ledger.md` at the repository root, and the

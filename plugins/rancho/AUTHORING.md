@@ -18,6 +18,8 @@ Every stack law MUST carry:
 
 A stack law MAY add rules. It MUST NOT weaken one stated here or in the contract law. A stack law that contradicts this document is the defect, exactly as code that contradicts it is.
 
+A standalone law (§2) carries none of the above. It says `This law stands alone.` before its first section and names its own verification commands. It has no inventory, and the core and contract laws do not bind its trees.
+
 A stack law MUST NOT depend on another stack law. The two trees of a project share only what this document and the contract law state - the API contract, the data classes, and the correlation id - so either can be replaced without touching the other. A new stack law adds its row to the index in §2.
 
 ## §6 Verification

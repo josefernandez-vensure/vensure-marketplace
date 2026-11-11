@@ -19,7 +19,15 @@ This repository is governed by an engineering law. It is not advisory.
   Silence is not permission. What a rule marked with the gear glyph means is
   stated in core §1.
 
-**Before writing, placing, or reviewing any code in this repository, read the
+**First, find the law bound to the tree you are working in.** The nearest
+`CLAUDE.md` at or above the files that holds a `Stack law:` line names it, as
+`Stack law: /<plugin>:law`. If that law says, before its first section,
+`This law stands alone.`, read it in full and nothing else: not the core law,
+the contract law, or any annex or inventory. The rules above are the core
+law's and give way to that law's own. The rest of this section does not apply
+to that tree.
+
+**Otherwise, before writing, placing, or reviewing any code in this repository, read the
 full core law via the `/rancho:law` skill** - and then, in full, the contract
 law beside it (`references/contract.md`) wherever the bound stack law declares
 a role, and the stack law bound to the tree you are working in. The nearest `CLAUDE.md` at or above the
