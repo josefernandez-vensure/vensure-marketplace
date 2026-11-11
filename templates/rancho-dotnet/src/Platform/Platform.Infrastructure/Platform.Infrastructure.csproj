@@ -7,11 +7,16 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.15" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.15" />
   </ItemGroup>
 
   <PropertyGroup>
     <ProjectKind>Platform.Infrastructure</ProjectKind>
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Architecture.Tests" />
+  </ItemGroup>
 
 </Project>

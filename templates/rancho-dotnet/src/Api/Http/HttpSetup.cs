@@ -17,7 +17,12 @@ public static class HttpSetup
         {
             var http = sp.GetRequiredService<IHttpContextAccessor>().HttpContext
                 ?? throw new InvalidOperationException("An HTTP dispatch needs a request; jobs and reactions build their own DispatchContext.");
-            return new DispatchContext(http.User, CurrentTraceId());
+            // The composition root decides who the principal is: the token's subject. Application code never reads a claim.
+            return new DispatchContext(
+                http.User,
+                http.User.FindFirst("sub")?.Value ?? "anonymous",
+                CurrentTraceId(),
+                http.Request.Headers["Idempotency-Key"].FirstOrDefault());
         });
 
         services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
@@ -35,6 +40,7 @@ public static class HttpSetup
         });
 
         // Deny by default: a route with no policy of its own is refused, authenticated or not.
+        services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler, AuditingAuthorizationResultHandler>();
         services.AddAuthorizationBuilder()
             .SetFallbackPolicy(new AuthorizationPolicyBuilder().RequireAssertion(_ => false).Build());
 

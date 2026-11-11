@@ -8,13 +8,11 @@ internal sealed class ProductRepository(CatalogDbContext db) : IProductRepositor
     public Task<Product?> Find(ProductId id, CancellationToken cancellationToken) =>
         db.Products.SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
 
-    public async Task Save(Product root, CancellationToken cancellationToken)
+    public void Save(Product root)
     {
         if (db.Entry(root).State == EntityState.Detached)
         {
             db.Products.Add(root);
         }
-
-        await db.SaveChangesAsync(cancellationToken);
     }
 }

@@ -5,11 +5,15 @@ or the architecture tests fail on it. Run it after changing a check.
 
 Usage, from the repository root:  python -I templates/check-rancho-dotnet.py
 """
+import functools
+import os
 import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+print = functools.partial(print, flush=True)
 
 SRC = Path(__file__).resolve().parent / "rancho-dotnet"
 WORK = Path(tempfile.mkdtemp(prefix="rancho-dotnet-seeded-"))
@@ -29,6 +33,12 @@ def edit(path, old, new):
     p.write_text(s.replace(old, new, 1), encoding="utf-8")
 
 
+def edit_glob(pattern, old, new):
+    matches = list(WORK.glob(pattern))
+    assert len(matches) == 1, f"{pattern} matches {matches}"
+    edit(str(matches[0].relative_to(WORK)), old, new)
+
+
 def write(path, text):
     p = WORK / path
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -41,6 +51,7 @@ def run(*args):
 
 
 DOMAIN = CAT + "Catalog.Domain/Catalog.Domain.csproj"
+UOW = "src/Platform/Platform.Infrastructure/Persistence/UnitOfWork.cs"
 PRODUCT = CAT + "Catalog.Domain/Products/Product.cs"
 HANDLER = CAT + "Catalog.Application/CreateProduct/CreateProductHandler.cs"
 QH = CAT + "Catalog.Infrastructure/Queries/GetProduct/GetProductHandler.cs"
@@ -66,8 +77,7 @@ BUILD = [
     ("async void", "VSTHRD100",
      lambda: edit(HANDLER, "    public async ValueTask", "    public async void Fire() => await Task.Yield();\n\n    public async ValueTask")),
     ("Swallowing Exception", "CA1031",
-     lambda: edit(REPO, "await db.SaveChangesAsync(cancellationToken);",
-                  "try { await db.SaveChangesAsync(cancellationToken); } catch (Exception) { }")),
+     lambda: write(CAT + "Catalog.Infrastructure/External/Swallow.cs", "namespace Catalog.Infrastructure.External;\n\ninternal static class Swallow\n{\n    public static async Task Run(Func<Task> work)\n    {\n        try\n        {\n            await work();\n        }\n        catch (Exception)\n        {\n        }\n    }\n}\n")),
     ("Logging without [LoggerMessage]", "CA1848",
      lambda: write("src/Api/Seed.cs", "namespace Api;\n\ninternal static class Seed\n{\n    public static void Log(Microsoft.Extensions.Logging.ILogger logger) => Microsoft.Extensions.Logging.LoggerExtensions.LogInformation(logger, \"hello\");\n}\n")),
     ("Namespace does not match folder", "IDE0130",
@@ -118,7 +128,7 @@ TEST = [
     ("Repositories_expose_no_IQueryable",
      lambda: (edit(CAT + "Catalog.Domain/Products/IProductRepository.cs", "public interface IProductRepository : IRepository<Product, ProductId>;",
                    "public interface IProductRepository : IRepository<Product, ProductId>\n{\n    IQueryable<Product> Query();\n}"),
-              edit(REPO, "    public async Task Save", "    public IQueryable<Product> Query() => db.Products;\n\n    public async Task Save"))),
+              edit(REPO, "    public void Save", "    public IQueryable<Product> Query() => db.Products;\n\n    public void Save"))),
     ("Messages_and_handlers_live_where_they_belong",
      lambda: write(CAT + "Catalog.Application/Ping/Ping.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Application.Ping;\n\npublic sealed record Ping : IQuery<int>\n{\n    public static Operation Operation { get; } = Operation.Query(\"catalog.ping\", CatalogPolicies.Read);\n}\n\npublic sealed class PingHandler : IQueryHandler<Ping, int>\n{\n    public ValueTask<Result<int>> Handle(Ping query, CancellationToken cancellationToken) => ValueTask.FromResult<Result<int>>(1);\n}\n")),
     ("A_query_never_writes",
@@ -154,11 +164,22 @@ TEST = [
      lambda: edit("src/Api/Endpoints/Catalog/GetProductEndpoint.cs", "var result = await sender.Send(", "_ = global::Catalog.Application.CatalogProblems.ProductNotFound;\n        var result = await sender.Send(")),
     ("Infrastructure_is_internal_unless_the_dispatcher_names_it",
      lambda: write(CAT + "Catalog.Infrastructure/Persistence/Helper.cs", "namespace Catalog.Infrastructure.Persistence;\n\npublic sealed class Helper\n{\n    public int Value => 1;\n}\n")),
+    ("Migrations_reference_no_application_code",
+     lambda: edit_glob(CAT + "Catalog.Infrastructure/Persistence/Migrations/*_Initial.cs", "protected override void Up(MigrationBuilder migrationBuilder)\n        {\n", "protected override void Up(MigrationBuilder migrationBuilder)\n        {\n            _ = new Catalog.Domain.Products.ProductId(Guid.Empty);\n")),
+    ("Only_the_pipeline_touches_the_unit_of_work",
+     lambda: write(CAT + "Catalog.Application/CreateProduct/Peek.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Application.CreateProduct;\n\npublic static class Peek\n{\n    public static bool Dirty(IUnitOfWorkFactory units) => units.For(typeof(Peek)).HasChanges;\n}\n")),
+    ("Integration_events_leave_only_through_the_outbox",
+     lambda: write(CAT + "Catalog.Application/CreateProduct/IEventSender.cs", "using Catalog.Contracts.IntegrationEvents;\n\nnamespace Catalog.Application.CreateProduct;\n\npublic interface IEventSender\n{\n    void Send(ProductCreatedV1 integrationEvent);\n}\n")),
+    ("Idempotency_records_live_in_the_database_with_the_change",
+     lambda: edit(UOW, "internal sealed class UnitOfWork(ModuleDbContext db, DispatchContext dispatch, TimeProvider time) : IUnitOfWork\n{\n", "internal sealed class UnitOfWork(ModuleDbContext db, DispatchContext dispatch, TimeProvider time) : IUnitOfWork\n{\n    private readonly IDbContextFactory<ModuleDbContext>? _other = null;\n\n    public bool HasOther => _other is not null;\n\n")),
     ("No_static_mutable_state",
      lambda: write(CAT + "Catalog.Infrastructure/Persistence/Counter.cs", "namespace Catalog.Infrastructure.Persistence;\n\ninternal static class Counter\n{\n    public static int Hits;\n\n    public static void Hit() => Hits++;\n}\n")),
 ]
 
 PROGRAM = "src/Api/Program.cs"
+UOW = "src/Platform/Platform.Infrastructure/Persistence/UnitOfWork.cs"
+BEHAVIOR = "src/Platform/Platform.Application/Behaviors/UnitOfWorkBehavior.cs"
+PRODUCT_CONFIG = CAT + "Catalog.Infrastructure/Persistence/ProductConfiguration.cs"
 HTTP = "src/Api/Http/HttpSetup.cs"
 
 # API seeds, each run alone so that one seed cannot make another seed's test fail: (expected failing tests, edits)
@@ -171,8 +192,6 @@ API = [
      lambda: edit(HTTP, "RequireAssertion(_ => false)", "RequireAuthenticatedUser()")),
     (["Every_operation_policy_is_registered"],
      lambda: edit(CAT + "Catalog.Infrastructure/CatalogModule.cs", "options.AddPolicy(CatalogPolicies.Write,", "options.AddPolicy(\"catalog.misnamed\",")),
-    (["The_authorization_behavior_refuses_without_any_transport_filter"],
-     lambda: edit(PROGRAM, "        typeof(AuthorizationBehavior<,>),\n", "")),
     (["An_invalid_message_is_refused_before_its_handler_with_field_errors_by_request_path"],
      lambda: edit(PROGRAM, "        typeof(ValidationBehavior<,>),\n", "")),
     (["Every_options_class_the_solution_binds_has_a_validator", "A_missing_or_unusable_limit_stops_startup"],
@@ -180,13 +199,74 @@ API = [
 ]
 
 
+MODEL = "tests/Architecture.Tests"
+SQL = "tests/Catalog.IntegrationTests"
+UNIT = "tests/Platform.Tests"
+
+ISOLATED = [
+    (MODEL, ["Each_module_has_one_context_on_its_own_schema"],
+     lambda: edit(PRODUCT_CONFIG, 'builder.ToTable("Products");', 'builder.ToTable("Products", "dbo");')),
+    (MODEL, ["Mapped_domain_types_have_no_public_setter_or_parameterless_constructor"],
+     lambda: edit(PRODUCT, "public sealed class Product : AggregateRoot<ProductId>\n{\n", "public sealed class Product : AggregateRoot<ProductId>\n{\n    public Product()\n        : this(default, new ProductName(\"x\"), default)\n    {\n    }\n\n")),
+    (MODEL, ["No_navigation_leads_from_one_aggregate_to_another"],
+     lambda: (write(CAT + "Catalog.Domain/Categories/Category.cs", "using SharedKernel;\n\nnamespace Catalog.Domain.Categories;\n\npublic readonly record struct CategoryId(Guid Value);\n\npublic sealed class Category : AggregateRoot<CategoryId>\n{\n    private Category()\n    {\n    }\n}\n"),
+              write(CAT + "Catalog.Infrastructure/Persistence/CategoryConfiguration.cs", "using Catalog.Domain.Categories;\nusing Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Metadata.Builders;\n\nnamespace Catalog.Infrastructure.Persistence;\n\ninternal sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>\n{\n    public void Configure(EntityTypeBuilder<Category> builder)\n    {\n        builder.HasKey(c => c.Id);\n        builder.Property(c => c.Id).HasConversion(id => id.Value, value => new CategoryId(value));\n        builder.Ignore(c => c.DomainEvents);\n    }\n}\n"),
+              edit(PRODUCT, "    public int StockOnHand", "    public Categories.Category? Category { get; private set; }\n\n    public int StockOnHand"))),
+    (MODEL, ["Domain_events_carry_ids_and_values_never_entities"],
+     lambda: edit(CAT + "Catalog.Domain/Products/ProductCreated.cs", "(ProductId ProductId, DateTimeOffset At)", "(ProductId ProductId, DateTimeOffset At, Product? Snapshot = null)")),
+    (MODEL, ["Read_types_are_keyless"],
+     lambda: write(CAT + "Catalog.Infrastructure/Queries/GetProduct/ProductListRow.cs", "using Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Metadata.Builders;\n\nnamespace Catalog.Infrastructure.Queries.GetProduct;\n\ninternal sealed class ProductListRow\n{\n    public Guid Id { get; set; }\n\n    public string Name { get; set; } = string.Empty;\n}\n\ninternal sealed class ProductListRowConfiguration : IEntityTypeConfiguration<ProductListRow>\n{\n    public void Configure(EntityTypeBuilder<ProductListRow> builder)\n    {\n        builder.ToView(\"ProductList\");\n        builder.HasKey(r => r.Id);\n    }\n}\n")),
+    (MODEL, ["Every_module_model_carries_the_pipelines_tables"],
+     lambda: edit("src/Platform/Platform.Infrastructure/Persistence/ModuleDbContext.cs", "r.OperationId, r.Key }).IsUnique();", "r.OperationId, r.Key });")),
+    (MODEL, ["Every_model_change_has_its_migration"],
+     lambda: edit(CAT + "Catalog.Domain/Products/ProductName.cs", "public const int MaxLength = 200;", "public const int MaxLength = 150;")),
+
+    (SQL, ["A_keyed_command_without_a_key_is_refused"],
+     lambda: edit(CAT + "Catalog.Application/ReceiveStock/ReceiveStock.cs", "IdempotencyMechanism.Key", "IdempotencyMechanism.Natural")),
+    (SQL, ["A_replay_returns_the_recorded_result_without_running_the_handler_again", "The_same_key_with_a_different_request_is_refused", "Concurrent_duplicates_resolve_as_one_execution_and_replays"],
+     lambda: edit(UOW, "r => r.PrincipalId == attempt.PrincipalId && r.OperationId", "r => r.Id < 0 && r.PrincipalId == attempt.PrincipalId && r.OperationId")),
+    (SQL, ["A_key_belongs_to_its_principal"],
+     lambda: edit(BEHAVIOR, "attempt = new AttemptIdentity(context.PrincipalId, operation.Id, key);", "attempt = new AttemptIdentity(\"anyone\", operation.Id, key);")),
+    (SQL, ["A_success_commits_the_change_its_outbox_rows_and_its_audit_record_together"],
+     lambda: edit(UOW, "        StageDomainEvents();\n        try", "        try")),
+    (UNIT, ["A_failure_discards_what_the_handler_staged_before_it_is_recorded"],
+     lambda: edit(BEHAVIOR, "so a replay returns it.\n        unit.Discard();\n", "so a replay returns it.\n")),
+    (SQL, ["A_stale_write_is_a_conflict_not_an_exception"],
+     lambda: edit(UOW, "        catch (DbUpdateConcurrencyException)\n        {\n            return CommitOutcome.Conflict;\n        }\n", "")),
+    (SQL, ["A_principal_without_the_policy_is_refused_at_the_transport_and_recorded"],
+     lambda: edit("src/Api/Http/HttpSetup.cs", "        services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler, AuditingAuthorizationResultHandler>();\n", "")),
+    (SQL, ["The_authorization_behavior_refuses_and_records_without_any_transport_filter"],
+     lambda: edit(PROGRAM, "        typeof(AuthorizationBehavior<,>),\n", "")),
+    (SQL, ["The_authorization_behavior_refuses_and_records_without_any_transport_filter"],
+     lambda: edit("src/Platform/Platform.Application/Behaviors/AuthorizationBehavior.cs", "        unit.StageAudit(Audit.Entry(message, TMessage.Operation, context, time, AuditOutcome.Denied, problem));\n", "        _ = time;\n")),
+    (SQL, ["A_query_that_reads_with_sql_projects_what_was_committed"],
+     lambda: edit(QH, "SELECT Id, Name, IsDiscontinued, StockOnHand, Version FROM", "SELECT Id, Name, IsDiscontinued, 0 AS StockOnHand, Version FROM")),
+    (SQL, ["A_query_for_a_missing_record_answers_its_declared_problem"],
+     lambda: edit(QH, "return CatalogProblems.ProductNotFound.With();", "return PlatformProblems.NotFound.With();")),
+
+    (UNIT, ["A_command_that_does_not_persist_fails_the_dispatch_if_it_stages_a_change"],
+     lambda: edit(BEHAVIOR, "        if (unit.HasChanges)\n", "        if (unit.HasChanges && message is null)\n")),
+    (UNIT, ["A_command_that_does_not_persist_is_still_recorded_in_the_audit_trail"],
+     lambda: edit(BEHAVIOR, "        unit.StageAudit(Audit.Entry(message, TMessage.Operation, context, time, result.IsSuccess ? AuditOutcome.Succeeded : AuditOutcome.Failed, result.Problem));\n", "")),
+]
+
+
 def failed(out, name):
     return any(line.startswith("failed ") and f".{name}" in line for line in out.splitlines())
+
+
+ONLY = [n for n in os.environ.get("SEEDS", "").split(",") if n]
+
+
+def wanted(*names):
+    return not ONLY or any(n in ONLY for n in names)
 
 
 failures = []
 
 for name, expected, seed in BUILD:
+    if not wanted(name):
+        continue
     fresh()
     seed()
     code, out = run("build", "Starter.slnx", "-nologo")
@@ -196,6 +276,7 @@ for name, expected, seed in BUILD:
         failures.append(name)
         print("\n".join(l for l in out.splitlines() if "error" in l)[:2000])
 
+TEST = [(n, s) for n, s in TEST if wanted(n)]
 fresh()
 for _, seed in TEST:
     seed()
@@ -203,7 +284,7 @@ code, out = run("build", "Starter.slnx", "-nologo")
 if code != 0:
     print("Test seeds do not compile:\n" + "\n".join(l for l in out.splitlines() if "error" in l)[:4000])
     sys.exit(1)
-code, out = run("test", "--solution", "Starter.slnx", "--no-build")
+code, out = run("test", "--project", "tests/Architecture.Tests", "--no-build")
 for name, _ in TEST:
     caught = failed(out, name)
     print(f"{'FAILS AS EXPECTED' if caught else 'NOT CAUGHT':18} test   {name}")
@@ -211,6 +292,8 @@ for name, _ in TEST:
         failures.append(name)
 
 for names, seed in API:
+    if not wanted(*names):
+        continue
     fresh()
     seed()
     code, out = run("build", "Starter.slnx", "-nologo")
@@ -225,7 +308,25 @@ for names, seed in API:
         if not caught:
             failures.append(name)
 
-total = len(BUILD) + len(TEST) + sum(len(n) for n, _ in API)
+for project, names, seed in ISOLATED:
+    if not wanted(*names):
+        continue
+    fresh()
+    seed()
+    code, out = run("build", "Starter.slnx", "-nologo")
+    if code != 0:
+        print(f"{'SEED BROKEN':18} {project.split('/')[-1][:6].lower():6} {names[0]}\n" + "\n".join(l for l in out.splitlines() if " error " in l)[:2000])
+        failures.append(names[0])
+        continue
+    code, out = run("test", "--project", project, "--no-build")
+    for name in names:
+        caught = failed(out, name)
+        print(f"{'FAILS AS EXPECTED' if caught else 'NOT CAUGHT':18} {project.split('/')[-1][:6].lower():6} {name}")
+        if not caught:
+            failures.append(name)
+
+total = (sum(1 for n, _, _ in BUILD if wanted(n)) + len(TEST) + sum(len(n) for n, _ in API if wanted(*n))
+         + sum(len(n) for _, n, _ in ISOLATED if wanted(*n)))
 shutil.rmtree(WORK, ignore_errors=True)
 print(f"\n{total - len(failures)} of {total} seeds caught")
 sys.exit(1 if failures else 0)

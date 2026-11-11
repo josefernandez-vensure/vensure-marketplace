@@ -20,30 +20,32 @@ public sealed class InfrastructureTests
     [Fact]
     public void Infrastructure_is_internal_unless_the_dispatcher_names_it()
     {
-        foreach (var assembly in OfKind(Kinds.Infrastructure, Kinds.PlatformInfrastructure))
+        var exported = OfKind(Kinds.Infrastructure, Kinds.PlatformInfrastructure)
+            .SelectMany(a => a.Assembly.GetExportedTypes())
+            .Where(t => !IsGenerated(t))
+            .ToHashSet();
+
+        // Public by necessity: entry points, the handlers the generated dispatcher constructs, EF's migrations,
+        // and whatever those take through their public constructors or derive from.
+        var allowed = new HashSet<Type>();
+        var queue = new Queue<Type>(exported.Where(t => IsRegistrationEntryPoint(t) || IsHandler(t) || IsMigration(t)));
+        while (queue.Count > 0)
         {
-            var exported = assembly.Assembly.GetExportedTypes().Where(t => !IsGenerated(t)).ToHashSet();
-
-            // Public by necessity: entry points, the handlers the generated dispatcher constructs, and whatever their public constructors take.
-            var allowed = new HashSet<Type>();
-            var queue = new Queue<Type>(exported.Where(t => IsRegistrationEntryPoint(t) || IsHandler(t)));
-            while (queue.Count > 0)
+            var type = queue.Dequeue();
+            if (!allowed.Add(type))
             {
-                var type = queue.Dequeue();
-                if (!allowed.Add(type))
-                {
-                    continue;
-                }
-
-                foreach (var parameter in type.GetConstructors().SelectMany(c => c.GetParameters()).SelectMany(p => Unwrap(p.ParameterType)).Where(exported.Contains))
-                {
-                    queue.Enqueue(parameter);
-                }
+                continue;
             }
 
-            exported.Where(t => !allowed.Contains(t)).Select(t => $"{t.FullName} is public")
-                .ShouldHaveNoViolations("Infrastructure types are internal, except the registration entry point and what the dispatcher's generated code must name.");
+            var reached = type.GetConstructors().SelectMany(c => c.GetParameters()).SelectMany(p => Unwrap(p.ParameterType)).Append(type.BaseType);
+            foreach (var next in reached.OfType<Type>().Select(t => t.IsGenericType ? t.GetGenericTypeDefinition() : t).Where(exported.Contains))
+            {
+                queue.Enqueue(next);
+            }
         }
+
+        exported.Where(t => !allowed.Contains(t)).Select(t => $"{t.FullName} is public")
+            .ShouldHaveNoViolations("Infrastructure types are internal, except the registration entry point and what the dispatcher's generated code must name.");
     }
 
     [Fact]
@@ -92,6 +94,19 @@ public sealed class InfrastructureTests
             .Where(d => !IsInRegistrationEntryPoint(d.Origin))
             .Select(d => $"{d.Origin.FullName} uses {d.Target.FullName}")
             .ShouldHaveNoViolations("Dependencies come through the constructor; only the composition root resolves services. A hosted service creates a scope through IServiceScopeFactory.");
+    }
+
+    internal static bool IsMigration(Type type)
+    {
+        for (var t = type.BaseType; t is not null; t = t.BaseType)
+        {
+            if (t.FullName is "Microsoft.EntityFrameworkCore.Migrations.Migration" or "Microsoft.EntityFrameworkCore.Infrastructure.ModelSnapshot")
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsHandler(Type type) =>

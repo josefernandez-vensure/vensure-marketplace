@@ -11,7 +11,7 @@ public sealed class CreateProductHandler(IProductRepository products, TimeProvid
         var id = new ProductId(command.ProductId.Value);
         if (await products.Find(id, cancellationToken) is null)
         {
-            await products.Save(Product.Create(id, new ProductName(command.Name), time.GetUtcNow()), cancellationToken);
+            products.Save(Product.Create(id, new ProductName(command.Name), time.GetUtcNow()));
         }
 
         return command.ProductId;

@@ -42,14 +42,31 @@ These test `Result`, the operation declaration, the pipeline, the page and curso
 
 What differs from the old rows: BE-96 checks that a validator is registered, and BE-73's behaviour test shows that a missing or unusable rate limit stops startup. Neither adds an always-failing validator to prove that `ValidateOnStart` itself is wired.
 
-### Slices 2b to 2e (to do)
+### Slice 2b: persistence (done)
+
+The unit-of-work behavior (commands only, last in the pipeline); idempotency by key, recorded and replayed; the audit trail, with denials recorded at both the pipeline and the transport; the outbox, written with each change; `ModuleDbContext`; the first migration; and SQL Server in Docker for the behaviour tests.
+
+| Mechanism | Rows |
+|---|---|
+| The types themselves | BE-27, BE-28, BE-91: `ModuleDbContext` seals the model's base, so every module's context maps the outbox (with its trace columns), the idempotency records (with their unique identity index) and the audit trail, and commits them with its own changes. ROOT-19 is BE-90 (slice 2a) with BE-91. |
+| `tests/Architecture.Tests`, over the EF model built without a database | BE-10, BE-27, BE-28, BE-37, BE-38 (EF half), BE-79 (EF half), BE-91, BE-108 (EF half); plus every model change has its migration (`HasPendingModelChanges`) |
+| `tests/Architecture.Tests`, over types | BE-27 (no cache or second context), BE-30 (only the pipeline touches the unit of work), BE-33 (integration events leave only through the outbox), BE-88 |
+| `tests/Catalog.IntegrationTests`, against SQL Server | BE-29, BE-89, BE-112, BE-116, BE-118 (a success, a failure, and a denial at the pipeline and at the transport, each recorded), BE-125, BE-137; plus a key belongs to its principal, and a stale write is a conflict, not an exception |
+| `tests/Platform.Tests`, with fakes | BE-110 (staging half) and BE-111: a command declared `Transaction None` that stages a change fails the dispatch. BE-118: such a command is still recorded, and a failure is recorded only after what the handler staged is discarded. The template's domain rejects before it changes anything, so no real command can stage and then fail. |
+| `build/check-migrations.sh`, in CI | BE-87 |
+
+Found while writing and seeding the tests: an integration test named for the rollback never exercised one, because the domain rejects before changing anything; the rollback is now proven in `tests/Platform.Tests`. And a request the transport refuses never reaches the pipeline, so its denial went unrecorded. `AuditingAuthorizationResultHandler` now records it.
+
+What differs from the old rows: the audit trail is append-only by convention only; no database permission or trigger enforces it yet. BE-89's "a destructive migration keeps the previous version serving" is left to review; the test proves only that migrations run clean twice.
+
+### Slices 2c to 2f (to do)
 
 | Slice | Rows |
 |---|---|
-| 2b Persistence: unit of work, outbox, idempotency, audit, migrations (needs SQL Server in Docker) | ROOT-19, BE-10, BE-27, BE-28, BE-30, BE-33, BE-37, BE-38 (EF half), BE-79 (EF half), BE-87, BE-88, BE-91, BE-108 (EF half), BE-110 (staging half); tests BE-29, BE-89, BE-92, BE-111, BE-112, BE-116, BE-118, BE-125, BE-137 |
 | 2c Paging | ROOT-11, ROOT-12, BE-19 to BE-24, BE-119; test BE-124 |
 | 2d Data classification and OpenAPI | ROOT-09, ROOT-16, ROOT-18, BE-54, BE-55, BE-56, BE-61, BE-83, BE-85, BE-86, BE-97; test BE-126 |
 | 2e Concurrency and the remaining behaviour tests | tests BE-115, BE-117, BE-120, BE-122, BE-127, BE-128, BE-138, BE-139, BE-141 |
+| 2f Outbox delivery and reactions (split from 2b) | test BE-92 (delivery restores the trace context); reactions and sagas, modular law §5 |
 
 ## Deferred: features modular law §12 doesn't cover yet
 

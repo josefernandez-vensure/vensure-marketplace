@@ -1,7 +1,9 @@
+using System.Text.Json;
+
 namespace Platform.Application.Abstractions;
 
-/// <summary>What every dispatch returns. A behavior short-circuits with <see cref="Failure"/> without knowing the value type.</summary>
-public interface IResult<out TSelf>
+/// <summary>What every dispatch returns. A behavior short-circuits, records, and replays it without knowing the value type.</summary>
+public interface IResult<TSelf>
     where TSelf : IResult<TSelf>
 {
     bool IsSuccess { get; }
@@ -9,6 +11,10 @@ public interface IResult<out TSelf>
     Problem? Problem { get; }
 
     static abstract TSelf Failure(Problem problem);
+
+    static abstract TSelf Replay(RecordedResult recorded);
+
+    RecordedResult Record(string fingerprint);
 }
 
 public sealed class Result : IResult<Result>
@@ -25,7 +31,13 @@ public sealed class Result : IResult<Result>
 
     public static Result Failure(Problem problem) => new(problem);
 
+    public static Result Replay(RecordedResult recorded) =>
+        recorded.Succeeded ? Ok : Failure(new Problem(recorded.ProblemType!, recorded.Detail, recorded.Errors));
+
     public static implicit operator Result(Problem problem) => Failure(problem);
+
+    public RecordedResult Record(string fingerprint) =>
+        new(fingerprint, IsSuccess, null, Problem?.Type, Problem?.Detail, Problem?.Errors);
 }
 
 public sealed class Result<T> : IResult<Result<T>>
@@ -48,7 +60,15 @@ public sealed class Result<T> : IResult<Result<T>>
 
     public static Result<T> Failure(Problem problem) => new(default, problem);
 
+    public static Result<T> Replay(RecordedResult recorded) =>
+        recorded.Succeeded
+            ? Success(JsonSerializer.Deserialize<T>(recorded.ValueJson!)!)
+            : Failure(new Problem(recorded.ProblemType!, recorded.Detail, recorded.Errors));
+
     public static implicit operator Result<T>(T value) => Success(value);
 
     public static implicit operator Result<T>(Problem problem) => Failure(problem);
+
+    public RecordedResult Record(string fingerprint) =>
+        new(fingerprint, IsSuccess, IsSuccess ? JsonSerializer.Serialize(_value) : null, Problem?.Type, Problem?.Detail, Problem?.Errors);
 }

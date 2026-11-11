@@ -17,5 +17,5 @@ public interface IEndpoint<TMessage>
     static abstract Delegate Handler { get; }
 }
 
-/// <summary>Marks a route the registrar mapped, and the endpoint type and operation behind it.</summary>
-public sealed record DiscoveredEndpoint(Type EndpointType, Operation Operation);
+/// <summary>Marks a route the registrar mapped, and the endpoint type, message and operation behind it.</summary>
+public sealed record DiscoveredEndpoint(Type EndpointType, Type MessageType, Operation Operation);

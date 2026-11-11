@@ -33,6 +33,6 @@ public static class EndpointRegistrar
             .WithName(operation.Id)
             .RequireAuthorization(operation.Policy)
             .RequireRateLimiting(operation.RateLimit)
-            .WithMetadata(new DiscoveredEndpoint(typeof(TEndpoint), operation));
+            .WithMetadata(new DiscoveredEndpoint(typeof(TEndpoint), typeof(TMessage), operation));
     }
 }

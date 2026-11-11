@@ -2,9 +2,9 @@ using Catalog.Application;
 using Catalog.Domain.Products;
 using Catalog.Infrastructure.Persistence;
 using FluentValidation;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Platform.Infrastructure;
 
 namespace Catalog.Infrastructure;
 
@@ -15,7 +15,7 @@ public static class CatalogModule
         var connectionString = configuration.GetConnectionString("Catalog")
             ?? throw new InvalidOperationException("Connection string 'Catalog' is missing.");
 
-        services.AddDbContext<CatalogDbContext>(options => options.UseSqlServer(connectionString));
+        services.AddModuleDbContext<CatalogDbContext>(connectionString, CatalogDbContext.SchemaName);
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddValidatorsFromAssembly(typeof(CatalogPolicies).Assembly, ServiceLifetime.Scoped);
 

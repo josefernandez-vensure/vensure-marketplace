@@ -17,6 +17,8 @@ public sealed class Product : AggregateRoot<ProductId>
 
     public bool IsDiscontinued { get; private set; }
 
+    public int StockOnHand { get; private set; }
+
     public static Product Create(ProductId id, ProductName name, DateTimeOffset now)
     {
         var product = new Product(id, name, now);
@@ -39,6 +41,20 @@ public sealed class Product : AggregateRoot<ProductId>
         Name = name;
         Touch();
         return RenameOutcome.Renamed;
+    }
+
+    /// <summary>Not naturally idempotent: receiving twice doubles the stock. Its command declares an idempotency key.</summary>
+    public ReceiveStockOutcome ReceiveStock(int quantity)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
+        if (IsDiscontinued)
+        {
+            return ReceiveStockOutcome.Discontinued;
+        }
+
+        StockOnHand += quantity;
+        Touch();
+        return ReceiveStockOutcome.Received;
     }
 
     public void Discontinue()

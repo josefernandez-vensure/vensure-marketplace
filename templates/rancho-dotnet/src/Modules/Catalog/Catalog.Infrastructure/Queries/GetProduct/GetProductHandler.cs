@@ -13,7 +13,7 @@ public sealed class GetProductHandler(CatalogDbContext db) : IQueryHandler<Appli
     {
         var id = query.ProductId.Value;
         var row = await db.Database
-            .SqlQuery<ProductRow>($"SELECT Id, Name, IsDiscontinued, Version FROM catalog.Products WHERE Id = {id}")
+            .SqlQuery<ProductRow>($"SELECT Id, Name, IsDiscontinued, StockOnHand, Version FROM catalog.Products WHERE Id = {id}")
             .SingleOrDefaultAsync(cancellationToken);
 
         if (row is null)
@@ -21,8 +21,8 @@ public sealed class GetProductHandler(CatalogDbContext db) : IQueryHandler<Appli
             return CatalogProblems.ProductNotFound.With();
         }
 
-        return new ProductResponse(new Contracts.ProductId(row.Id), row.Name, row.IsDiscontinued, $"\"{row.Version}\"");
+        return new ProductResponse(new Contracts.ProductId(row.Id), row.Name, row.IsDiscontinued, row.StockOnHand, $"\"{row.Version}\"");
     }
 
-    private sealed record ProductRow(Guid Id, string Name, bool IsDiscontinued, long Version);
+    private sealed record ProductRow(Guid Id, string Name, bool IsDiscontinued, int StockOnHand, long Version);
 }

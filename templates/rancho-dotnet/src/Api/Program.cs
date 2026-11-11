@@ -5,6 +5,7 @@ using Catalog.Infrastructure;
 using Mediator;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Platform.Application.Behaviors;
+using Platform.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,7 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddOpenApi();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddHttpPlatform();
+builder.Services.AddPlatformPersistence();
 
 builder.Services.AddMediator((MediatorOptions options) =>
 {
@@ -24,6 +26,7 @@ builder.Services.AddMediator((MediatorOptions options) =>
         typeof(LoggingBehavior<,>),
         typeof(AuthorizationBehavior<,>),
         typeof(ValidationBehavior<,>),
+        typeof(UnitOfWorkBehavior<,>),
     ];
 });
 

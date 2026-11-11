@@ -14,12 +14,10 @@ public sealed class RenameProductHandler(IProductRepository products) : ICommand
         }
 
         var outcome = product.Rename(new ProductName(command.Name));
-        if (outcome == RenameOutcome.Renamed)
-        {
-            await products.Save(product, cancellationToken);
-        }
+        products.Save(product);
 
         // A switch expression over the outcome with no discard arm: a new outcome fails the build (CS8509).
+        // On a failure the pipeline discards whatever was staged, so saving first is safe.
         return outcome switch
         {
             RenameOutcome.Renamed => product.Version,
