@@ -62,7 +62,7 @@ BUILD = [
     ("Domain reads the clock", "RS0030",
      lambda: edit(PRODUCT, "public void Discontinue()", "public static DateTime Clock() => DateTime.UtcNow;\n\n    public void Discontinue()")),
     ("Blocking on a task in an async method", "VSTHRD103",
-     lambda: edit(HANDLER, "var product =", "_ = Task.FromResult(1).Result;\n        var product =")),
+     lambda: edit(HANDLER, "var id =", "_ = Task.FromResult(1).Result;\n        var id =")),
     ("async void", "VSTHRD100",
      lambda: edit(HANDLER, "    public async ValueTask", "    public async void Fire() => await Task.Yield();\n\n    public async ValueTask")),
     ("Swallowing Exception", "CA1031",
@@ -75,9 +75,13 @@ BUILD = [
     ("Raw SQL", "EF1003",
      lambda: write(CAT + "Catalog.Infrastructure/Queries/GetProduct/Raw.cs", "using Catalog.Infrastructure.Persistence;\nusing Microsoft.EntityFrameworkCore;\n\nnamespace Catalog.Infrastructure.Queries.GetProduct;\n\ninternal static class Raw\n{\n    public static IQueryable<int> Count(CatalogDbContext db, string table) => db.Database.SqlQueryRaw<int>(\"SELECT COUNT(*) AS Value FROM \" + table);\n}\n")),
     ("Waiting on a task with a timeout", "VSTHRD103",
-     lambda: edit(HANDLER, "var product =", "_ = Task.Delay(1).Wait(TimeSpan.FromSeconds(1));\n        var product =")),
+     lambda: edit(HANDLER, "var id =", "_ = Task.Delay(1).Wait(TimeSpan.FromSeconds(1));\n        var id =")),
     ("Blocking on a task in a synchronous method", "VSTHRD002",
      lambda: write(CAT + "Catalog.Application/CreateProduct/Sync.cs", "namespace Catalog.Application.CreateProduct;" + chr(10) + chr(10) + "public static class Sync" + chr(10) + "{" + chr(10) + "    public static int Get(Task<int> task) => task.Result;" + chr(10) + "}" + chr(10))),
+    ("A message without an operation", "CS0535",
+     lambda: edit(CAT + "Catalog.Application/CreateProduct/CreateProduct.cs", "public static Operation Operation { get; } =", "public static Operation Declared { get; } =")),
+    ("An outcome the translation forgets", "CS8509",
+     lambda: edit(CAT + "Catalog.Domain/Products/RenameOutcome.cs", "    Discontinued,", "    Discontinued,\n    Archived,")),
     ("Application reads an environment variable", "RS0030",
      lambda: write(CAT + "Catalog.Application/CreateProduct/Env.cs", "namespace Catalog.Application.CreateProduct;\n\npublic static class Env\n{\n    public static string? Get() => Environment.GetEnvironmentVariable(\"X\");\n}\n")),
     ("Application locates a service", "RS0030",
@@ -116,15 +120,15 @@ TEST = [
                    "public interface IProductRepository : IRepository<Product, ProductId>\n{\n    IQueryable<Product> Query();\n}"),
               edit(REPO, "    public async Task Save", "    public IQueryable<Product> Query() => db.Products;\n\n    public async Task Save"))),
     ("Messages_and_handlers_live_where_they_belong",
-     lambda: write(CAT + "Catalog.Application/GetProduct/MisplacedHandler.cs", "using Mediator;\n\nnamespace Catalog.Application.GetProduct;\n\npublic sealed class MisplacedHandler : IQueryHandler<GetProduct, ProductResponse?>\n{\n    public ValueTask<ProductResponse?> Handle(GetProduct query, CancellationToken cancellationToken) => ValueTask.FromResult<ProductResponse?>(null);\n}\n")),
+     lambda: write(CAT + "Catalog.Application/Ping/Ping.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Application.Ping;\n\npublic sealed record Ping : IQuery<int>\n{\n    public static Operation Operation { get; } = Operation.Query(\"catalog.ping\", CatalogPolicies.Read);\n}\n\npublic sealed class PingHandler : IQueryHandler<Ping, int>\n{\n    public ValueTask<Result<int>> Handle(Ping query, CancellationToken cancellationToken) => ValueTask.FromResult<Result<int>>(1);\n}\n")),
     ("A_query_never_writes",
      lambda: edit(QH, "        var id = query.ProductId.Value;", "        await db.SaveChangesAsync(cancellationToken);\n        var id = query.ProductId.Value;")),
     ("A_query_never_loads_an_aggregate",
      lambda: edit(QH, "        var id = query.ProductId.Value;", "        _ = await db.Products.CountAsync(cancellationToken);\n        var id = query.ProductId.Value;")),
     ("Messages_and_responses_carry_no_domain_types",
-     lambda: edit(CAT + "Catalog.Application/GetProduct/ProductResponse.cs", "string ETag)", "string ETag, Catalog.Domain.Products.ProductName? Display = null)")),
+     lambda: edit(CAT + "Catalog.Application/GetProduct/GetProduct.cs", "string ETag)", "string ETag, Catalog.Domain.Products.ProductName? Display = null)")),
     ("Handlers_do_not_log",
-     lambda: (edit(QH, "internal sealed class GetProductHandler(CatalogDbContext db)", "internal sealed class GetProductHandler(CatalogDbContext db, Microsoft.Extensions.Logging.ILogger<GetProductHandler> logger)"),
+     lambda: (edit(QH, "public sealed class GetProductHandler(CatalogDbContext db)", "public sealed class GetProductHandler(CatalogDbContext db, Microsoft.Extensions.Logging.ILogger<GetProductHandler> logger)"),
               edit(QH, "        var id = query.ProductId.Value;", "        _ = logger;\n        var id = query.ProductId.Value;"))),
     ("Application_and_domain_read_no_raw_claims",
      lambda: write(CAT + "Catalog.Application/CreateProduct/Who.cs", "namespace Catalog.Application.CreateProduct;\n\npublic static class Who\n{\n    public static string? Name(System.Security.Claims.ClaimsPrincipal user) => user.Identity?.Name;\n}\n")),
@@ -140,9 +144,45 @@ TEST = [
      lambda: write(CAT + "Catalog.Infrastructure/External/Locator.cs", "namespace Catalog.Infrastructure.External;\n\ninternal sealed class Locator(IServiceProvider services)\n{\n    public object? Get(Type t) => services.GetService(t);\n}\n")),
     ("No_dynamic",
      lambda: write(CAT + "Catalog.Infrastructure/External/Dyn.cs", "namespace Catalog.Infrastructure.External;\n\ninternal static class Dyn\n{\n    public static object Add(dynamic d) => d + 1;\n}\n")),
+    ("Every_message_declares_a_valid_operation",
+     lambda: edit(CAT + "Catalog.Application/RenameProduct/RenameProduct.cs", "\"catalog.rename-product\"", "\"catalog.create-product\"")),
+    ("Commands_return_at_most_an_id_an_outcome_and_a_version",
+     lambda: write(CAT + "Catalog.Application/ArchiveProduct/ArchiveProduct.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Application.ArchiveProduct;\n\npublic sealed record ArchiveProduct : ICommand<string>\n{\n    public static Operation Operation { get; } = Operation.Command(\"catalog.archive-product\", CatalogPolicies.Write, IdempotencyMechanism.Natural);\n}\n\npublic sealed class ArchiveProductHandler : ICommandHandler<ArchiveProduct, string>\n{\n    public ValueTask<Result<string>> Handle(ArchiveProduct command, CancellationToken cancellationToken) => ValueTask.FromResult<Result<string>>(\"archived\");\n}\n")),
+    ("Only_the_registrar_maps_a_route_to_a_handler",
+     lambda: write("src/Api/Extra.cs", "namespace Api;\n\ninternal static class Extra\n{\n    public static void Map(IEndpointRouteBuilder app) => app.MapGet(\"/extra\", () => \"extra\");\n}\n")),
+    ("Endpoints_reference_only_their_messages_and_dtos",
+     lambda: edit("src/Api/Endpoints/Catalog/GetProductEndpoint.cs", "var result = await sender.Send(", "_ = global::Catalog.Application.CatalogProblems.ProductNotFound;\n        var result = await sender.Send(")),
+    ("Infrastructure_is_internal_unless_the_dispatcher_names_it",
+     lambda: write(CAT + "Catalog.Infrastructure/Persistence/Helper.cs", "namespace Catalog.Infrastructure.Persistence;\n\npublic sealed class Helper\n{\n    public int Value => 1;\n}\n")),
     ("No_static_mutable_state",
      lambda: write(CAT + "Catalog.Infrastructure/Persistence/Counter.cs", "namespace Catalog.Infrastructure.Persistence;\n\ninternal static class Counter\n{\n    public static int Hits;\n\n    public static void Hit() => Hits++;\n}\n")),
 ]
+
+PROGRAM = "src/Api/Program.cs"
+HTTP = "src/Api/Http/HttpSetup.cs"
+
+# API seeds, each run alone so that one seed cannot make another seed's test fail: (expected failing tests, edits)
+API = [
+    (["Every_route_is_a_discovered_endpoint_or_a_declared_framework_endpoint"],
+     lambda: edit(PROGRAM, "app.MapDiscoveredEndpoints();", "app.MapGet(\"/ping\", () => \"pong\").AllowAnonymous();\napp.MapDiscoveredEndpoints();")),
+    (["Every_endpoint_carries_its_operations_policy_and_rate_limit"],
+     lambda: edit("src/Api/Endpoints/EndpointRegistrar.cs", "            .RequireRateLimiting(operation.RateLimit)\n", "")),
+    (["The_fallback_policy_denies_everyone"],
+     lambda: edit(HTTP, "RequireAssertion(_ => false)", "RequireAuthenticatedUser()")),
+    (["Every_operation_policy_is_registered"],
+     lambda: edit(CAT + "Catalog.Infrastructure/CatalogModule.cs", "options.AddPolicy(CatalogPolicies.Write,", "options.AddPolicy(\"catalog.misnamed\",")),
+    (["The_authorization_behavior_refuses_without_any_transport_filter"],
+     lambda: edit(PROGRAM, "        typeof(AuthorizationBehavior<,>),\n", "")),
+    (["An_invalid_message_is_refused_before_its_handler_with_field_errors_by_request_path"],
+     lambda: edit(PROGRAM, "        typeof(ValidationBehavior<,>),\n", "")),
+    (["Every_options_class_the_solution_binds_has_a_validator", "A_missing_or_unusable_limit_stops_startup"],
+     lambda: edit(HTTP, "            .Validate(o => o.PermitLimit > 0 && o.Window > TimeSpan.Zero, \"Rate limits need a positive permit limit and window; a missing limit denies.\")\n", "")),
+]
+
+
+def failed(out, name):
+    return any(line.startswith("failed ") and f".{name}" in line for line in out.splitlines())
+
 
 failures = []
 
@@ -165,12 +205,27 @@ if code != 0:
     sys.exit(1)
 code, out = run("test", "--solution", "Starter.slnx", "--no-build")
 for name, _ in TEST:
-    ok = f"{name} " in out and any(name in l and "failed" in l.lower() for l in out.splitlines())
-    caught = f".{name}" in out or f" {name}" in out
+    caught = failed(out, name)
     print(f"{'FAILS AS EXPECTED' if caught else 'NOT CAUGHT':18} test   {name}")
     if not caught:
         failures.append(name)
 
+for names, seed in API:
+    fresh()
+    seed()
+    code, out = run("build", "Starter.slnx", "-nologo")
+    if code != 0:
+        print(f"{'SEED BROKEN':18} api    {names[0]}\n" + "\n".join(l for l in out.splitlines() if " error " in l)[:2000])
+        failures.append(names[0])
+        continue
+    code, out = run("test", "--project", "tests/Api.Tests", "--no-build")
+    for name in names:
+        caught = failed(out, name)
+        print(f"{'FAILS AS EXPECTED' if caught else 'NOT CAUGHT':18} api    {name}")
+        if not caught:
+            failures.append(name)
+
+total = len(BUILD) + len(TEST) + sum(len(n) for n, _ in API)
 shutil.rmtree(WORK, ignore_errors=True)
-print(f"\n{len(BUILD) + len(TEST) - len(failures)} of {len(BUILD) + len(TEST)} seeds caught")
+print(f"\n{total - len(failures)} of {total} seeds caught")
 sys.exit(1 if failures else 0)

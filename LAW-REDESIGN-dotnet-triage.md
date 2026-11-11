@@ -28,12 +28,28 @@ Moved to increment 2, because they need EF migrations: BE-87 (a committed migrat
 
 ## Increment 2: checks that need the platform
 
-These test `Result`, the operation declaration, the pipeline, the page and cursor, the outbox, the endpoint abstraction, the EF model or the built host, so the platform is built first. The required behaviour tests become the template's own reference tests, which modular law §11 already lists.
+These test `Result`, the operation declaration, the pipeline, the page and cursor, the outbox, the endpoint abstraction, the EF model or the built host, so the platform is built first. The required behaviour tests become the template's own reference tests, which modular law §11 already lists. The work is split into five slices.
 
-| Kind | Rows |
+### Slice 2a: the dispatch core (done)
+
+`Result` and problem types, the operation declaration, the dispatch context, the pipeline (logging → authorization → validation), the endpoint abstraction and its registrar, the result translator, deny-by-default, and rate limits.
+
+| Mechanism | Rows |
 |---|---|
-| Build checks | ROOT-09, ROOT-11, ROOT-12, ROOT-13, ROOT-16, ROOT-18, ROOT-19, BE-87, BE-88, BE-10, BE-11, BE-19 to BE-28, BE-30, BE-33, BE-34, BE-37, BE-38 (EF half), BE-50, BE-51, BE-54, BE-55, BE-56, BE-61, BE-70, BE-73, BE-79 (EF half), BE-80, BE-81, BE-82, BE-83, BE-85, BE-86, BE-90, BE-91, BE-96, BE-97, BE-108 (EF half), BE-110, BE-119 |
-| Reference behaviour tests | BE-29, BE-89, BE-92, BE-111, BE-112, BE-115 to BE-118, BE-120, BE-122, BE-124 to BE-128, BE-137, BE-138, BE-139, BE-141 |
+| The types themselves | ROOT-13, BE-25 and BE-26: a message without a declaration doesn't compile, because `IDeclaresOperation.Operation` is `static abstract`. BE-110, declaration half: `Operation.Query` has no transaction or key, and `Operation.Command` refuses a key without a transaction. BE-90: `DispatchContext` can't be built without a trace id. BE-50 and BE-70: the registrar applies the declared policy and rate limit, so an endpoint can't omit them. |
+| `tests/Architecture.Tests` | BE-11, BE-34, BE-80, BE-82; plus each operation's id, kind and uniqueness |
+| `tests/Api.Tests`, against the built host | BE-50, BE-51, BE-70, BE-73, BE-81, BE-96, BE-101 (the authorization behavior refuses without any transport filter); plus every operation's policy is registered, and validation answers field errors by request path |
+
+What differs from the old rows: BE-96 checks that a validator is registered, and BE-73's behaviour test shows that a missing or unusable rate limit stops startup. Neither adds an always-failing validator to prove that `ValidateOnStart` itself is wired.
+
+### Slices 2b to 2e (to do)
+
+| Slice | Rows |
+|---|---|
+| 2b Persistence: unit of work, outbox, idempotency, audit, migrations (needs SQL Server in Docker) | ROOT-19, BE-10, BE-27, BE-28, BE-30, BE-33, BE-37, BE-38 (EF half), BE-79 (EF half), BE-87, BE-88, BE-91, BE-108 (EF half), BE-110 (staging half); tests BE-29, BE-89, BE-92, BE-111, BE-112, BE-116, BE-118, BE-125, BE-137 |
+| 2c Paging | ROOT-11, ROOT-12, BE-19 to BE-24, BE-119; test BE-124 |
+| 2d Data classification and OpenAPI | ROOT-09, ROOT-16, ROOT-18, BE-54, BE-55, BE-56, BE-61, BE-83, BE-85, BE-86, BE-97; test BE-126 |
+| 2e Concurrency and the remaining behaviour tests | tests BE-115, BE-117, BE-120, BE-122, BE-127, BE-128, BE-138, BE-139, BE-141 |
 
 ## Deferred: features modular law §12 doesn't cover yet
 
@@ -44,7 +60,7 @@ The rule for these is "stop and ask". Each row comes back as a check when the fi
 | AI agents | BE-31, BE-58, BE-59, BE-62 to BE-69, BE-71, BE-72, BE-103, BE-114, BE-123 |
 | Caching | BE-44 to BE-49, BE-60, BE-140 |
 | Real-time | BE-74, BE-75, BE-121 |
-| External authorities (modular §8 keeps the principle) | BE-99, BE-100, BE-101, BE-102, BE-104 |
+| External authorities (modular §8 keeps the principle) | BE-99, BE-100, BE-102, BE-104 (BE-101 is covered in slice 2a) |
 
 ## Dropped: the check costs more than the mistake
 

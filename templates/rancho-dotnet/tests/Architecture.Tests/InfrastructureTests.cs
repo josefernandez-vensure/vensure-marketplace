@@ -18,6 +18,35 @@ public sealed class InfrastructureTests
     }
 
     [Fact]
+    public void Infrastructure_is_internal_unless_the_dispatcher_names_it()
+    {
+        foreach (var assembly in OfKind(Kinds.Infrastructure, Kinds.PlatformInfrastructure))
+        {
+            var exported = assembly.Assembly.GetExportedTypes().Where(t => !IsGenerated(t)).ToHashSet();
+
+            // Public by necessity: entry points, the handlers the generated dispatcher constructs, and whatever their public constructors take.
+            var allowed = new HashSet<Type>();
+            var queue = new Queue<Type>(exported.Where(t => IsRegistrationEntryPoint(t) || IsHandler(t)));
+            while (queue.Count > 0)
+            {
+                var type = queue.Dequeue();
+                if (!allowed.Add(type))
+                {
+                    continue;
+                }
+
+                foreach (var parameter in type.GetConstructors().SelectMany(c => c.GetParameters()).SelectMany(p => Unwrap(p.ParameterType)).Where(exported.Contains))
+                {
+                    queue.Enqueue(parameter);
+                }
+            }
+
+            exported.Where(t => !allowed.Contains(t)).Select(t => $"{t.FullName} is public")
+                .ShouldHaveNoViolations("Infrastructure types are internal, except the registration entry point and what the dispatcher's generated code must name.");
+        }
+    }
+
+    [Fact]
     public void Application_is_sliced_by_feature_and_domain_by_aggregate()
     {
         // IDE0130 makes every namespace match its folder, so a namespace names the folder.
@@ -64,6 +93,10 @@ public sealed class InfrastructureTests
             .Select(d => $"{d.Origin.FullName} uses {d.Target.FullName}")
             .ShouldHaveNoViolations("Dependencies come through the constructor; only the composition root resolves services. A hosted service creates a scope through IServiceScopeFactory.");
     }
+
+    private static bool IsHandler(Type type) =>
+        type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition().FullName is { } name
+            && name.StartsWith("Mediator.I", StringComparison.Ordinal) && name.Contains("Handler`", StringComparison.Ordinal));
 
     private static bool IsInRegistrationEntryPoint(ArchUnitNET.Domain.IType type)
     {

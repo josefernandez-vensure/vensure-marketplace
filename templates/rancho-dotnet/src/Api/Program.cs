@@ -1,18 +1,52 @@
+using Api.Endpoints;
+using Api.Http;
+using Catalog.Application;
 using Catalog.Infrastructure;
+using Mediator;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Platform.Application.Behaviors;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddOpenApi();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddOpenApi();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+builder.Services.AddHttpPlatform();
+
+builder.Services.AddMediator((MediatorOptions options) =>
+{
+    options.ServiceLifetime = ServiceLifetime.Scoped;
+    options.Assemblies = [typeof(CatalogPolicies), typeof(CatalogModule)];
+
+    // The pipeline, in this order. Changing it needs a reason in the PR.
+    options.PipelineBehaviors =
+    [
+        typeof(LoggingBehavior<,>),
+        typeof(AuthorizationBehavior<,>),
+        typeof(ValidationBehavior<,>),
+    ];
+});
+
 builder.Services.AddCatalogModule(builder.Configuration);
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseRateLimiter();
+
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    // A framework endpoint, mapped outside discovery and allowed explicitly.
+    app.MapOpenApi().AllowAnonymous();
 }
 
-app.UseHttpsRedirection();
+app.MapDiscoveredEndpoints();
 
 await app.RunAsync();
+
+/// <summary>Visible to the API tests' host.</summary>
+public partial class Program;
