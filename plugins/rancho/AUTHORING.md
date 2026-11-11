@@ -18,7 +18,7 @@ Every stack law MUST carry:
 
 A stack law MAY add rules. It MUST NOT weaken one stated here or in the contract law. A stack law that contradicts this document is the defect, exactly as code that contradicts it is.
 
-A standalone law (§2) carries none of the above. It says `This law stands alone.` before its first section and names its own verification commands. It has no inventory, and the core and contract laws do not bind its trees.
+A standalone law (§2) carries none of the above. It says `This law stands alone.` before its first section and names its own verification commands. It has no inventory, and the core law does not bind its trees. It MAY declare a role in a `## Role` section, as a stack law does. Then the contract law binds its trees, and the law MUST NOT weaken it. It states what the contract leaves to each side, as a stack law would: the server's CORS policy, for example. It uses the four data classes and the W3C trace id that the contract assumes (contract law, introduction). A standalone law that declares no role shares no contract with any other tree.
 
 A stack law MUST NOT depend on another stack law. The two trees of a project share only what this document and the contract law state - the API contract, the data classes, and the correlation id - so either can be replaced without touching the other. A new stack law adds its row to the index in §2.
 

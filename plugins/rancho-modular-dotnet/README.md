@@ -10,7 +10,7 @@ The law grows only from evidence. When Claude gets something wrong in a real cha
 /plugin install rancho-modular-dotnet --marketplace josefernandez-vensure/vensure-marketplace
 ```
 
-Use it with `rancho` 4.0.0 or later. Earlier versions don't recognise a standalone law, and read the core law in its trees as well.
+Use it with `rancho` 4.1.0 or later, which must be installed too: this law publishes the contract law that `/rancho:law` carries, so a React client bound to `rancho-react` and this server agree on one wire. Earlier versions of `rancho` either read the core law in its trees as well (before 4.0.0) or skip the contract law (4.0.0).
 
 ## Binding a tree
 

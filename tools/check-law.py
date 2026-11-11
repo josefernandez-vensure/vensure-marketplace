@@ -225,6 +225,10 @@ def main():
     for plugin in ("rancho-dotnet", "rancho-react"):
         w = load["rancho"] + contract + load[plugin]
         print(f"  load per {plugin} stream (core + contract + stack SKILL.md, no annexes): ~{round(w * 1.4 / 1000, 1)}k tokens")
+    standalone = Path("plugins/rancho-modular-dotnet/skills/law/SKILL.md")
+    if standalone.exists():
+        w = words(standalone) + contract
+        print(f"  load per rancho-modular-dotnet stream (standalone law + contract): ~{round(w * 1.4 / 1000, 1)}k tokens")
 
     if errors:
         print(f"\n{len(errors)} problem(s):")

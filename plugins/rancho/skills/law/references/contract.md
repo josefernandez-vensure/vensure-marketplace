@@ -1,8 +1,10 @@
 # Contract Law
 
-This file is the **contract law**: what a server and a client MUST agree on across HTTP. It binds every tree whose stack law declares a role (core §2). A `server` publishes this contract and a `client` consumes it. It states the shape of the wire, never how either side builds it; that is each stack law's.
+This file is the **contract law**: what a server and a client MUST agree on across HTTP. It binds every tree whose stack law, or standalone law, declares a role (core §2). A `server` publishes this contract and a `client` consumes it. It states the shape of the wire, never how either side builds it; that is each stack law's.
 
 Its rules are core rules. They use the core law's rule language (core §1) and `ROOT` ids, and they are listed in the core inventory, `enforcement.md` beside this file. "Core §N" is a section of the core law, `../SKILL.md`.
+
+In a tree bound to a standalone law, the core law does not bind, and this file binds without it. There, MUST, SHOULD and MAY keep the meaning core §1 gives them. A citation of the core law points to what the standalone law states on the same subject, such as the data classes or the trace id. A standalone law that declares a role MUST use the core law's four data classes and the W3C trace id, because the wire carries both. A `⚙` here claims only that a check can be built: the standalone law says how its tree builds its checks, and the core inventory does not bind that tree.
 
 ## 1. Style and the document
 
