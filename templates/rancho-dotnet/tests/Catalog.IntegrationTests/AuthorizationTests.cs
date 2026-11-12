@@ -39,7 +39,7 @@ public sealed class AuthorizationTests(SqlServer sql)
             new DefaultHttpContext { User = CatalogApi.Principal(subject, "catalog.read") };
 
         var result = await scope.ServiceProvider.GetRequiredService<ISender>()
-            .Send(new RenameProduct(new ProductId(product), "Lamp"), Cancel);
+            .Send(new RenameProduct(new ProductId(product), "Lamp", new ExpectedVersion(1)), Cancel);
 
         result.Problem?.Type.ShouldBe(PlatformProblems.Forbidden);
         (await sql.Scalar<string>($"SELECT RecordIds AS Value FROM catalog.AuditTrail WHERE PrincipalId = {subject} AND Outcome = 'Denied'"))

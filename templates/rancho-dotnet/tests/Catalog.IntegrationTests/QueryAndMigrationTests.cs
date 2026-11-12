@@ -22,7 +22,8 @@ public sealed class QueryAndMigrationTests(SqlServer sql)
         var body = await Body(response);
         body.GetProperty("name").GetString().ShouldBe("Desk lamp");
         body.GetProperty("stockOnHand").GetInt32().ShouldBe(3);
-        body.GetProperty("eTag").GetString().ShouldBe("\"2\"");
+        body.GetProperty("etag").GetString().ShouldBe("\"2\"");
+        response.Headers.ETag?.Tag.ShouldBe("\"2\"");
     }
 
     [Fact]

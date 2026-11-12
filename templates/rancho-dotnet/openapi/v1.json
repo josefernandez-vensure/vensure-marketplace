@@ -11,6 +11,16 @@
           "CreateProductEndpoint"
         ],
         "operationId": "catalog.create-product",
+        "parameters": [
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "x-data-class": "internal"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -245,6 +255,14 @@
               "format": "uuid",
               "x-data-class": "internal"
             }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "x-data-class": "internal"
+            }
           }
         ],
         "requestBody": {
@@ -325,6 +343,14 @@
             "schema": {
               "type": "string",
               "format": "uuid",
+              "x-data-class": "internal"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string",
               "x-data-class": "internal"
             }
           }
@@ -565,7 +591,7 @@
           "name",
           "isDiscontinued",
           "stockOnHand",
-          "eTag"
+          "etag"
         ],
         "type": "object",
         "properties": {
@@ -589,7 +615,7 @@
             "format": "int32",
             "x-data-class": "internal"
           },
-          "eTag": {
+          "etag": {
             "type": "string",
             "x-data-class": "internal"
           }
@@ -633,11 +659,11 @@
       },
       "ReceiveStockResponse": {
         "required": [
-          "eTag"
+          "etag"
         ],
         "type": "object",
         "properties": {
-          "eTag": {
+          "etag": {
             "type": "string",
             "x-data-class": "internal"
           }
@@ -659,11 +685,11 @@
       },
       "RenameProductResponse": {
         "required": [
-          "eTag"
+          "etag"
         ],
         "type": "object",
         "properties": {
-          "eTag": {
+          "etag": {
             "type": "string",
             "x-data-class": "internal"
           }

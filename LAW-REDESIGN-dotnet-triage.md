@@ -95,11 +95,36 @@ What differs from the old rows:
 
 Noticed, outside 2d's rows: a wire id serializes as `{ "value": ... }` rather than a bare string; the Response DTOs' `ETag` serializes as `eTag`, where the contract says `etag` (2e); and no endpoint yet sends `Cache-Control: no-store` for a `Confidential` or `Restricted` response, nor does the document carry `x-problem-types` (contract law §6 and §7).
 
-### Slices 2e and 2f (to do)
+### Slice 2e: concurrency and the remaining behaviour tests (done)
+
+Versioned writes (`IVersionedCommand`, `ExpectedVersion` from `If-Match`, the precondition behavior, and the unit of work's check of the aggregate as loaded); create-only with `If-None-Match: *`; a tenant scope in the dispatch context, set on new products and applied by every read; a span for every pipeline step, with the handler's last; OpenTelemetry tracing and the trust boundary; the rate limiter moved ahead of authorization; and a domain test project. All 132 tests pass, and `check-rancho-dotnet.py` catches 133 of 133 seeds, 26 of them new.
+
+| Mechanism | Rows |
+|---|---|
+| The types themselves | BE-115, refusal half: a versioned command carries `ExpectedVersion`; the precondition behavior refuses a missing or `*` tag (428) and one that can never match (412) before the handler; the unit of work refuses a stale one (412) against the aggregate as loaded, before anything commits, and turns a race lost at commit into 412. A command that changes a loaded aggregate without being an `IVersionedCommand` fails the dispatch. BE-141: a domain outcome is an enum, so CS8509 proves every translation. |
+| `tests/Architecture.Tests` | BE-141 (a domain type named for an outcome is an enum) |
+| `tests/Api.Tests`, against the built host | BE-127 (every rate-limit policy the routes use answers 429 problem details with `Retry-After`); BE-139 (a caller's `traceparent` gets a new trace id and a link to the caller's, with OpenTelemetry's instrumentation registered) |
+| `tests/Catalog.IntegrationTests` | BE-115 (each versioned write: missing and `*` are 428, stale and weak tags 412; create-only for an existing id 412); BE-117 (another tenant's product is never read, listed, renamed, restocked or overwritten, and a principal with no tenant holds no policy); BE-122 (every route refuses a principal its policy doesn't admit, and records the refusal); BE-128 (the spans of every behavior the container resolves for a command and for a paged query are nested in pipeline order, the handler's last) |
+| `tests/Domain.Tests` | BE-138: tests of every invariant and outcome, and a check that every public domain method has a test named for it, every outcome a `<Method>_Returns<Outcome>_` test, and every validating constructor a `New_` test |
+| `tests/Platform.Tests` | The guard on a write to a loaded aggregate without a precondition |
+
+Decided while building: tenancy is a scope, not a domain concept. The product's `TenantId` is an EF shadow property the repository sets on create and filters on load; the queries filter by it in their LINQ or SQL. The composition root reads the tenant from the token's `tenant` claim, and each Catalog policy requires one. The rate limiter now runs before authorization, so a refused request spends a permit; before, a caller could send refused requests without limit. And the service has one database: the composition root binds `ConnectionStrings:Database` once, `AddModuleDbContext` no longer takes a connection string, and a host test proves every module's context connects to that database. Each module keeps its own context and schema, as modular law §6 says; before, each module read a connection string of its own, so a second module could have split into a second database.
+
+What differs from the old rows:
+
+- **BE-115:** stale detection doesn't need each handler's code. The unit of work compares the expected version with every aggregate the handler loaded, so a handler that forgets can't let a stale write through. Which operations are versioned is still the message author's choice, kept honest by the guard on unversioned writes to loaded aggregates.
+- **BE-117:** proven per operation, as the row asks. Nothing yet checks that a new query applies the tenant predicate; its tenancy test is the reference's pattern, and review reaches the rest.
+- **BE-122:** one test over every mapped route, so a new operation is reached without a new test. It needs SQL Server, because a transport refusal is audited.
+- **BE-127:** there is no `GlobalLimiter`; the OpenAPI endpoint, mapped only in Development, is under no limit.
+- **BE-128:** the expected steps are read from the container for each message, so a new behavior is reached; one command and one paged query are dispatched.
+- **BE-138:** the check is by test name: it proves a test exists for each member and outcome, not that the test asserts the right thing.
+- **BE-139:** every caller is outside the trust boundary, because the template has one edge. A deployment with an internal edge whose callers it trusts decides that at the edge, which the template doesn't model.
+- **BE-120:** deferred, below; the template has no upload endpoint.
+
+### Slice 2f (to do)
 
 | Slice | Rows |
 |---|---|
-| 2e Concurrency and the remaining behaviour tests | tests BE-115, BE-117, BE-120, BE-122, BE-127, BE-128, BE-138, BE-139, BE-141 |
 | 2f Outbox delivery and reactions (split from 2b) | test BE-92 (delivery restores the trace context); reactions and sagas, modular law §5 |
 
 ## Deferred: features modular law §12 doesn't cover yet
@@ -111,6 +136,7 @@ The rule for these is "stop and ask". Each row comes back as a check when the fi
 | AI agents | BE-31, BE-58, BE-59, BE-62 to BE-69, BE-71, BE-72, BE-103, BE-114, BE-123 |
 | Caching | BE-44 to BE-49, BE-60, BE-140 |
 | Real-time | BE-74, BE-75, BE-121 |
+| Uploads (modular law §12 doesn't name them yet) | test BE-120 |
 | External authorities (modular §8 keeps the principle) | BE-99, BE-100, BE-102, BE-104 (BE-101 is covered in slice 2a) |
 
 ## Dropped: the check costs more than the mistake

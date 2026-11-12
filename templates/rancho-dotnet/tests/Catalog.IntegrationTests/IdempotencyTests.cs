@@ -74,7 +74,7 @@ public sealed class IdempotencyTests(SqlServer sql)
         var key = Guid.NewGuid().ToString();
 
         await ReceiveStock(Writer(sql, "alice"), product, 5, key);
-        var bob = await ReceiveStock(Writer(sql, "bob"), product, 5, key);
+        var bob = await ReceiveStock(Writer(sql, "bob"), product, 5, key, version: 2);
 
         bob.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await sql.Scalar<int>($"SELECT StockOnHand AS Value FROM catalog.Products WHERE Id = {product}")).ShouldBe(10);

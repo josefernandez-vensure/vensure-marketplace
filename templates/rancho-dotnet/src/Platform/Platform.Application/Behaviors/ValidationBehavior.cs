@@ -12,7 +12,7 @@ public sealed class ValidationBehavior<TMessage, TResponse>(IEnumerable<IValidat
 {
     public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)
     {
-        using var activity = DispatchTelemetry.Source.StartActivity("validate");
+        using var activity = DispatchTelemetry.StartStep("validate", GetType());
         var failures = new List<FluentValidation.Results.ValidationFailure>();
         foreach (var validator in validators)
         {

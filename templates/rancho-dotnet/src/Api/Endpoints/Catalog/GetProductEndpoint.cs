@@ -14,9 +14,15 @@ public sealed class GetProductEndpoint : IEndpoint<GetProduct>
 
     public static Delegate Handler => Handle;
 
-    private static async Task<Results<Ok<ProductResponse>, ProblemHttpResult>> Handle([ClassOf<ProductId>] Guid id, ISender sender, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<ProductResponse>, ProblemHttpResult>> Handle([ClassOf<ProductId>] Guid id, HttpResponse response, ISender sender, CancellationToken cancellationToken)
     {
         var result = await sender.Send(new GetProduct(new ProductId(id)), cancellationToken);
+        if (result.IsSuccess)
+        {
+            // A read returns the ETag the client sends back as If-Match.
+            response.Headers.ETag = result.Value.Etag;
+        }
+
         return result.ToOk();
     }
 }

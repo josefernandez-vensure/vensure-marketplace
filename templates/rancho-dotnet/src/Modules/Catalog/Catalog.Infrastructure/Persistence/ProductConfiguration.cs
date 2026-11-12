@@ -15,6 +15,10 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasConversion(name => name.Value, value => new ProductName(value))
             .HasMaxLength(ProductName.MaxLength);
         builder.Property(p => p.Version).IsConcurrencyToken();
+
+        // Tenancy is a scope, not a domain concept: the repository sets it on a new product and every read filters by it.
+        builder.Property<Guid>(ProductRepository.TenantColumn);
+        builder.HasIndex(ProductRepository.TenantColumn);
         builder.Ignore(p => p.DomainEvents);
     }
 }

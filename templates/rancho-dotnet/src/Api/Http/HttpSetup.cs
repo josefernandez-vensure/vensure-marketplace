@@ -17,11 +17,13 @@ public static class HttpSetup
         {
             var http = sp.GetRequiredService<IHttpContextAccessor>().HttpContext
                 ?? throw new InvalidOperationException("An HTTP dispatch needs a request; jobs and reactions build their own DispatchContext.");
-            // The composition root decides who the principal is: the token's subject. Application code never reads a claim.
+            // The composition root decides who the principal is, the token's subject, and which records it may see,
+            // the token's tenant. Application code never reads a claim.
             return new DispatchContext(
                 http.User,
                 http.User.FindFirst("sub")?.Value ?? "anonymous",
                 CurrentTraceId(),
+                Guid.TryParse(http.User.FindFirst("tenant")?.Value, out var tenant) ? new TenantId(tenant) : null,
                 http.Request.Headers["Idempotency-Key"].FirstOrDefault());
         });
 

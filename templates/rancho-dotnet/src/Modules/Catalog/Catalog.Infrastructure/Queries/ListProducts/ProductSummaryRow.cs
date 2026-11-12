@@ -10,6 +10,8 @@ internal sealed class ProductSummaryRow
     public Guid Id { get; private set; }
 
     public string Name { get; private set; } = string.Empty;
+
+    public Guid TenantId { get; private set; }
 }
 
 internal sealed class ProductSummaryRowConfiguration : IEntityTypeConfiguration<ProductSummaryRow>

@@ -14,4 +14,4 @@ public sealed record ProductResponse(
     [ClassOf<ProductName>] string Name,
     [Public] bool IsDiscontinued,
     [Internal] int StockOnHand,
-    [Internal] string ETag);
+    [Internal] string Etag);

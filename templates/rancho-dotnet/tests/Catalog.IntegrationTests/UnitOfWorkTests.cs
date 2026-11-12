@@ -37,7 +37,7 @@ public sealed class UnitOfWorkTests(SqlServer sql)
         var product = await CreateProduct(client, "Original");
         await sql.Execute($"UPDATE catalog.Products SET IsDiscontinued = 1 WHERE Id = {product}");
 
-        var response = await client.PostAsJsonAsync($"/catalog/products/{product}/rename", new { name = "Renamed" }, Cancel);
+        var response = await Rename(client, product, "Renamed", Tag(1));
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         (await ProblemType(response)).ShouldBe(CatalogProblems.ProductDiscontinued.Uri);
@@ -47,7 +47,7 @@ public sealed class UnitOfWorkTests(SqlServer sql)
     }
 
     [Fact]
-    public async Task A_stale_write_is_a_conflict_not_an_exception()
+    public async Task A_write_that_loses_a_race_is_a_failed_precondition_not_an_exception()
     {
         var product = await CreateProduct(Writer(sql));
         using var scope = sql.Api.Services.CreateScope();
@@ -60,8 +60,8 @@ public sealed class UnitOfWorkTests(SqlServer sql)
         await sql.Execute($"UPDATE catalog.Products SET Version = Version + 1 WHERE Id = {product}");
 
         var result = await scope.ServiceProvider.GetRequiredService<ISender>()
-            .Send(new RenameProduct(new ProductId(product), "Too late"), Cancel);
+            .Send(new RenameProduct(new ProductId(product), "Too late", new ExpectedVersion(1)), Cancel);
 
-        result.Problem?.Type.ShouldBe(PlatformProblems.Conflict);
+        result.Problem?.Type.ShouldBe(PlatformProblems.PreconditionFailed);
     }
 }

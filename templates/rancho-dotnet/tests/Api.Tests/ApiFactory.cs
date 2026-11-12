@@ -34,9 +34,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         });
     }
 
+    /// <summary>The tenant every test principal belongs to.</summary>
+    public static readonly Guid Tenant = Guid.Parse("7a1c2d3e-0000-4000-8000-000000000001");
+
     public static ClaimsPrincipal Principal(string subject, params string[] permissions) =>
         new(new ClaimsIdentity(
-            [new Claim("sub", subject), .. permissions.Select(p => new Claim("permissions", p))],
+            [new Claim("sub", subject), new Claim("tenant", Tenant.ToString()), .. permissions.Select(p => new Claim("permissions", p))],
             HeaderAuthentication.SchemeName));
 
     public HttpClient ClientFor(string subject, params string[] permissions)

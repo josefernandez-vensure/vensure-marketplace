@@ -137,9 +137,9 @@ TEST = [
     ("A_query_never_loads_an_aggregate",
      lambda: edit(QH, "        var id = query.ProductId.Value;", "        _ = await db.Products.CountAsync(cancellationToken);\n        var id = query.ProductId.Value;")),
     ("Messages_and_responses_carry_no_domain_types",
-     lambda: edit(CAT + "Catalog.Application/GetProduct/GetProduct.cs", "string ETag)", "string ETag, Catalog.Domain.Products.ProductName? Display = null)")),
+     lambda: edit(CAT + "Catalog.Application/GetProduct/GetProduct.cs", "string Etag)", "string Etag, Catalog.Domain.Products.ProductName? Display = null)")),
     ("Handlers_do_not_log",
-     lambda: (edit(QH, "public sealed class GetProductHandler(CatalogDbContext db)", "public sealed class GetProductHandler(CatalogDbContext db, Microsoft.Extensions.Logging.ILogger<GetProductHandler> logger)"),
+     lambda: (edit(QH, "public sealed class GetProductHandler(CatalogDbContext db, DispatchContext dispatch)", "public sealed class GetProductHandler(CatalogDbContext db, DispatchContext dispatch, Microsoft.Extensions.Logging.ILogger<GetProductHandler> logger)"),
               edit(QH, "        var id = query.ProductId.Value;", "        _ = logger;\n        var id = query.ProductId.Value;"))),
     ("Application_and_domain_read_no_raw_claims",
      lambda: write(CAT + "Catalog.Application/CreateProduct/Who.cs", "namespace Catalog.Application.CreateProduct;\n\npublic static class Who\n{\n    public static string? Name(System.Security.Claims.ClaimsPrincipal user) => user.Identity?.Name;\n}\n")),
@@ -181,7 +181,7 @@ TEST = [
     ("Every_paged_query_declares_a_maximum_within_the_ceiling",
      lambda: edit(CAT + "Catalog.Application/ListProducts/ListProducts.cs", "public static int MaxPageSize => 50;", "public static int MaxPageSize => 500;")),
     ("A_paged_query_orders_only_through_its_keyset",
-     lambda: edit(LIST, "var rows = db.Set<ProductSummaryRow>().AsNoTracking();", "var rows = db.Set<ProductSummaryRow>().AsNoTracking().OrderBy(r => r.Name).AsQueryable();")),
+     lambda: edit(LIST, ".AsNoTracking().Where(r => r.TenantId == tenant);", ".AsNoTracking().Where(r => r.TenantId == tenant).OrderBy(r => r.Name).AsQueryable();")),
     ("Only_the_codec_seals_and_opens_cursors",
      lambda: write(CAT + "Catalog.Infrastructure/Queries/ListProducts/Peek.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Infrastructure.Queries.ListProducts;\n\ninternal static class Peek\n{\n    public static PageCursor Make() => new(\"x\", Guid.Empty);\n}\n")),
     ("No_static_mutable_state",
@@ -206,6 +206,8 @@ TEST = [
      lambda: write(CAT + "Catalog.Contracts/IntegrationEvents/ProductTaxedV1.cs", "using Platform.Application.Abstractions;\nusing SharedKernel;\n\nnamespace Catalog.Contracts.IntegrationEvents;\n\npublic sealed record ProductTaxedV1(ProductId ProductId, [Restricted] string TaxNumber) : IIntegrationEvent;\n")),
     ("No_committed_configuration_file_holds_a_secret",
      lambda: edit("src/Api/appsettings.Development.json", '  "Logging": {', '  "Smtp": {\n    "Password": "hunter2"\n  },\n  "Logging": {')),
+    ("Domain_outcomes_are_enums",
+     lambda: write(CAT + "Catalog.Domain/Products/ArchiveOutcome.cs", "namespace Catalog.Domain.Products;\n\npublic sealed record ArchiveOutcome(bool Archived);\n")),
 ]
 
 PROGRAM = "src/Api/Program.cs"
@@ -214,6 +216,7 @@ BEHAVIOR = "src/Platform/Platform.Application/Behaviors/UnitOfWorkBehavior.cs"
 PRODUCT_CONFIG = CAT + "Catalog.Infrastructure/Persistence/ProductConfiguration.cs"
 HTTP = "src/Api/Http/HttpSetup.cs"
 OPENAPI = "src/Api/OpenApi/ContractDocument.cs"
+TRACING = "src/Api/Telemetry/TraceBoundary.cs"
 
 # API seeds, each run alone so that one seed cannot make another seed's test fail: (expected failing tests, edits)
 API = [
@@ -230,9 +233,9 @@ API = [
     (["Every_options_class_the_solution_binds_has_a_validator", "A_missing_or_unusable_limit_stops_startup"],
      lambda: edit(HTTP, "            .Validate(o => o.PermitLimit > 0 && o.Window > TimeSpan.Zero, \"Rate limits need a positive permit limit and window; a missing limit denies.\")\n", "")),
     (["The_committed_openapi_document_is_the_one_the_host_generates"],
-     lambda: edit("src/Api/Endpoints/Catalog/RenameProductEndpoint.cs", "RenameProductResponse([Internal] string ETag)", "RenameProductResponse([Internal] string ETag, [Internal] int Attempts = 0)")),
+     lambda: edit("src/Api/Endpoints/Catalog/RenameProductEndpoint.cs", "RenameProductResponse([Internal] string Etag)", "RenameProductResponse([Internal] string Etag, [Internal] int Attempts = 0)")),
     (["Every_property_and_parameter_schema_carries_its_data_class"],
-     lambda: edit("src/Api/Endpoints/Catalog/ReceiveStockEndpoint.cs", "ReceiveStockResponse([Internal] string ETag)", "ReceiveStockResponse([Internal] string ETag, long Version = 0)")),
+     lambda: edit("src/Api/Endpoints/Catalog/ReceiveStockEndpoint.cs", "ReceiveStockResponse([Internal] string Etag)", "ReceiveStockResponse([Internal] string Etag, long Version = 0)")),
     (["Every_property_and_parameter_schema_carries_its_data_class"],
      lambda: edit(OPENAPI, "ContractDocument.SetDataClass(schema, Require(OfParameter(parameter), parameter.Name));", "_ = OfParameter(parameter);")),
     (["Every_array_a_success_returns_is_bounded_and_a_page_by_its_maximum_page_size"],
@@ -241,12 +244,27 @@ API = [
      lambda: edit(PROGRAM, "builder.Logging.EnableRedaction();\n", "")),
     (["A_classified_logging_parameter_is_redacted_in_the_providers_output"],
      lambda: edit(PROGRAM, ".SetFallbackRedactor<ErasingRedactor>()", ".SetFallbackRedactor<NullRedactor>()")),
+    (["Every_rate_limit_refuses_a_request_beyond_it_with_problem_details_and_retry_after"],
+     lambda: edit(HTTP, "context.HttpContext.Response.Headers.RetryAfter = ((int)retryAfter.TotalSeconds).ToString(CultureInfo.InvariantCulture);", "_ = retryAfter;")),
+    (["Every_rate_limit_refuses_a_request_beyond_it_with_problem_details_and_retry_after"],
+     lambda: edit(PROGRAM, "app.UseRateLimiter();\napp.UseAuthorization();", "app.UseAuthorization();\napp.UseRateLimiter();")),
+    (["A_callers_traceparent_starts_a_new_trace_linked_to_the_callers"],
+     lambda: edit(TRACING, "        builder.Services.AddSingleton<DistributedContextPropagator>(new NewTracePropagator());\n", "")),
+    (["A_callers_traceparent_starts_a_new_trace_linked_to_the_callers"],
+     lambda: edit(TRACING, "        Sdk.SetDefaultTextMapPropagator(new TraceContextPropagator());\n", "")),
+    (["A_callers_traceparent_starts_a_new_trace_linked_to_the_callers"],
+     lambda: edit(PROGRAM, "app.UseTraceBoundary();\n", "")),
+    (["Every_module_context_connects_to_the_one_database"],
+     lambda: edit(CAT + "Catalog.Infrastructure/CatalogModule.cs", "        services.AddModuleDbContext<CatalogDbContext>(CatalogDbContext.SchemaName);\n", "        services.AddModuleDbContext<CatalogDbContext>(CatalogDbContext.SchemaName);\n        services.AddDbContext<CatalogDbContext>(options => Microsoft.EntityFrameworkCore.SqlServerDbContextOptionsExtensions.UseSqlServer(options, \"Server=localhost;Database=Catalog\"));\n")),
+    (["A_missing_database_connection_string_stops_startup", "Every_options_class_the_solution_binds_has_a_validator"],
+     lambda: edit("src/Platform/Platform.Infrastructure/PlatformPersistence.cs", "            .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString), $\"ConnectionStrings:{ConnectionStringName} is missing; every module's schema lives in that one database.\")\n", "")),
 ]
 
 
 MODEL = "tests/Architecture.Tests"
 SQL = "tests/Catalog.IntegrationTests"
 UNIT = "tests/Platform.Tests"
+DOMAIN_TESTS = "tests/Domain.Tests"
 
 ISOLATED = [
     (MODEL, ["Each_module_has_one_context_on_its_own_schema"],
@@ -276,7 +294,7 @@ ISOLATED = [
      lambda: edit(UOW, "        StageDomainEvents();\n        try", "        try")),
     (UNIT, ["A_failure_discards_what_the_handler_staged_before_it_is_recorded"],
      lambda: edit(BEHAVIOR, "so a replay returns it.\n        unit.Discard();\n", "so a replay returns it.\n")),
-    (SQL, ["A_stale_write_is_a_conflict_not_an_exception"],
+    (SQL, ["A_write_that_loses_a_race_is_a_failed_precondition_not_an_exception"],
      lambda: edit(UOW, "        catch (DbUpdateConcurrencyException)\n        {\n            return CommitOutcome.Conflict;\n        }\n", "")),
     (SQL, ["A_principal_without_the_policy_is_refused_at_the_transport_and_recorded"],
      lambda: edit("src/Api/Http/HttpSetup.cs", "        services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler, AuditingAuthorizationResultHandler>();\n", "")),
@@ -304,6 +322,34 @@ ISOLATED = [
      lambda: write(CAT + "Catalog.Contracts/IntegrationEvents/ProductDiscontinuedV1.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Contracts.IntegrationEvents;\n\npublic sealed record ProductDiscontinuedV1(ProductId ProductId) : IIntegrationEvent;\n")),
     (MODEL, ["No_committed_configuration_file_holds_a_secret"],
      lambda: edit("src/Api/appsettings.json", "Integrated Security=true;", "User Id=catalog;Password=Pa55word;")),
+
+    (DOMAIN_TESTS, ["Every_domain_method_constructor_and_outcome_has_its_test"],
+     lambda: edit(PRODUCT, "    public void Discontinue()", "    public bool IsInStock() => StockOnHand > 0;\n\n    public void Discontinue()")),
+    (DOMAIN_TESTS, ["Every_domain_method_constructor_and_outcome_has_its_test"],
+     lambda: (edit(CAT + "Catalog.Domain/Products/RenameOutcome.cs", "    Discontinued,", "    Discontinued,\n    Reserved,"),
+              edit(CAT + "Catalog.Application/RenameProduct/RenameProductHandler.cs", "            RenameOutcome.Discontinued => CatalogProblems.ProductDiscontinued.With(),", "            RenameOutcome.Discontinued => CatalogProblems.ProductDiscontinued.With(),\n            RenameOutcome.Reserved => CatalogProblems.ProductDiscontinued.With(),"))),
+    (SQL, ["RenameProduct_ReturnsPreconditionRequired_WhenIfMatchIsMissingOrAny", "ReceiveStock_ReturnsPreconditionRequired_WhenIfMatchIsMissingOrAny"],
+     lambda: edit(PROGRAM, "        typeof(PreconditionBehavior<,>),\n", "")),
+    (SQL, ["RenameProduct_ReturnsPreconditionFailed_WhenIfMatchIsStale", "ReceiveStock_ReturnsPreconditionFailed_WhenIfMatchIsStale"],
+     lambda: edit(BEHAVIOR, "if (unit.LoadedVersions.Any(v => !versioned.ExpectedVersion.Matches(v)))", "if (unit.LoadedVersions.Any(v => !versioned.ExpectedVersion.Matches(v)) && versioned.ExpectedVersion.Unmatchable)")),
+    (SQL, ["CreateProduct_ReturnsPreconditionFailed_WhenCreateOnlyAndTheIdExists"],
+     lambda: edit(CAT + "Catalog.Application/CreateProduct/CreateProductHandler.cs", "return command.CreateOnly ? PlatformProblems.PreconditionFailed.With() : command.ProductId;", "return command.ProductId;")),
+    (SQL, ["RenameProduct_ReturnsNotFound_WhenTheProductIsAnotherTenants", "ReceiveStock_ReturnsNotFound_WhenTheProductIsAnotherTenants"],
+     lambda: edit(REPO, "p => p.Id == id && EF.Property<Guid>(p, TenantColumn) == tenant", "p => p.Id == id")),
+    (SQL, ["GetProduct_ReturnsNotFound_WhenTheProductIsAnotherTenants"],
+     lambda: edit(QH, " AND TenantId = {tenant}", "")),
+    (SQL, ["ListProducts_ReturnsNoProduct_OfAnotherTenant"],
+     lambda: edit(LIST, ".AsNoTracking().Where(r => r.TenantId == tenant);", ".AsNoTracking();")),
+    (SQL, ["Every_operation_refuses_a_principal_its_policy_does_not_admit"],
+     lambda: edit(CAT + "Catalog.Infrastructure/CatalogModule.cs", '.RequireClaim("tenant").RequireClaim("permissions", CatalogPolicies.Write));', '.RequireClaim("tenant"));')),
+    (SQL, ["A_principal_with_the_permission_but_no_tenant_is_refused"],
+     lambda: edit(CAT + "Catalog.Infrastructure/CatalogModule.cs", 'policy.RequireAuthenticatedUser().RequireClaim("tenant").RequireClaim("permissions", CatalogPolicies.Read)', 'policy.RequireAuthenticatedUser().RequireClaim("permissions", CatalogPolicies.Read)')),
+    (SQL, ["Every_step_of_a_paged_query_emits_a_span_nested_in_pipeline_order"],
+     lambda: edit("src/Platform/Platform.Application/Behaviors/PagingBehavior.cs", '        using var activity = DispatchTelemetry.StartStep("page", GetType());\n', "")),
+    (SQL, ["Every_step_of_a_command_emits_a_span_nested_in_pipeline_order", "Every_step_of_a_paged_query_emits_a_span_nested_in_pipeline_order"],
+     lambda: edit("src/Platform/Platform.Application/Behaviors/AuthorizationBehavior.cs", '        using var activity = DispatchTelemetry.StartStep("authorize", GetType());\n', "")),
+    (UNIT, ["A_write_to_a_loaded_aggregate_without_a_precondition_fails_the_dispatch"],
+     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates)", "else if (unit.ChangesLoadedAggregates && message is null)")),
 ]
 
 

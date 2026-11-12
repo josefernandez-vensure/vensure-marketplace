@@ -15,6 +15,12 @@ public interface IUnitOfWork
     /// <summary>Whether the module's context holds a staged change.</summary>
     bool HasChanges { get; }
 
+    /// <summary>The versions, as loaded, of the aggregates the handler read from the database.</summary>
+    IReadOnlyList<long> LoadedVersions { get; }
+
+    /// <summary>Whether the handler changed an aggregate it loaded, rather than only adding new ones.</summary>
+    bool ChangesLoadedAggregates { get; }
+
     Task<RecordedResult?> FindAttempt(AttemptIdentity attempt, CancellationToken cancellationToken);
 
     void StageAttempt(AttemptIdentity attempt, RecordedResult result);

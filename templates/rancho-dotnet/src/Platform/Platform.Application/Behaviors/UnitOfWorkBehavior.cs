@@ -16,7 +16,7 @@ public sealed class UnitOfWorkBehavior<TMessage, TResponse>(IUnitOfWorkFactory u
 {
     public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)
     {
-        using var activity = DispatchTelemetry.Source.StartActivity("unit-of-work");
+        using var activity = DispatchTelemetry.StartStep("unit-of-work", GetType());
         var operation = TMessage.Operation;
         var unit = units.For(typeof(TMessage));
 
@@ -53,6 +53,21 @@ public sealed class UnitOfWorkBehavior<TMessage, TResponse>(IUnitOfWorkFactory u
             throw;
         }
 
+        if (message is IVersionedCommand versioned)
+        {
+            // The precondition is evaluated before anything is written, whatever the handler decided.
+            if (unit.LoadedVersions.Any(v => !versioned.ExpectedVersion.Matches(v)))
+            {
+                result = TResponse.Failure(PlatformProblems.PreconditionFailed.With());
+            }
+        }
+        else if (unit.ChangesLoadedAggregates)
+        {
+            unit.Discard();
+            throw new InvalidOperationException(
+                $"{operation.Id} changed an aggregate it loaded, but its message is not an IVersionedCommand. A write to an existing resource carries If-Match.");
+        }
+
         if (result.IsSuccess)
         {
             if (attempt is not null)
@@ -74,7 +89,8 @@ public sealed class UnitOfWorkBehavior<TMessage, TResponse>(IUnitOfWorkFactory u
                 return Answer(winner, fingerprint);
             }
 
-            result = TResponse.Failure(PlatformProblems.Conflict.With());
+            // Someone changed the aggregate between this load and this commit.
+            result = TResponse.Failure(message is IVersionedCommand ? PlatformProblems.PreconditionFailed.With() : PlatformProblems.Conflict.With());
         }
 
         // A failure: nothing the handler staged survives. The failure is recorded on its own, so a replay returns it.

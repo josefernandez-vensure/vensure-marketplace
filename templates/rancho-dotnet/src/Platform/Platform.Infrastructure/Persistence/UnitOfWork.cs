@@ -28,6 +28,15 @@ internal sealed class UnitOfWork(ModuleDbContext db, DispatchContext dispatch, T
 
     public bool HasChanges => db.ChangeTracker.HasChanges();
 
+    public IReadOnlyList<long> LoadedVersions =>
+        db.ChangeTracker.Entries<IAggregateRoot>()
+            .Where(e => e.State is not (EntityState.Added or EntityState.Detached))
+            .Select(e => (long)e.OriginalValues[nameof(IAggregateRoot.Version)]!)
+            .ToList();
+
+    public bool ChangesLoadedAggregates =>
+        db.ChangeTracker.Entries<IAggregateRoot>().Any(e => e.State is EntityState.Modified or EntityState.Deleted);
+
     public async Task<RecordedResult?> FindAttempt(AttemptIdentity attempt, CancellationToken cancellationToken)
     {
         var record = await db.Set<IdempotencyRecord>().AsNoTracking().SingleOrDefaultAsync(

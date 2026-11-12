@@ -99,6 +99,15 @@ public sealed class DomainTests
             .ShouldHaveNoViolations("A repository loads and saves whole aggregates and exposes no IQueryable.");
     }
 
+    [Fact]
+    public void Domain_outcomes_are_enums()
+    {
+        TypesOf(Kinds.Domain)
+            .Where(t => !t.IsEnum && (t.Name.EndsWith("Outcome", StringComparison.Ordinal) || t.Name.EndsWith("Result", StringComparison.Ordinal)))
+            .Select(t => $"{t.FullName} is an outcome that isn't an enum")
+            .ShouldHaveNoViolations("A business rejection is an outcome enum, so a translation with no discard arm fails the build when an outcome is added (CS8509).");
+    }
+
     internal static bool IsMessage(Type type) =>
         !type.IsAbstract && type.GetInterfaces().Any(i => i.FullName == "Mediator.IMessage");
 

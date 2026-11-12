@@ -12,18 +12,16 @@ public static class CatalogModule
 {
     public static IServiceCollection AddCatalogModule(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("Catalog")
-            ?? throw new InvalidOperationException("Connection string 'Catalog' is missing.");
-
-        services.AddModuleDbContext<CatalogDbContext>(connectionString, CatalogDbContext.SchemaName);
+        services.AddModuleDbContext<CatalogDbContext>(CatalogDbContext.SchemaName);
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddValidatorsFromAssembly(typeof(CatalogPolicies).Assembly, ServiceLifetime.Scoped);
 
         // Claims map to policies here, at the composition root. Application code names only the policy.
         services.AddAuthorizationCore(options =>
         {
-            options.AddPolicy(CatalogPolicies.Read, policy => policy.RequireAuthenticatedUser().RequireClaim("permissions", CatalogPolicies.Read));
-            options.AddPolicy(CatalogPolicies.Write, policy => policy.RequireAuthenticatedUser().RequireClaim("permissions", CatalogPolicies.Write));
+            // Catalog data is a tenant's: a principal with no tenant holds neither policy.
+            options.AddPolicy(CatalogPolicies.Read, policy => policy.RequireAuthenticatedUser().RequireClaim("tenant").RequireClaim("permissions", CatalogPolicies.Read));
+            options.AddPolicy(CatalogPolicies.Write, policy => policy.RequireAuthenticatedUser().RequireClaim("tenant").RequireClaim("permissions", CatalogPolicies.Write));
         });
 
         return services;

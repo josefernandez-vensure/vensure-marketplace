@@ -42,13 +42,35 @@ namespace Catalog.Infrastructure.Persistence.Migrations
                     b.Property<int>("StockOnHand")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<long>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
+                    b.HasIndex("TenantId");
+
                     b.ToTable("Products", "catalog");
+                });
+
+            modelBuilder.Entity("Catalog.Infrastructure.Queries.ListProducts.ProductSummaryRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.ToTable((string)null);
+
+                    b.ToView("Products", "catalog");
                 });
 
             modelBuilder.Entity("Platform.Infrastructure.Persistence.AuditRecord", b =>

@@ -13,7 +13,7 @@ public sealed class LoggingBehavior<TMessage, TResponse>(ILogger<LoggingBehavior
     public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)
     {
         var operation = TMessage.Operation;
-        using var activity = DispatchTelemetry.Source.StartActivity(operation.Id);
+        using var activity = DispatchTelemetry.StartStep(operation.Id, GetType());
         activity?.SetTag("operation.kind", operation.Kind.ToString());
 
         var started = time.GetTimestamp();

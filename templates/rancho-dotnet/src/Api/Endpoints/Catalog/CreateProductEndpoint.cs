@@ -1,6 +1,7 @@
 using Catalog.Application.CreateProduct;
 using Catalog.Contracts;
 using Mediator;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http.HttpResults;
 using SharedKernel;
 
@@ -16,9 +17,13 @@ public sealed class CreateProductEndpoint : IEndpoint<CreateProduct>
 
     public static Delegate Handler => Handle;
 
-    private static async Task<Results<Created, ProblemHttpResult>> Handle(CreateProductRequest request, ISender sender, CancellationToken cancellationToken)
+    private static async Task<Results<Created, ProblemHttpResult>> Handle(
+        CreateProductRequest request,
+        [FromHeader(Name = "If-None-Match"), Internal] string? ifNoneMatch,
+        ISender sender,
+        CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new CreateProduct(new ProductId(request.Id), request.Name), cancellationToken);
+        var result = await sender.Send(new CreateProduct(new ProductId(request.Id), request.Name, CreateOnly: ifNoneMatch?.Trim() == "*"), cancellationToken);
         return result.ToCreated(id => $"/catalog/products/{id.Value}");
     }
 }

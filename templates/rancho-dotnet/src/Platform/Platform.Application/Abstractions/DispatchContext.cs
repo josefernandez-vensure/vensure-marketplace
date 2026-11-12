@@ -3,12 +3,12 @@ using System.Security.Claims;
 namespace Platform.Application.Abstractions;
 
 /// <summary>
-/// Who is acting, and the trace this work belongs to. The composition root builds it for each request, job, or reaction;
+/// Who is acting, which records they may see, and the trace this work belongs to. The composition root builds it for each request, job, or reaction;
 /// nothing reads the principal from an ambient source. It can't be built without a trace id.
 /// </summary>
 public sealed class DispatchContext
 {
-    public DispatchContext(ClaimsPrincipal principal, string principalId, string traceId, string? idempotencyKey = null)
+    public DispatchContext(ClaimsPrincipal principal, string principalId, string traceId, TenantId? tenant, string? idempotencyKey = null)
     {
         ArgumentNullException.ThrowIfNull(principal);
         ArgumentException.ThrowIfNullOrWhiteSpace(principalId);
@@ -20,6 +20,7 @@ public sealed class DispatchContext
         Principal = principal;
         PrincipalId = principalId;
         TraceId = traceId;
+        Tenant = tenant;
         IdempotencyKey = string.IsNullOrWhiteSpace(idempotencyKey) ? null : idempotencyKey;
     }
 
@@ -29,6 +30,9 @@ public sealed class DispatchContext
     public string PrincipalId { get; }
 
     public string TraceId { get; }
+
+    /// <summary>The records the principal may see: its tenant's. Null sees none. Every read and write of tenant data is scoped by it.</summary>
+    public TenantId? Tenant { get; }
 
     /// <summary>The client's Idempotency-Key, or an agent's key derived from its run and step.</summary>
     public string? IdempotencyKey { get; }

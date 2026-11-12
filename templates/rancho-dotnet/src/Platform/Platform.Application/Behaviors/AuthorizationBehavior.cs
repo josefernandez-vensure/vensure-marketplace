@@ -20,7 +20,7 @@ public sealed class AuthorizationBehavior<TMessage, TResponse>(
 {
     public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)
     {
-        using var activity = DispatchTelemetry.Source.StartActivity("authorize");
+        using var activity = DispatchTelemetry.StartStep("authorize", GetType());
         var decision = await authorization.AuthorizeAsync(context.Principal, TMessage.Operation.Policy);
         if (decision.Succeeded)
         {

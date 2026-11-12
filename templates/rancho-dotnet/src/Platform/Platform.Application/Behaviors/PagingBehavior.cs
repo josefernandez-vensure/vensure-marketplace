@@ -13,6 +13,7 @@ public sealed class PagingBehavior<TMessage, TResponse>(ICursorCodec cursors) : 
 {
     public async ValueTask<TResponse> Handle(TMessage message, MessageHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken)
     {
+        using var activity = DispatchTelemetry.StartStep("page", GetType());
         var errors = new Dictionary<string, string[]>();
         if (message.PageSize < 1 || message.PageSize > TMessage.MaxPageSize)
         {

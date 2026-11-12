@@ -5,10 +5,10 @@ using Shouldly;
 
 namespace Platform.Tests;
 
-/// <summary>The behavior's guard for a command that declares it does not persist. No module has one yet, so a fake stands in.</summary>
+/// <summary>The behavior's guards no module's command can trip on purpose: a fake stands in for the unit of work.</summary>
 public sealed class UnitOfWorkBehaviorTests
 {
-    private static readonly DispatchContext Context = new(new ClaimsPrincipal(), "tester", new string('a', 32));
+    private static readonly DispatchContext Context = new(new ClaimsPrincipal(), "tester", new string('a', 32), tenant: null);
 
     [Fact]
     public async Task A_command_that_does_not_persist_fails_the_dispatch_if_it_stages_a_change()
@@ -62,6 +62,27 @@ public sealed class UnitOfWorkBehaviorTests
         unit.Audits.ShouldHaveSingleItem().Outcome.ShouldBe(AuditOutcome.Failed);
     }
 
+    [Fact]
+    public async Task A_write_to_a_loaded_aggregate_without_a_precondition_fails_the_dispatch()
+    {
+        var unit = new FakeUnitOfWork();
+        var behavior = new UnitOfWorkBehavior<RenameCommand, Result>(new FakeFactory(unit), Context, TimeProvider.System);
+
+        // The handler changes an aggregate it loaded, but the message carries no If-Match.
+        await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await behavior.Handle(
+                new RenameCommand(Guid.NewGuid()),
+                (_, _) =>
+                {
+                    unit.HasChanges = true;
+                    unit.ChangesLoadedAggregates = true;
+                    return ValueTask.FromResult(Result.Success());
+                },
+                TestContext.Current.CancellationToken));
+
+        unit.Committed.ShouldBe(0);
+    }
+
     public readonly record struct SubjectId(Guid Value);
 
     public sealed record RenameCommand(SubjectId Subject) : ICommand
@@ -95,6 +116,10 @@ public sealed class UnitOfWorkBehaviorTests
     {
         public bool HasChanges { get; set; }
 
+        public IReadOnlyList<long> LoadedVersions { get; set; } = [];
+
+        public bool ChangesLoadedAggregates { get; set; }
+
         public List<AuditEntry> Audits { get; } = [];
 
         public int Committed { get; private set; }
@@ -117,6 +142,10 @@ public sealed class UnitOfWorkBehaviorTests
             return Task.FromResult(CommitOutcome.Committed);
         }
 
-        public void Discard() => HasChanges = false;
+        public void Discard()
+        {
+            HasChanges = false;
+            ChangesLoadedAggregates = false;
+        }
     }
 }
