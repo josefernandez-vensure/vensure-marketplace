@@ -20,6 +20,14 @@
     <PackageReference Include="xunit.v3.mtp-v2" Version="4.0.3" />
   </ItemGroup>
 
+  <!-- Where the committed files live: the published contract snapshots and the configuration the secret sweep reads. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>SolutionDirectory</_Parameter1>
+      <_Parameter2>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../..'))</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <!-- Every production project, so a new module is checked without editing this file. -->
   <ItemGroup>
     <ProjectReference Include="../../src/**/*.csproj" />

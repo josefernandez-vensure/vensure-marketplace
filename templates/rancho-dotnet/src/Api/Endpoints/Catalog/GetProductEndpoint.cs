@@ -1,6 +1,8 @@
 using Catalog.Application.GetProduct;
 using Catalog.Contracts;
 using Mediator;
+using Microsoft.AspNetCore.Http.HttpResults;
+using SharedKernel;
 
 namespace Api.Endpoints.Catalog;
 
@@ -12,7 +14,7 @@ public sealed class GetProductEndpoint : IEndpoint<GetProduct>
 
     public static Delegate Handler => Handle;
 
-    private static async Task<IResult> Handle(Guid id, ISender sender, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<ProductResponse>, ProblemHttpResult>> Handle([ClassOf<ProductId>] Guid id, ISender sender, CancellationToken cancellationToken)
     {
         var result = await sender.Send(new GetProduct(new ProductId(id)), cancellationToken);
         return result.ToOk();

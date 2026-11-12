@@ -71,11 +71,34 @@ What differs from the old rows: the audit trail is append-only by convention onl
 
 What differs from the old rows: there is no "bounded by construction" collection type yet, so a query can't return a bare collection at all; the type comes with the first query that needs one, with BE-124's second half. The `maxItems` and `x-data-class` half of ROOT-11 and BE-19 is slice 2d's, with the OpenAPI document.
 
-### Slices 2d to 2f (to do)
+### Slice 2d: data classification and OpenAPI (done)
+
+The four class attributes and `[ClassOf<T>]` in `SharedKernel`, with the resolver every egress check shares; log redaction by class at the composition root; typed endpoint results, so the document shows each Response DTO; the OpenAPI document's transformers; the committed `openapi/v1.json` and `contracts/<Module>.json`. All 92 tests pass, and `check-rancho-dotnet.py` catches 107 of 107 seeds, 19 of them new.
+
+| Mechanism | Rows |
+|---|---|
+| The types themselves | BE-54, declaration half: the class attributes are `SharedKernel`'s and derive from `DataClassificationAttribute`; a projected member names its source with `[ClassOf<T>]` and takes its class, so it can't disagree with it. BE-83: the schema transformer throws on a property or parameter whose class it can't resolve, so the document can't be generated. ROOT-16, log half: the redactor's fallback erases, so an unmapped class is treated as `Restricted`. BE-86: the reference table already stops `Contracts` from reaching a `Domain` type, so its test was dropped (principle 3). |
+| `tests/Architecture.Tests` | BE-54 (the attributes live only in `SharedKernel`; a `Contracts` twin agrees with its `Domain` type; a member redeclares no class its type carries; every logging parameter declares its class, and it agrees with its type's); BE-55 and ROOT-16 (everything in a module's `Contracts`, every domain event and every query response resolves to a class); BE-56; BE-61; BE-126, `ToString` half; BE-85, against the committed snapshot; BE-97, the sweep of committed configuration; plus every logging method is built by the redacting generator (`Microsoft.Gen.Logging`) |
+| `tests/Api.Tests`, against the built host | ROOT-09 (the committed document is the one the host generates); ROOT-18 and BE-83 (every property and parameter schema carries `x-data-class`); ROOT-11 and BE-19, document half (every array in a success response carries `maxItems`, and a page's is at least its query's maximum page size); BE-126, provider half (a `[Confidential]` logging parameter reaches the log provider erased) |
+| `build/check-contracts.sh`, in CI | BE-85, merge-base half |
+
+Found while writing and seeding the tests: the first redaction map passed `Public` and `Internal` as one `DataClassificationSet`, which matches only a value carrying both classes, so every `Internal` log parameter was erased. The redaction test caught it; each class is now its own set.
+
+What differs from the old rows:
+
+- **ROOT-09:** a test compares the committed document with the one the host generates. On a difference it rewrites the file and fails, so a change shows in the diff and fails until it's committed; no `git status` step is needed in CI.
+- **BE-55:** the architecture walk starts from each module's `Contracts`, domain events (the outbox carries them) and query responses. The Request and Response DTOs that `Api` declares are reached by the schema transformer instead. Hub, model-visible and cache roots wait for their features (deferred below); no project yet marks a third-party payload or an export.
+- **BE-83:** a `$ref`'d property takes its component's class, as the old row's gap said. The registrar declares the platform's problem responses (400, 401, 403, 429) on every route, so problem details are in the document and classified; a module's own problem statuses aren't listed yet.
+- **BE-85:** the snapshot is each `Contracts` type's JSON schema, as the outbox serializes it (default `System.Text.Json` options). A new type or a new optional property rewrites the snapshot and fails until it's committed. A change of meaning that keeps the shape is still left to review.
+- **BE-97:** only the contract half. The history scan for high-entropy and provider-pattern secrets belongs to the repository's CI (GitHub secret scanning or a scanner such as gitleaks), not to the template. A secret in source code is reached only by that scan.
+- **BE-126:** the `ToString` test plants values in each `Confidential` and `Restricted` type's string, `Guid` and numeric fields; a value held in a field of another type isn't planted. The template declares no such type yet, so the seeds add them. The log half is proven on the provider's structured state, not on a particular sink's serialization.
+
+Noticed, outside 2d's rows: a wire id serializes as `{ "value": ... }` rather than a bare string; the Response DTOs' `ETag` serializes as `eTag`, where the contract says `etag` (2e); and no endpoint yet sends `Cache-Control: no-store` for a `Confidential` or `Restricted` response, nor does the document carry `x-problem-types` (contract law §6 and §7).
+
+### Slices 2e and 2f (to do)
 
 | Slice | Rows |
 |---|---|
-| 2d Data classification and OpenAPI | ROOT-09, ROOT-16, ROOT-18, BE-54, BE-55, BE-56, BE-61, BE-83, BE-85, BE-86, BE-97; test BE-126 |
 | 2e Concurrency and the remaining behaviour tests | tests BE-115, BE-117, BE-120, BE-122, BE-127, BE-128, BE-138, BE-139, BE-141 |
 | 2f Outbox delivery and reactions (split from 2b) | test BE-92 (delivery restores the trace context); reactions and sagas, modular law §5 |
 

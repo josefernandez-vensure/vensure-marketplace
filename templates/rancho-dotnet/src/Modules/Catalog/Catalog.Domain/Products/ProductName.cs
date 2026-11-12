@@ -1,5 +1,8 @@
+using SharedKernel;
+
 namespace Catalog.Domain.Products;
 
+[Public]
 public sealed record ProductName
 {
     public const int MaxLength = 200;

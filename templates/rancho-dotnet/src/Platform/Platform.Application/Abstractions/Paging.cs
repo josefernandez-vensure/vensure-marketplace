@@ -1,7 +1,9 @@
+using SharedKernel;
+
 namespace Platform.Application.Abstractions;
 
 /// <summary>The one page shape across the API. <see cref="NextCursor"/> is null on the last page.</summary>
-public sealed record Page<T>(IReadOnlyList<T> Items, string? NextCursor, long? TotalCount = null);
+public sealed record Page<T>(IReadOnlyList<T> Items, [Internal] string? NextCursor, [Internal] long? TotalCount = null);
 
 /// <summary>
 /// A query that returns a page. The paging behavior refuses a page size outside 1..<see cref="MaxPageSize"/>

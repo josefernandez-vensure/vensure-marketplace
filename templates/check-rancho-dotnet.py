@@ -186,6 +186,26 @@ TEST = [
      lambda: write(CAT + "Catalog.Infrastructure/Queries/ListProducts/Peek.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Infrastructure.Queries.ListProducts;\n\ninternal static class Peek\n{\n    public static PageCursor Make() => new(\"x\", Guid.Empty);\n}\n")),
     ("No_static_mutable_state",
      lambda: write(CAT + "Catalog.Infrastructure/Persistence/Counter.cs", "namespace Catalog.Infrastructure.Persistence;\n\ninternal static class Counter\n{\n    public static int Hits;\n\n    public static void Hit() => Hits++;\n}\n")),
+    ("Class_attributes_are_defined_only_in_the_shared_kernel",
+     lambda: write(CAT + "Catalog.Domain/Products/SensitiveAttribute.cs", "using Microsoft.Extensions.Compliance.Classification;\n\nnamespace Catalog.Domain.Products;\n\npublic sealed class SensitiveAttribute() : DataClassificationAttribute(new DataClassification(\"Rancho\", \"Restricted\"));\n")),
+    ("A_contracts_twin_declares_the_class_of_its_domain_type",
+     lambda: edit(CAT + "Catalog.Contracts/ProductName.cs", "[Public]", "[Internal]")),
+    ("Everything_that_leaves_through_a_response_an_event_or_the_outbox_resolves_to_a_class",
+     lambda: edit(CAT + "Catalog.Application/ListProducts/ListProducts.cs", "[ClassOf<ProductName>] string Name)", "[ClassOf<ProductName>] string Name, int Rank = 0)")),
+    ("A_member_declares_a_class_only_where_its_type_carries_none",
+     lambda: edit(CAT + "Catalog.Contracts/IntegrationEvents/ProductCreatedV1.cs", "(ProductId ProductId,", "([Internal] ProductId ProductId,")),
+    ("Every_logging_parameter_declares_the_class_of_its_value",
+     lambda: edit("src/Platform/Platform.Application/Behaviors/DispatchTelemetry.cs", "[Internal] string operation, [Internal] double elapsedMs)", "[Internal] string operation, double elapsedMs)")),
+    ("Logging_methods_are_generated_by_the_redacting_generator",
+     lambda: edit("src/Platform/Platform.Application/Platform.Application.csproj", '<PackageReference Include="Microsoft.Extensions.Telemetry.Abstractions" Version="10.10.0" />', "")),
+    ("A_confidential_or_restricted_type_converts_implicitly_to_no_string",
+     lambda: write(CAT + "Catalog.Domain/Products/SupplierEmail.cs", "using SharedKernel;\n\nnamespace Catalog.Domain.Products;\n\n[Confidential]\npublic sealed record SupplierEmail(string Value)\n{\n    public static implicit operator string(SupplierEmail email) => email.Value;\n\n    public override string ToString() => \"***\";\n}\n")),
+    ("A_confidential_or_restricted_type_redacts_in_ToString",
+     lambda: write(CAT + "Catalog.Domain/Products/TaxNumber.cs", "using SharedKernel;\n\nnamespace Catalog.Domain.Products;\n\n[Restricted]\npublic sealed record TaxNumber(string Value);\n")),
+    ("Events_and_outbox_payloads_carry_nothing_restricted",
+     lambda: write(CAT + "Catalog.Contracts/IntegrationEvents/ProductTaxedV1.cs", "using Platform.Application.Abstractions;\nusing SharedKernel;\n\nnamespace Catalog.Contracts.IntegrationEvents;\n\npublic sealed record ProductTaxedV1(ProductId ProductId, [Restricted] string TaxNumber) : IIntegrationEvent;\n")),
+    ("No_committed_configuration_file_holds_a_secret",
+     lambda: edit("src/Api/appsettings.Development.json", '  "Logging": {', '  "Smtp": {\n    "Password": "hunter2"\n  },\n  "Logging": {')),
 ]
 
 PROGRAM = "src/Api/Program.cs"
@@ -193,6 +213,7 @@ UOW = "src/Platform/Platform.Infrastructure/Persistence/UnitOfWork.cs"
 BEHAVIOR = "src/Platform/Platform.Application/Behaviors/UnitOfWorkBehavior.cs"
 PRODUCT_CONFIG = CAT + "Catalog.Infrastructure/Persistence/ProductConfiguration.cs"
 HTTP = "src/Api/Http/HttpSetup.cs"
+OPENAPI = "src/Api/OpenApi/ContractDocument.cs"
 
 # API seeds, each run alone so that one seed cannot make another seed's test fail: (expected failing tests, edits)
 API = [
@@ -208,6 +229,18 @@ API = [
      lambda: edit(PROGRAM, "        typeof(ValidationBehavior<,>),\n", "")),
     (["Every_options_class_the_solution_binds_has_a_validator", "A_missing_or_unusable_limit_stops_startup"],
      lambda: edit(HTTP, "            .Validate(o => o.PermitLimit > 0 && o.Window > TimeSpan.Zero, \"Rate limits need a positive permit limit and window; a missing limit denies.\")\n", "")),
+    (["The_committed_openapi_document_is_the_one_the_host_generates"],
+     lambda: edit("src/Api/Endpoints/Catalog/RenameProductEndpoint.cs", "RenameProductResponse([Internal] string ETag)", "RenameProductResponse([Internal] string ETag, [Internal] int Attempts = 0)")),
+    (["Every_property_and_parameter_schema_carries_its_data_class"],
+     lambda: edit("src/Api/Endpoints/Catalog/ReceiveStockEndpoint.cs", "ReceiveStockResponse([Internal] string ETag)", "ReceiveStockResponse([Internal] string ETag, long Version = 0)")),
+    (["Every_property_and_parameter_schema_carries_its_data_class"],
+     lambda: edit(OPENAPI, "ContractDocument.SetDataClass(schema, Require(OfParameter(parameter), parameter.Name));", "_ = OfParameter(parameter);")),
+    (["Every_array_a_success_returns_is_bounded_and_a_page_by_its_maximum_page_size"],
+     lambda: edit(OPENAPI, "            options.AddSchemaTransformer<PageBoundTransformer>();\n", "")),
+    (["A_classified_logging_parameter_is_redacted_in_the_providers_output"],
+     lambda: edit(PROGRAM, "builder.Logging.EnableRedaction();\n", "")),
+    (["A_classified_logging_parameter_is_redacted_in_the_providers_output"],
+     lambda: edit(PROGRAM, ".SetFallbackRedactor<ErasingRedactor>()", ".SetFallbackRedactor<NullRedactor>()")),
 ]
 
 
@@ -225,7 +258,7 @@ ISOLATED = [
               write(CAT + "Catalog.Infrastructure/Persistence/CategoryConfiguration.cs", "using Catalog.Domain.Categories;\nusing Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Metadata.Builders;\n\nnamespace Catalog.Infrastructure.Persistence;\n\ninternal sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>\n{\n    public void Configure(EntityTypeBuilder<Category> builder)\n    {\n        builder.HasKey(c => c.Id);\n        builder.Property(c => c.Id).HasConversion(id => id.Value, value => new CategoryId(value));\n        builder.Ignore(c => c.DomainEvents);\n    }\n}\n"),
               edit(PRODUCT, "    public int StockOnHand", "    public Categories.Category? Category { get; private set; }\n\n    public int StockOnHand"))),
     (MODEL, ["Domain_events_carry_ids_and_values_never_entities"],
-     lambda: edit(CAT + "Catalog.Domain/Products/ProductCreated.cs", "(ProductId ProductId, DateTimeOffset At)", "(ProductId ProductId, DateTimeOffset At, Product? Snapshot = null)")),
+     lambda: edit(CAT + "Catalog.Domain/Products/ProductCreated.cs", "(ProductId ProductId, [Internal] DateTimeOffset At)", "(ProductId ProductId, [Internal] DateTimeOffset At, Product? Snapshot = null)")),
     (MODEL, ["Read_types_are_keyless"],
      lambda: write(CAT + "Catalog.Infrastructure/Queries/GetProduct/ProductListRow.cs", "using Microsoft.EntityFrameworkCore;\nusing Microsoft.EntityFrameworkCore.Metadata.Builders;\n\nnamespace Catalog.Infrastructure.Queries.GetProduct;\n\ninternal sealed class ProductListRow\n{\n    public Guid Id { get; set; }\n\n    public string Name { get; set; } = string.Empty;\n}\n\ninternal sealed class ProductListRowConfiguration : IEntityTypeConfiguration<ProductListRow>\n{\n    public void Configure(EntityTypeBuilder<ProductListRow> builder)\n    {\n        builder.ToView(\"ProductList\");\n        builder.HasKey(r => r.Id);\n    }\n}\n")),
     (MODEL, ["Every_module_model_carries_the_pipelines_tables"],
@@ -264,6 +297,13 @@ ISOLATED = [
      lambda: edit(BEHAVIOR, "        if (unit.HasChanges)\n", "        if (unit.HasChanges && message is null)\n")),
     (UNIT, ["A_command_that_does_not_persist_is_still_recorded_in_the_audit_trail"],
      lambda: edit(BEHAVIOR, "        unit.StageAudit(Audit.Entry(message, TMessage.Operation, context, time, result.IsSuccess ? AuditOutcome.Succeeded : AuditOutcome.Failed, result.Problem));\n", "")),
+
+    (MODEL, ["Published_contracts_keep_their_shape"],
+     lambda: edit(CAT + "Catalog.Contracts/IntegrationEvents/ProductCreatedV1.cs", "DateTimeOffset At)", "DateTimeOffset OccurredAt)")),
+    (MODEL, ["Published_contracts_keep_their_shape"],
+     lambda: write(CAT + "Catalog.Contracts/IntegrationEvents/ProductDiscontinuedV1.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Contracts.IntegrationEvents;\n\npublic sealed record ProductDiscontinuedV1(ProductId ProductId) : IIntegrationEvent;\n")),
+    (MODEL, ["No_committed_configuration_file_holds_a_secret"],
+     lambda: edit("src/Api/appsettings.json", "Integrated Security=true;", "User Id=catalog;Password=Pa55word;")),
 ]
 
 

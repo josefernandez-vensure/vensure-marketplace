@@ -1,5 +1,6 @@
 using Catalog.Contracts;
 using Platform.Application.Abstractions;
+using SharedKernel;
 
 namespace Catalog.Application.ListProducts;
 
@@ -11,4 +12,4 @@ public sealed record ListProducts(string? NameStartsWith, int PageSize = Paging.
     public static Operation Operation { get; } = Operation.Query("catalog.list-products", CatalogPolicies.Read);
 }
 
-public sealed record ProductSummary(ProductId Id, string Name);
+public sealed record ProductSummary(ProductId Id, [ClassOf<ProductName>] string Name);

@@ -1,16 +1,26 @@
 using Api.Endpoints;
 using Api.Http;
+using Api.OpenApi;
 using Catalog.Application;
 using Catalog.Infrastructure;
 using Mediator;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Compliance.Classification;
+using Microsoft.Extensions.Compliance.Redaction;
 using Platform.Application.Behaviors;
 using Platform.Infrastructure;
+using SharedKernel;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddOpenApi();
+builder.Services.AddContractDocument();
+
+// Logs redact by data class: Public and Internal pass; Confidential, Restricted and any other class are erased.
+builder.Logging.EnableRedaction();
+builder.Services.AddRedaction(redaction => redaction
+    .SetRedactor<NullRedactor>(new DataClassificationSet(DataClasses.Public), new DataClassificationSet(DataClasses.Internal))
+    .SetFallbackRedactor<ErasingRedactor>());
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddHttpPlatform();
 builder.Services.AddPlatformPersistence();

@@ -33,6 +33,10 @@ public static class EndpointRegistrar
             .WithName(operation.Id)
             .RequireAuthorization(operation.Policy)
             .RequireRateLimiting(operation.RateLimit)
+            .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
             .WithMetadata(new DiscoveredEndpoint(typeof(TEndpoint), typeof(TMessage), operation));
     }
 }

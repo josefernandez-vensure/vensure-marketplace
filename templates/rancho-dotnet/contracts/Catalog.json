@@ -1,0 +1,50 @@
+{
+  "Catalog.Contracts.IntegrationEvents.ProductCreatedV1": {
+    "type": [
+      "object",
+      "null"
+    ],
+    "properties": {
+      "ProductId": {
+        "type": "object",
+        "properties": {
+          "Value": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "At": {
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "required": [
+      "ProductId",
+      "At"
+    ]
+  },
+  "Catalog.Contracts.ProductId": {
+    "type": "object",
+    "properties": {
+      "Value": {
+        "type": "string",
+        "format": "uuid"
+      }
+    }
+  },
+  "Catalog.Contracts.ProductName": {
+    "type": [
+      "object",
+      "null"
+    ],
+    "properties": {
+      "Value": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "Value"
+    ]
+  }
+}
