@@ -7,6 +7,7 @@ Stack law: /rancho-modular-dotnet:law
 - Command with an outcome: src/Modules/Catalog/Catalog.Application/RenameProduct/
 - Command with an idempotency key: src/Modules/Catalog/Catalog.Application/ReceiveStock/
 - Query: src/Modules/Catalog/Catalog.Application/GetProduct/ with its handler in src/Modules/Catalog/Catalog.Infrastructure/Queries/GetProduct/
+- Paged query: src/Modules/Catalog/Catalog.Application/ListProducts/ with its handler and keyless read type in src/Modules/Catalog/Catalog.Infrastructure/Queries/ListProducts/
 - Endpoint: src/Api/Endpoints/Catalog/
 - Module context and registration: src/Modules/Catalog/Catalog.Infrastructure/Persistence/CatalogDbContext.cs and src/Modules/Catalog/Catalog.Infrastructure/CatalogModule.cs
 - Host test: tests/Api.Tests/PipelineTests.cs

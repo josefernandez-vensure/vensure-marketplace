@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Platform.Application.Abstractions;
@@ -13,6 +14,17 @@ public static class PlatformPersistence
         services.AddScoped<UnitOfWorkFactory>();
         services.AddScoped<IUnitOfWorkFactory>(sp => sp.GetRequiredService<UnitOfWorkFactory>());
         services.AddScoped<IOutbox, Outbox>();
+        return services;
+    }
+
+    /// <summary>
+    /// Cursors, sealed with Data Protection. Where keys persist is the composition root's choice:
+    /// a deployment with more than one instance shares them, such as in blob storage protected by Key Vault.
+    /// </summary>
+    public static IServiceCollection AddPlatformPaging(this IServiceCollection services)
+    {
+        services.AddDataProtection();
+        services.AddSingleton<ICursorCodec, CursorCodec>();
         return services;
     }
 

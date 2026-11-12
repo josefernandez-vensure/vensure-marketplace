@@ -59,11 +59,22 @@ Found while writing and seeding the tests: an integration test named for the rol
 
 What differs from the old rows: the audit trail is append-only by convention only; no database permission or trigger enforces it yet. BE-89's "a destructive migration keeps the previous version serving" is left to review; the test proves only that migrations run clean twice.
 
-### Slices 2c to 2f (to do)
+### Slice 2c: paging (done)
+
+`Page<T>`, `IPagedQuery` with a static `MaxPageSize`, the `Keyset` ordering descriptor, the cursor codec on Data Protection with a purpose per query, the paging behavior, and the `ListProducts` sample over a keyless read type.
+
+| Mechanism | Rows |
+|---|---|
+| The types themselves | BE-22: the paging behavior refuses a page size above the query's maximum before the handler runs; no query can clamp it. BE-24: the codec port takes only `PageCursor`, which is exactly a sort key and an id. BE-23, generation half: `Keyset.Read` emits the ORDER BY and the keyset predicate, with the unique id as the last term. |
+| `tests/Architecture.Tests` | ROOT-11 and BE-19 (a query returns a collection only as a page), ROOT-12 and BE-20, BE-21 (an `IPagedQuery` with a maximum within the ceiling), BE-23 (a paged handler calls no OrderBy or ThenBy and reads through a `Keyset`), BE-119 |
+| `tests/Catalog.IntegrationTests` | BE-124 (no row skipped or repeated across boundaries that fall inside runs of equal names); BE-22 (51 refused, 50 served); BE-119 (a tampered cursor refused) |
+
+What differs from the old rows: there is no "bounded by construction" collection type yet, so a query can't return a bare collection at all; the type comes with the first query that needs one, with BE-124's second half. The `maxItems` and `x-data-class` half of ROOT-11 and BE-19 is slice 2d's, with the OpenAPI document.
+
+### Slices 2d to 2f (to do)
 
 | Slice | Rows |
 |---|---|
-| 2c Paging | ROOT-11, ROOT-12, BE-19 to BE-24, BE-119; test BE-124 |
 | 2d Data classification and OpenAPI | ROOT-09, ROOT-16, ROOT-18, BE-54, BE-55, BE-56, BE-61, BE-83, BE-85, BE-86, BE-97; test BE-126 |
 | 2e Concurrency and the remaining behaviour tests | tests BE-115, BE-117, BE-120, BE-122, BE-127, BE-128, BE-138, BE-139, BE-141 |
 | 2f Outbox delivery and reactions (split from 2b) | test BE-92 (delivery restores the trace context); reactions and sagas, modular law §5 |

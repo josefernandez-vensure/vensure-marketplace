@@ -14,6 +14,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddHttpPlatform();
 builder.Services.AddPlatformPersistence();
+builder.Services.AddPlatformPaging();
 
 builder.Services.AddMediator((MediatorOptions options) =>
 {
@@ -26,6 +27,7 @@ builder.Services.AddMediator((MediatorOptions options) =>
         typeof(LoggingBehavior<,>),
         typeof(AuthorizationBehavior<,>),
         typeof(ValidationBehavior<,>),
+        typeof(PagingBehavior<,>),
         typeof(UnitOfWorkBehavior<,>),
     ];
 });

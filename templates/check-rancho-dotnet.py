@@ -52,6 +52,7 @@ def run(*args):
 
 DOMAIN = CAT + "Catalog.Domain/Catalog.Domain.csproj"
 UOW = "src/Platform/Platform.Infrastructure/Persistence/UnitOfWork.cs"
+LIST = CAT + "Catalog.Infrastructure/Queries/ListProducts/ListProductsHandler.cs"
 PRODUCT = CAT + "Catalog.Domain/Products/Product.cs"
 HANDLER = CAT + "Catalog.Application/CreateProduct/CreateProductHandler.cs"
 QH = CAT + "Catalog.Infrastructure/Queries/GetProduct/GetProductHandler.cs"
@@ -172,6 +173,17 @@ TEST = [
      lambda: write(CAT + "Catalog.Application/CreateProduct/IEventSender.cs", "using Catalog.Contracts.IntegrationEvents;\n\nnamespace Catalog.Application.CreateProduct;\n\npublic interface IEventSender\n{\n    void Send(ProductCreatedV1 integrationEvent);\n}\n")),
     ("Idempotency_records_live_in_the_database_with_the_change",
      lambda: edit(UOW, "internal sealed class UnitOfWork(ModuleDbContext db, DispatchContext dispatch, TimeProvider time) : IUnitOfWork\n{\n", "internal sealed class UnitOfWork(ModuleDbContext db, DispatchContext dispatch, TimeProvider time) : IUnitOfWork\n{\n    private readonly IDbContextFactory<ModuleDbContext>? _other = null;\n\n    public bool HasOther => _other is not null;\n\n")),
+    ("A_query_returns_a_collection_only_as_a_page",
+     lambda: (write(CAT + "Catalog.Application/ListNames/ListNames.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Application.ListNames;\n\npublic sealed record ListNames : IQuery<IReadOnlyList<string>>\n{\n    public static Operation Operation { get; } = Operation.Query(\"catalog.list-names\", CatalogPolicies.Read);\n}\n"),
+              write(CAT + "Catalog.Infrastructure/Queries/ListNames/ListNamesHandler.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Infrastructure.Queries.ListNames;\n\npublic sealed class ListNamesHandler : IQueryHandler<Application.ListNames.ListNames, IReadOnlyList<string>>\n{\n    public ValueTask<Result<IReadOnlyList<string>>> Handle(Application.ListNames.ListNames query, CancellationToken cancellationToken) =>\n        ValueTask.FromResult(Result<IReadOnlyList<string>>.Success([]));\n}\n"))),
+    ("Page_is_the_only_page_shape",
+     lambda: write(CAT + "Catalog.Application/ListProducts/ProductPage.cs", "namespace Catalog.Application.ListProducts;\n\npublic sealed record ProductPage(IReadOnlyList<ProductSummary> Items, string? NextCursor);\n")),
+    ("Every_paged_query_declares_a_maximum_within_the_ceiling",
+     lambda: edit(CAT + "Catalog.Application/ListProducts/ListProducts.cs", "public static int MaxPageSize => 50;", "public static int MaxPageSize => 500;")),
+    ("A_paged_query_orders_only_through_its_keyset",
+     lambda: edit(LIST, "var rows = db.Set<ProductSummaryRow>().AsNoTracking();", "var rows = db.Set<ProductSummaryRow>().AsNoTracking().OrderBy(r => r.Name).AsQueryable();")),
+    ("Only_the_codec_seals_and_opens_cursors",
+     lambda: write(CAT + "Catalog.Infrastructure/Queries/ListProducts/Peek.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Infrastructure.Queries.ListProducts;\n\ninternal static class Peek\n{\n    public static PageCursor Make() => new(\"x\", Guid.Empty);\n}\n")),
     ("No_static_mutable_state",
      lambda: write(CAT + "Catalog.Infrastructure/Persistence/Counter.cs", "namespace Catalog.Infrastructure.Persistence;\n\ninternal static class Counter\n{\n    public static int Hits;\n\n    public static void Hit() => Hits++;\n}\n")),
 ]
@@ -244,6 +256,10 @@ ISOLATED = [
     (SQL, ["A_query_for_a_missing_record_answers_its_declared_problem"],
      lambda: edit(QH, "return CatalogProblems.ProductNotFound.With();", "return PlatformProblems.NotFound.With();")),
 
+    (SQL, ["Paging_skips_and_repeats_no_row_across_page_boundaries"],
+     lambda: edit("src/Platform/Platform.Application/Abstractions/Keyset.cs", "Expression.GreaterThan(Compare(id, idValue), Expression.Constant(0))", "Expression.GreaterThanOrEqual(Compare(id, idValue), Expression.Constant(0))")),
+    (SQL, ["A_page_size_above_the_maximum_is_refused_never_clamped", "A_cursor_the_query_did_not_issue_is_refused"],
+     lambda: edit(PROGRAM, "        typeof(PagingBehavior<,>),\n", "")),
     (UNIT, ["A_command_that_does_not_persist_fails_the_dispatch_if_it_stages_a_change"],
      lambda: edit(BEHAVIOR, "        if (unit.HasChanges)\n", "        if (unit.HasChanges && message is null)\n")),
     (UNIT, ["A_command_that_does_not_persist_is_still_recorded_in_the_audit_trail"],
