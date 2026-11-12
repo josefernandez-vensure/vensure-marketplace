@@ -18,7 +18,7 @@ public sealed class ClassificationTests
 
     /// <summary>What the outbox carries to other modules: integration events, the module's domain events, and published command messages.</summary>
     private static IEnumerable<Type> OutboxPayloads =>
-        IntegrationEvents.Concat(DomainEvents).Concat(TypesOf(Kinds.Contracts).Where(DomainTests.IsMessage));
+        IntegrationEvents.Concat(DomainEvents).Concat(TypesOf(Kinds.Contracts).Where(t => DomainTests.IsMessage(t) || typeof(ICommandMessage).IsAssignableFrom(t)));
 
     /// <summary>The published surface: every type a module's Contracts declares.</summary>
     private static IEnumerable<Type> Published =>

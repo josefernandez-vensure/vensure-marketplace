@@ -16,10 +16,14 @@ internal sealed class OutboxMessage
 
     public string? TraceState { get; set; }
 
+    /// <summary>The user whose action started the chain this message belongs to; a reaction passes it on.</summary>
     public required string InitiatingPrincipalId { get; set; }
 
     /// <summary>The id of the outbox message whose reaction wrote this one, if any.</summary>
     public Guid? CausationId { get; set; }
+
+    /// <summary>The tenant whose records the writing transaction could see; a reaction to this message is scoped to it.</summary>
+    public Guid? TenantId { get; set; }
 
     public DateTimeOffset? DeliveredAt { get; set; }
 }
@@ -74,4 +78,10 @@ internal sealed class AuditRecord
     public required string RecordIds { get; set; }
 
     public required string TraceId { get; set; }
+
+    /// <summary>For a reaction: the user it acted on behalf of.</summary>
+    public string? OnBehalfOf { get; set; }
+
+    /// <summary>For a reaction: the outbox message that caused it.</summary>
+    public Guid? CausationId { get; set; }
 }

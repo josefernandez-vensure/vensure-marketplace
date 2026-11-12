@@ -60,7 +60,7 @@ public sealed record RecordedResult(
     string? Detail = null,
     IReadOnlyDictionary<string, string[]>? Errors = null);
 
-/// <summary>One line of the audit trail. It holds ids, never values.</summary>
+/// <summary>One line of the audit trail. It holds ids, never values. A reaction's line also names the user it acted for and the message that caused it.</summary>
 public sealed record AuditEntry(
     DateTimeOffset At,
     string PrincipalId,
@@ -68,7 +68,9 @@ public sealed record AuditEntry(
     AuditOutcome Outcome,
     string? ProblemType,
     IReadOnlyList<Guid> RecordIds,
-    string TraceId);
+    string TraceId,
+    string? OnBehalfOf = null,
+    Guid? CausationId = null);
 
 public enum AuditOutcome
 {
@@ -77,8 +79,11 @@ public enum AuditOutcome
     Denied,
 }
 
-/// <summary>How a handler tells other modules something happened: the event is written to the outbox with the change.</summary>
+/// <summary>How a handler tells other modules something happened, or asks one to act: the message is written to the outbox with the change.</summary>
 public interface IOutbox
 {
     void Publish(IIntegrationEvent integrationEvent);
+
+    /// <summary>Asks the module that owns <paramref name="commandMessage"/> to act. It goes to this module's own outbox.</summary>
+    void Send(ICommandMessage commandMessage);
 }

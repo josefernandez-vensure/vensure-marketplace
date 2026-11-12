@@ -22,7 +22,9 @@ public static class CatalogModule
             // Catalog data is a tenant's: a principal with no tenant holds neither policy.
             options.AddPolicy(CatalogPolicies.Read, policy => policy.RequireAuthenticatedUser().RequireClaim("tenant").RequireClaim("permissions", CatalogPolicies.Read));
             options.AddPolicy(CatalogPolicies.Write, policy => policy.RequireAuthenticatedUser().RequireClaim("tenant").RequireClaim("permissions", CatalogPolicies.Write));
+            options.AddPolicy(CatalogPolicies.React, policy => policy.RequireServicePrincipal(CatalogDbContext.ModuleName));
         });
+        services.AddReactions(typeof(CatalogPolicies).Assembly);
 
         return services;
     }

@@ -83,13 +83,13 @@ public sealed partial class ApplicationTests
     }
 
     [Fact]
-    public void Integration_events_carry_their_version_in_their_name()
+    public void Published_messages_carry_their_version_in_their_name()
     {
         TypesOf(Kinds.Contracts)
-            .Where(t => !t.IsAbstract && typeof(IIntegrationEvent).IsAssignableFrom(t))
+            .Where(t => !t.IsAbstract && (typeof(IIntegrationEvent).IsAssignableFrom(t) || typeof(ICommandMessage).IsAssignableFrom(t)))
             .Where(t => !VersionSuffix().IsMatch(t.Name))
             .Select(t => $"{t.FullName} has no version suffix, such as V1")
-            .ShouldHaveNoViolations("An integration event's type name ends in its version; a new shape is a new version.");
+            .ShouldHaveNoViolations("An integration event's or a command message's type name ends in its version; a new shape is a new version.");
     }
 
     /// <summary>Every type reachable through public properties and constructor parameters.</summary>

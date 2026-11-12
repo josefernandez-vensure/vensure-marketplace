@@ -50,6 +50,7 @@ public abstract class ModuleDbContext(DbContextOptions options) : DbContext(opti
             audit.Property(a => a.Outcome).HasMaxLength(20);
             audit.Property(a => a.ProblemType).HasMaxLength(500);
             audit.Property(a => a.TraceId).HasMaxLength(32);
+            audit.Property(a => a.OnBehalfOf).HasMaxLength(200);
         });
 
         ConfigureModule(modelBuilder);

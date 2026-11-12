@@ -4,6 +4,7 @@ using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using Platform.Application.Abstractions;
+using Platform.Infrastructure;
 
 namespace Api.Http;
 
@@ -13,7 +14,9 @@ public static class HttpSetup
     public static IServiceCollection AddHttpPlatform(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
-        services.AddScoped(sp =>
+
+        // A reaction's scope carries the context the outbox dispatcher opened it with; every other scope is a request's.
+        services.AddDispatchContext(sp =>
         {
             var http = sp.GetRequiredService<IHttpContextAccessor>().HttpContext
                 ?? throw new InvalidOperationException("An HTTP dispatch needs a request; jobs and reactions build their own DispatchContext.");

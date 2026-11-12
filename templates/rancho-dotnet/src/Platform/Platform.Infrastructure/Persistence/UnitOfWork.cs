@@ -10,7 +10,14 @@ namespace Platform.Infrastructure.Persistence;
 
 internal sealed class UnitOfWorkFactory(IEnumerable<ModuleDbContext> contexts, DispatchContext dispatch, TimeProvider time) : IUnitOfWorkFactory
 {
-    public IUnitOfWork For(Type messageType) => new UnitOfWork(ContextOf(messageType), dispatch, time);
+    /// <summary>The context of the module whose message this scope is dispatching: where its command messages go.</summary>
+    public ModuleDbContext? Current { get; private set; }
+
+    public IUnitOfWork For(Type messageType)
+    {
+        Current = ContextOf(messageType);
+        return new UnitOfWork(Current, dispatch, time);
+    }
 
     public ModuleDbContext ContextOf(Type type)
     {
@@ -82,6 +89,8 @@ internal sealed class UnitOfWork(ModuleDbContext db, DispatchContext dispatch, T
             ProblemType = entry.ProblemType,
             RecordIds = string.Join(',', entry.RecordIds),
             TraceId = entry.TraceId,
+            OnBehalfOf = entry.OnBehalfOf,
+            CausationId = entry.CausationId,
         });
 
     public async Task<CommitOutcome> Commit(CancellationToken cancellationToken)
@@ -120,21 +129,34 @@ internal sealed class UnitOfWork(ModuleDbContext db, DispatchContext dispatch, T
 
 internal static class OutboxRows
 {
-    public static OutboxMessage For(object @event, DispatchContext dispatch, TimeProvider time) => new()
+    /// <summary>
+    /// A row carries the writing transaction's trace context, its tenant scope, the user who started the chain and the message that caused
+    /// this one: a reaction passes the initiating user and its own cause on to every message it writes.
+    /// </summary>
+    public static OutboxMessage For(object message, DispatchContext dispatch, TimeProvider time) => new()
     {
         Id = Guid.CreateVersion7(),
-        Type = @event.GetType().AssemblyQualifiedName!,
-        Payload = JsonSerializer.Serialize(@event, @event.GetType()),
+        Type = message.GetType().FullName!,
+        Payload = JsonSerializer.Serialize(message, message.GetType()),
         OccurredAt = time.GetUtcNow(),
         TraceParent = Activity.Current?.Id is { Length: 55 } id ? id : $"00-{dispatch.TraceId}-{ActivitySpanId.CreateRandom().ToHexString()}-01",
         TraceState = Activity.Current?.TraceStateString,
-        InitiatingPrincipalId = dispatch.PrincipalId,
+        InitiatingPrincipalId = dispatch.Causation?.InitiatingPrincipalId ?? dispatch.PrincipalId,
+        CausationId = dispatch.Causation?.MessageId,
+        TenantId = dispatch.Tenant?.Value,
     };
 }
 
-/// <summary>Integration events go to the outbox of the module whose Contracts declares them, with the change.</summary>
+/// <summary>
+/// Integration events go to the outbox of the module whose Contracts declares them, and command messages to the outbox of the module
+/// sending them, with the change.
+/// </summary>
 internal sealed class Outbox(UnitOfWorkFactory units, DispatchContext dispatch, TimeProvider time) : IOutbox
 {
     public void Publish(IIntegrationEvent integrationEvent) =>
         units.ContextOf(integrationEvent.GetType()).Set<OutboxMessage>().Add(OutboxRows.For(integrationEvent, dispatch, time));
+
+    public void Send(ICommandMessage commandMessage) =>
+        (units.Current ?? throw new InvalidOperationException("A command message is sent by a command's handler, from inside the pipeline."))
+            .Set<OutboxMessage>().Add(OutboxRows.For(commandMessage, dispatch, time));
 }

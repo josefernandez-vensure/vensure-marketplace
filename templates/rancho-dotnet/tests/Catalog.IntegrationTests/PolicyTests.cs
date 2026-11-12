@@ -35,8 +35,7 @@ public sealed class PolicyTests(SqlServer sql)
 
         routes.ShouldNotBeEmpty();
         violations.ShouldBeEmpty("Every operation's policy refuses a principal it does not admit, as 403 problem details.");
-        (await sql.Scalar<int>($"SELECT COUNT(*) AS Value FROM catalog.AuditTrail WHERE PrincipalId = {subject} AND Outcome = 'Denied'"))
-            .ShouldBe(routes.Count);
+        (await sql.CountDenied(subject)).ShouldBe(routes.Count);
     }
 
     [Fact]

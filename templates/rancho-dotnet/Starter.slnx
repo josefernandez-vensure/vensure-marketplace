@@ -9,6 +9,12 @@
     <Project Path="src/Modules/Catalog/Catalog.Domain/Catalog.Domain.csproj" />
     <Project Path="src/Modules/Catalog/Catalog.Infrastructure/Catalog.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Ordering/">
+    <Project Path="src/Modules/Ordering/Ordering.Application/Ordering.Application.csproj" />
+    <Project Path="src/Modules/Ordering/Ordering.Contracts/Ordering.Contracts.csproj" />
+    <Project Path="src/Modules/Ordering/Ordering.Domain/Ordering.Domain.csproj" />
+    <Project Path="src/Modules/Ordering/Ordering.Infrastructure/Ordering.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Platform/">
     <Project Path="src/Platform/Platform.Application/Platform.Application.csproj" />
     <Project Path="src/Platform/Platform.Infrastructure/Platform.Infrastructure.csproj" />

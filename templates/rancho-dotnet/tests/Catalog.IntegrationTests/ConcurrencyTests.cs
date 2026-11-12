@@ -12,6 +12,34 @@ public sealed class ConcurrencyTests(SqlServer sql)
     [Theory]
     [InlineData(null)]
     [InlineData("*")]
+    public async Task CancelOrder_ReturnsPreconditionRequired_WhenIfMatchIsMissingOrAny(string? ifMatch)
+    {
+        var buyer = Buyer(sql);
+        var order = await PlaceOrder(buyer, Guid.NewGuid(), 1);
+
+        var response = await CancelOrder(buyer, order, ifMatch);
+
+        response.StatusCode.ShouldBe((HttpStatusCode)428);
+        (await sql.Scalar<string>($"SELECT Status AS Value FROM ordering.Orders WHERE Id = {order}")).ShouldBe("Pending");
+    }
+
+    [Theory]
+    [InlineData("\"7\"")]
+    [InlineData("W/\"1\"")]
+    public async Task CancelOrder_ReturnsPreconditionFailed_WhenIfMatchIsStale(string ifMatch)
+    {
+        var buyer = Buyer(sql);
+        var order = await PlaceOrder(buyer, Guid.NewGuid(), 1);
+
+        var response = await CancelOrder(buyer, order, ifMatch);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.PreconditionFailed);
+        (await sql.Scalar<string>($"SELECT Status AS Value FROM ordering.Orders WHERE Id = {order}")).ShouldBe("Pending");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("*")]
     public async Task RenameProduct_ReturnsPreconditionRequired_WhenIfMatchIsMissingOrAny(string? ifMatch)
     {
         var client = Writer(sql);

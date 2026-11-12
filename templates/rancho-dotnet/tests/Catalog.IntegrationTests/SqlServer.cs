@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Platform.Infrastructure.Messaging;
+using Platform.Infrastructure.Persistence;
 using Testcontainers.MsSql;
 
 [assembly: AssemblyFixture(typeof(Catalog.IntegrationTests.SqlServer))]
@@ -56,6 +58,31 @@ public sealed class SqlServer : IAsyncLifetime
         return await db.Database.SqlQuery<T>(sql).SingleOrDefaultAsync();
     }
 
+    /// <summary>
+    /// Delivers the outbox until a pass delivers nothing more, as the hosted service would on its ticks. The shared host's own delivery
+    /// never ticks during the run, so a test that dispatches decides when its messages are delivered.
+    /// </summary>
+    public async Task DeliverOutbox()
+    {
+        var dispatcher = Api.Services.GetRequiredService<OutboxDispatcher>();
+        while (await dispatcher.DeliverPending(100, TestContext.Current.CancellationToken) > 0)
+        {
+        }
+    }
+
+    /// <summary>Denials recorded in every module's audit trail: each module records the refusals of its own operations.</summary>
+    public async Task<int> CountDenied(string subject)
+    {
+        using var scope = Api.Services.CreateScope();
+        var count = 0;
+        foreach (var module in scope.ServiceProvider.GetServices<ModuleDbContext>())
+        {
+            count += await module.Set<AuditRecord>().CountAsync(a => a.PrincipalId == subject && a.Outcome == "Denied", TestContext.Current.CancellationToken);
+        }
+
+        return count;
+    }
+
     public async Task Execute(FormattableString sql)
     {
         using var scope = Api.Services.CreateScope();
@@ -74,6 +101,9 @@ public sealed class CatalogApi(string connectionString) : WebApplicationFactory<
 {
     /// <summary>The tenant a test principal belongs to unless the test names another.</summary>
     public static readonly Guid DefaultTenant = Guid.Parse("7a1c2d3e-0000-4000-8000-000000000001");
+
+    /// <summary>Every line the host logged, with the trace it was logged in.</summary>
+    public CapturedLogs Logs { get; } = new();
 
     private const string Subject = "X-Test-Subject";
     private const string Permissions = "X-Test-Permissions";
@@ -106,8 +136,12 @@ public sealed class CatalogApi(string connectionString) : WebApplicationFactory<
     {
         builder.UseSetting("ConnectionStrings:Database", connectionString);
         builder.UseSetting("RateLimits:PermitLimit", "100000");
+
+        // The shared host never delivers on its own; tests deliver through SqlServer.DeliverOutbox.
+        builder.UseSetting("Outbox:PollInterval", "1.00:00:00");
         builder.ConfigureTestServices(services =>
         {
+            services.AddSingleton<ILoggerProvider>(Logs);
             services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, HeaderAuthentication>(HeaderAuthentication.SchemeName, _ => { });
             services.PostConfigure<AuthenticationOptions>(options =>
             {
@@ -116,6 +150,30 @@ public sealed class CatalogApi(string connectionString) : WebApplicationFactory<
                 options.DefaultChallengeScheme = HeaderAuthentication.SchemeName;
             });
         });
+    }
+
+    public sealed class CapturedLogs : ILoggerProvider
+    {
+        private readonly System.Collections.Concurrent.ConcurrentQueue<(string Category, string Message, System.Diagnostics.ActivityTraceId? TraceId)> _lines = new();
+
+        public IEnumerable<(string Category, string Message, System.Diagnostics.ActivityTraceId? TraceId)> Lines => _lines;
+
+        public ILogger CreateLogger(string categoryName) => new Logger(categoryName, _lines);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Logger(string category, System.Collections.Concurrent.ConcurrentQueue<(string, string, System.Diagnostics.ActivityTraceId?)> lines) : ILogger
+        {
+            public IDisposable? BeginScope<TState>(TState state)
+                where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+                lines.Enqueue((category, formatter(state, exception), System.Diagnostics.Activity.Current?.TraceId));
+        }
     }
 
     private sealed class HeaderAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)

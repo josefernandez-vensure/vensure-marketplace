@@ -2,14 +2,18 @@ using System.Text.Json;
 
 namespace Platform.Application.Abstractions;
 
-/// <summary>What every dispatch returns. A behavior short-circuits, records, and replays it without knowing the value type.</summary>
-public interface IResult<TSelf>
-    where TSelf : IResult<TSelf>
+/// <summary>Whether a dispatch succeeded, for a caller that knows the message only at run time, such as the outbox dispatcher.</summary>
+public interface IDispatchResult
 {
     bool IsSuccess { get; }
 
     Problem? Problem { get; }
+}
 
+/// <summary>What every dispatch returns. A behavior short-circuits, records, and replays it without knowing the value type.</summary>
+public interface IResult<TSelf> : IDispatchResult
+    where TSelf : IResult<TSelf>
+{
     static abstract TSelf Failure(Problem problem);
 
     static abstract TSelf Replay(RecordedResult recorded);

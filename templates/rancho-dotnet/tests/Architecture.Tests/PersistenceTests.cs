@@ -36,22 +36,25 @@ public sealed class PersistenceTests
     }
 
     [Fact]
-    public void Integration_events_leave_only_through_the_outbox()
+    public void Published_messages_leave_only_through_the_outbox()
     {
         string[] brokers = ["Azure.Messaging", "MassTransit", "RabbitMQ", "Confluent.Kafka", "NServiceBus", "Amazon.SQS", "Amazon.SimpleNotificationService"];
 
         var portMethods = TypesOf(Kinds.Application, Kinds.PlatformApplication)
             .Where(t => t.IsInterface && t != typeof(IOutbox))
-            .SelectMany(t => t.GetMethods().Where(m => m.GetParameters().Any(p => Unwrap(p.ParameterType).Any(u => typeof(IIntegrationEvent).IsAssignableFrom(u))))
-                .Select(m => $"{t.FullName}.{m.Name} takes an integration event"));
+            .SelectMany(t => t.GetMethods().Where(m => m.GetParameters().Any(p => Unwrap(p.ParameterType).Any(IsPublishedMessage)))
+                .Select(m => $"{t.FullName}.{m.Name} takes an integration event or a command message"));
 
         var sdkUses = DependenciesOf(ArchTypesOf(Kinds.Domain, Kinds.Application, Kinds.Contracts, Kinds.Infrastructure, Kinds.PlatformApplication))
             .Where(d => brokers.Any(ns => InNamespace(d.Target, ns)))
             .Select(d => $"{d.Origin.FullName} uses {d.Target.FullName}");
 
         portMethods.Concat(sdkUses)
-            .ShouldHaveNoViolations("An integration event is written to the outbox with the change; nothing publishes it directly.");
+            .ShouldHaveNoViolations("An integration event or a command message is written to the outbox with the change; nothing sends it directly.");
     }
+
+    private static bool IsPublishedMessage(Type type) =>
+        typeof(IIntegrationEvent).IsAssignableFrom(type) || typeof(ICommandMessage).IsAssignableFrom(type);
 
     [Fact]
     public void Idempotency_records_live_in_the_database_with_the_change()

@@ -58,6 +58,37 @@ internal static class Catalog
         return await client.SendAsync(request, Cancel);
     }
 
+    public static HttpClient Buyer(SqlServer sql, string subject = "buyer") => sql.Api.ClientFor(subject, "ordering.read", "ordering.write");
+
+    public static async Task<Guid> PlaceOrder(HttpClient client, Guid product, int quantity)
+    {
+        var id = Guid.CreateVersion7();
+        var response = await client.PostAsJsonAsync("/ordering/orders", new { id, productId = product, quantity }, Cancel);
+        response.EnsureSuccessStatusCode();
+        return id;
+    }
+
+    /// <summary>Cancels sending <paramref name="ifMatch"/> verbatim, or no If-Match at all.</summary>
+    public static async Task<HttpResponseMessage> CancelOrder(HttpClient client, Guid order, string? ifMatch)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/ordering/orders/{order}/cancel");
+        if (ifMatch is not null)
+        {
+            request.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+        }
+
+        return await client.SendAsync(request, Cancel);
+    }
+
+    /// <summary>A product with <paramref name="stock"/> on hand, at version 2.</summary>
+    public static async Task<Guid> StockedProduct(SqlServer sql, int stock)
+    {
+        var client = Writer(sql);
+        var product = await CreateProduct(client);
+        (await ReceiveStock(client, product, stock, Guid.NewGuid().ToString())).EnsureSuccessStatusCode();
+        return product;
+    }
+
     /// <summary>The strong entity tag of a version, as the API sends it.</summary>
     public static string Tag(long version) => $"\"{version}\"";
 

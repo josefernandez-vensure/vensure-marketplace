@@ -84,6 +84,13 @@ namespace Catalog.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("At")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<Guid?>("CausationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("OnBehalfOf")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("OperationId")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -205,6 +212,9 @@ namespace Catalog.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("TraceParent")
                         .IsRequired()
                         .HasMaxLength(55)
@@ -224,6 +234,33 @@ namespace Catalog.Infrastructure.Persistence.Migrations
                     b.HasIndex("DeliveredAt");
 
                     b.ToTable("OutboxMessages", "catalog");
+                });
+
+            modelBuilder.Entity("Catalog.Domain.Products.Product", b =>
+                {
+                    b.OwnsMany("Catalog.Domain.Products.StockReservation", "Reservations", b1 =>
+                        {
+                            b1.Property<Guid>("ProductId")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uniqueidentifier");
+
+                            b1.Property<bool>("IsReleased")
+                                .HasColumnType("bit");
+
+                            b1.Property<int>("Quantity")
+                                .HasColumnType("int");
+
+                            b1.HasKey("ProductId", "Id");
+
+                            b1.ToTable("ProductReservations", "catalog");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ProductId");
+                        });
+
+                    b.Navigation("Reservations");
                 });
 #pragma warning restore 612, 618
         }

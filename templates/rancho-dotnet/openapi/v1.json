@@ -5,6 +5,221 @@
     "version": "1.0.0"
   },
   "paths": {
+    "/ordering/orders/{id}/cancel": {
+      "post": {
+        "tags": [
+          "CancelOrderEndpoint"
+        ],
+        "operationId": "ordering.cancel-order",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "x-data-class": "internal"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "x-data-class": "internal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ordering/orders/{id}": {
+      "get": {
+        "tags": [
+          "GetOrderEndpoint"
+        ],
+        "operationId": "ordering.get-order",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "x-data-class": "internal"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ordering/orders": {
+      "post": {
+        "tags": [
+          "PlaceOrderEndpoint"
+        ],
+        "operationId": "ordering.place-order",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlaceOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/HttpValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/catalog/products": {
       "post": {
         "tags": [
@@ -422,6 +637,19 @@
   },
   "components": {
     "schemas": {
+      "CancelOrderResponse": {
+        "required": [
+          "etag"
+        ],
+        "type": "object",
+        "properties": {
+          "etag": {
+            "type": "string",
+            "x-data-class": "internal"
+          }
+        },
+        "x-data-class": "internal"
+      },
       "CreateProductRequest": {
         "required": [
           "id",
@@ -495,6 +723,53 @@
         },
         "x-data-class": "internal"
       },
+      "OrderId": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "format": "uuid",
+            "x-data-class": "internal"
+          }
+        },
+        "x-data-class": "internal"
+      },
+      "OrderResponse": {
+        "required": [
+          "id",
+          "productId",
+          "quantity",
+          "status",
+          "etag"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/OrderId"
+          },
+          "productId": {
+            "$ref": "#/components/schemas/ProductId"
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32",
+            "x-data-class": "internal"
+          },
+          "status": {
+            "type": "string",
+            "x-data-class": "internal"
+          },
+          "etag": {
+            "type": "string",
+            "x-data-class": "internal"
+          }
+        },
+        "x-data-class": "internal"
+      },
       "PageOfProductSummary": {
         "required": [
           "items",
@@ -525,6 +800,36 @@
               "string"
             ],
             "format": "int64",
+            "x-data-class": "internal"
+          }
+        },
+        "x-data-class": "internal"
+      },
+      "PlaceOrderRequest": {
+        "required": [
+          "id",
+          "productId",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "x-data-class": "internal"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid",
+            "x-data-class": "internal"
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32",
             "x-data-class": "internal"
           }
         },
@@ -699,6 +1004,15 @@
     }
   },
   "tags": [
+    {
+      "name": "CancelOrderEndpoint"
+    },
+    {
+      "name": "GetOrderEndpoint"
+    },
+    {
+      "name": "PlaceOrderEndpoint"
+    },
     {
       "name": "CreateProductEndpoint"
     },

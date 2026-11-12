@@ -89,7 +89,7 @@ public sealed class ReferenceTests
     {
         Assemblies
             .SelectMany(a => a.Assembly.GetCustomAttributes<InternalsVisibleToAttribute>().Select(v => (a.Name, Friend: v.AssemblyName.Split(',')[0])))
-            .Where(v => !v.Friend.EndsWith(".Tests", StringComparison.Ordinal) && v.Friend != "DynamicProxyGenAssembly2")
+            .Where(v => !v.Friend.EndsWith("Tests", StringComparison.Ordinal) && v.Friend != "DynamicProxyGenAssembly2")
             .Select(v => $"{v.Name} exposes its internals to {v.Friend}")
             .ShouldHaveNoViolations("InternalsVisibleTo names test projects, and the mocking library's proxy assembly, only.");
     }

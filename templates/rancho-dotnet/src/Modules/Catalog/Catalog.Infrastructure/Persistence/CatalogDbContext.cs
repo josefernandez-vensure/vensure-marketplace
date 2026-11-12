@@ -9,7 +9,9 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
 {
     public const string SchemaName = "catalog";
 
-    public override string Module => "Catalog";
+    public const string ModuleName = "Catalog";
+
+    public override string Module => ModuleName;
 
     public override string Schema => SchemaName;
 

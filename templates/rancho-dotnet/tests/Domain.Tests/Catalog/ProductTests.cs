@@ -101,5 +101,95 @@ public sealed class ProductTests
         product.Version.ShouldBe(2);
     }
 
+    [Fact]
+    public void ReserveStock_ReturnsReserved_WhenEnoughStockIsAvailable()
+    {
+        var product = Stocked(5);
+
+        product.ReserveStock(Reservation(), 3).ShouldBe(ReserveStockOutcome.Reserved);
+
+        product.Available.ShouldBe(2);
+        product.StockOnHand.ShouldBe(5);
+        product.Version.ShouldBe(3);
+    }
+
+    [Fact]
+    public void ReserveStock_ReturnsAlreadyReserved_WhenTheReservationIsHeld()
+    {
+        var product = Stocked(5);
+        var reservation = Reservation();
+        product.ReserveStock(reservation, 3);
+
+        product.ReserveStock(reservation, 3).ShouldBe(ReserveStockOutcome.AlreadyReserved);
+
+        product.Available.ShouldBe(2);
+        product.Version.ShouldBe(3);
+    }
+
+    [Fact]
+    public void ReserveStock_ReturnsInsufficientStock_WhenOtherReservationsHoldTheStock()
+    {
+        var product = Stocked(5);
+        product.ReserveStock(Reservation(), 4);
+
+        product.ReserveStock(Reservation(), 2).ShouldBe(ReserveStockOutcome.InsufficientStock);
+
+        product.Available.ShouldBe(1);
+    }
+
+    [Fact]
+    public void ReserveStock_ReturnsDiscontinued_WhenTheProductIsDiscontinued()
+    {
+        var product = Stocked(5);
+        product.Discontinue();
+
+        product.ReserveStock(Reservation(), 1).ShouldBe(ReserveStockOutcome.Discontinued);
+
+        product.Reservations.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void ReserveStock_Throws_WhenTheQuantityIsNotPositive(int quantity) =>
+        Should.Throw<ArgumentOutOfRangeException>(() => Stocked(5).ReserveStock(Reservation(), quantity));
+
+    [Fact]
+    public void ReleaseStock_ReturnsReleased_AndKeepsTheReservationAsReleased()
+    {
+        var product = Stocked(5);
+        var reservation = Reservation();
+        product.ReserveStock(reservation, 3);
+
+        product.ReleaseStock(reservation).ShouldBe(ReleaseStockOutcome.Released);
+
+        product.Available.ShouldBe(5);
+        product.Reservations.ShouldHaveSingleItem().IsReleased.ShouldBeTrue();
+        product.Version.ShouldBe(4);
+    }
+
+    [Fact]
+    public void ReleaseStock_ReturnsUnchanged_WhenNothingIsHeld()
+    {
+        var product = Stocked(5);
+        var reservation = Reservation();
+        product.ReserveStock(reservation, 3);
+        product.ReleaseStock(reservation);
+
+        product.ReleaseStock(reservation).ShouldBe(ReleaseStockOutcome.Unchanged);
+        product.ReleaseStock(Reservation()).ShouldBe(ReleaseStockOutcome.Unchanged);
+
+        product.Version.ShouldBe(4);
+    }
+
+    private static Product Stocked(int quantity)
+    {
+        var product = New();
+        product.ReceiveStock(quantity);
+        return product;
+    }
+
+    private static ReservationId Reservation() => new(Guid.CreateVersion7());
+
     private static Product New() => Product.Create(ProductId.New(), new ProductName("Lamp"), Now);
 }

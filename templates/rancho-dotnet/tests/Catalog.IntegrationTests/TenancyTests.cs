@@ -11,6 +11,27 @@ public sealed class TenancyTests(SqlServer sql)
     private static readonly Guid OtherTenant = Guid.Parse("7a1c2d3e-0000-4000-8000-000000000002");
 
     private HttpClient Outsider => sql.Api.ClientFor("outsider", OtherTenant, "catalog.read", "catalog.write");
+    [Fact]
+    public async Task GetOrder_ReturnsNotFound_WhenTheOrderIsAnotherTenants()
+    {
+        var order = await PlaceOrder(Buyer(sql), Guid.NewGuid(), 1);
+
+        var response = await sql.Api.ClientFor("outsider", OtherTenant, "ordering.read").GetAsync($"/ordering/orders/{order}", Cancel);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task CancelOrder_ReturnsNotFound_WhenTheOrderIsAnotherTenants()
+    {
+        var order = await PlaceOrder(Buyer(sql), Guid.NewGuid(), 1);
+
+        var response = await CancelOrder(sql.Api.ClientFor("outsider", OtherTenant, "ordering.write"), order, Tag(1));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await sql.Scalar<string>($"SELECT Status AS Value FROM ordering.Orders WHERE Id = {order}")).ShouldBe("Pending");
+    }
+
 
     [Fact]
     public async Task GetProduct_ReturnsNotFound_WhenTheProductIsAnotherTenants()

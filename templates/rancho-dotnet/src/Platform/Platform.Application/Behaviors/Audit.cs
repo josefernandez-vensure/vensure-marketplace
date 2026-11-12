@@ -9,7 +9,8 @@ internal static class Audit
     private static readonly ConcurrentDictionary<Type, PropertyInfo[]> IdProperties = new();
 
     public static AuditEntry Entry(object message, Operation operation, DispatchContext context, TimeProvider time, AuditOutcome outcome, Problem? problem) =>
-        new(time.GetUtcNow(), context.PrincipalId, operation.Id, outcome, problem?.Type.Uri, RecordIds(message), context.TraceId);
+        new(time.GetUtcNow(), context.PrincipalId, operation.Id, outcome, problem?.Type.Uri, RecordIds(message), context.TraceId,
+            context.Causation?.InitiatingPrincipalId, context.Causation?.MessageId);
 
     /// <summary>The ids of the records a message names: its strongly-typed id properties. Values never enter the trail.</summary>
     private static List<Guid> RecordIds(object message) =>

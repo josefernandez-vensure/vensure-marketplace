@@ -21,6 +21,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // These hosts have no database: the outbox is never read.
+        builder.UseSetting("Outbox:PollInterval", "1.00:00:00");
         builder.ConfigureTestServices(services =>
         {
             Registrations = [.. services];

@@ -57,6 +57,9 @@ PRODUCT = CAT + "Catalog.Domain/Products/Product.cs"
 HANDLER = CAT + "Catalog.Application/CreateProduct/CreateProductHandler.cs"
 QH = CAT + "Catalog.Infrastructure/Queries/GetProduct/GetProductHandler.cs"
 REPO = CAT + "Catalog.Infrastructure/Persistence/ProductRepository.cs"
+ORD = "src/Modules/Ordering/"
+DISPATCHER = "src/Platform/Platform.Infrastructure/Messaging/OutboxDispatcher.cs"
+MESSAGING = "src/Platform/Platform.Infrastructure/PlatformMessaging.cs"
 
 # Build-time seeds: (name, expected text in build output, edits)
 BUILD = [
@@ -97,6 +100,12 @@ BUILD = [
      lambda: write(CAT + "Catalog.Application/CreateProduct/Env.cs", "namespace Catalog.Application.CreateProduct;\n\npublic static class Env\n{\n    public static string? Get() => Environment.GetEnvironmentVariable(\"X\");\n}\n")),
     ("Application locates a service", "RS0030",
      lambda: write(CAT + "Catalog.Application/CreateProduct/Locate.cs", "namespace Catalog.Application.CreateProduct;\n\npublic static class Locate\n{\n    public static object? Get(IServiceProvider services) => services.GetService(typeof(string));\n}\n")),
+    ("A reaction that maps to a query", "CS0311",
+     lambda: write(ORD + "Ordering.Application/GetOrder/OnStockReserved.cs", "using Catalog.Contracts.IntegrationEvents;\nusing Ordering.Contracts;\nusing Platform.Application.Abstractions;\n\nnamespace Ordering.Application.GetOrder;\n\npublic sealed class OnStockReserved : IReaction<StockReservedV1, GetOrder>\n{\n    public static GetOrder Map(StockReservedV1 message) => new(new OrderId(message.ReservationId.Value));\n}\n")),
+    ("A module builds a service principal", "CS0122",
+     lambda: write(ORD + "Ordering.Infrastructure/External/Impersonate.cs", "namespace Ordering.Infrastructure.External;\n\ninternal static class Impersonate\n{\n    public static System.Security.Claims.ClaimsIdentity Catalog() => new Platform.Infrastructure.Messaging.ServiceIdentity(\"Catalog\");\n}\n")),
+    ("A module enters a dispatch scope", "CS0122",
+     lambda: write(ORD + "Ordering.Infrastructure/External/Enter.cs", "namespace Ordering.Infrastructure.External;\n\ninternal static class Enter\n{\n    public static object Scope() => new Platform.Infrastructure.Messaging.DispatchScope();\n}\n")),
     ("A scope begun with a template", "RS0030",
      lambda: write("src/Api/Scope.cs", "namespace Api;\n\ninternal static class Scope\n{\n    public static IDisposable? Begin(Microsoft.Extensions.Logging.ILogger logger) => Microsoft.Extensions.Logging.LoggerExtensions.BeginScope(logger, \"Order {Id}\", 1);\n}\n")),
 ]
@@ -143,7 +152,7 @@ TEST = [
               edit(QH, "        var id = query.ProductId.Value;", "        _ = logger;\n        var id = query.ProductId.Value;"))),
     ("Application_and_domain_read_no_raw_claims",
      lambda: write(CAT + "Catalog.Application/CreateProduct/Who.cs", "namespace Catalog.Application.CreateProduct;\n\npublic static class Who\n{\n    public static string? Name(System.Security.Claims.ClaimsPrincipal user) => user.Identity?.Name;\n}\n")),
-    ("Integration_events_carry_their_version_in_their_name",
+    ("Published_messages_carry_their_version_in_their_name",
      lambda: write(CAT + "Catalog.Contracts/IntegrationEvents/ProductRenamed.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Contracts.IntegrationEvents;\n\npublic sealed record ProductRenamed(ProductId ProductId) : IIntegrationEvent;\n")),
     ("Infrastructure_is_organized_by_technical_concern",
      lambda: write(CAT + "Catalog.Infrastructure/Helpers/Slug.cs", "namespace Catalog.Infrastructure.Helpers;\n\ninternal static class Slug\n{\n    public static string Of(string s) => s.ToUpperInvariant();\n}\n")),
@@ -169,7 +178,7 @@ TEST = [
      lambda: edit_glob(CAT + "Catalog.Infrastructure/Persistence/Migrations/*_Initial.cs", "protected override void Up(MigrationBuilder migrationBuilder)\n        {\n", "protected override void Up(MigrationBuilder migrationBuilder)\n        {\n            _ = new Catalog.Domain.Products.ProductId(Guid.Empty);\n")),
     ("Only_the_pipeline_touches_the_unit_of_work",
      lambda: write(CAT + "Catalog.Application/CreateProduct/Peek.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Application.CreateProduct;\n\npublic static class Peek\n{\n    public static bool Dirty(IUnitOfWorkFactory units) => units.For(typeof(Peek)).HasChanges;\n}\n")),
-    ("Integration_events_leave_only_through_the_outbox",
+    ("Published_messages_leave_only_through_the_outbox",
      lambda: write(CAT + "Catalog.Application/CreateProduct/IEventSender.cs", "using Catalog.Contracts.IntegrationEvents;\n\nnamespace Catalog.Application.CreateProduct;\n\npublic interface IEventSender\n{\n    void Send(ProductCreatedV1 integrationEvent);\n}\n")),
     ("Idempotency_records_live_in_the_database_with_the_change",
      lambda: edit(UOW, "internal sealed class UnitOfWork(ModuleDbContext db, DispatchContext dispatch, TimeProvider time) : IUnitOfWork\n{\n", "internal sealed class UnitOfWork(ModuleDbContext db, DispatchContext dispatch, TimeProvider time) : IUnitOfWork\n{\n    private readonly IDbContextFactory<ModuleDbContext>? _other = null;\n\n    public bool HasOther => _other is not null;\n\n")),
@@ -208,6 +217,16 @@ TEST = [
      lambda: edit("src/Api/appsettings.Development.json", '  "Logging": {', '  "Smtp": {\n    "Password": "hunter2"\n  },\n  "Logging": {')),
     ("Domain_outcomes_are_enums",
      lambda: write(CAT + "Catalog.Domain/Products/ArchiveOutcome.cs", "namespace Catalog.Domain.Products;\n\npublic sealed record ArchiveOutcome(bool Archived);\n")),
+    ("Reactions_live_in_their_modules_application",
+     lambda: write("src/Api/Reactions/OnStockReserved.cs", "using Catalog.Contracts.IntegrationEvents;\nusing Ordering.Application.ConfirmOrder;\nusing Ordering.Contracts;\nusing Platform.Application.Abstractions;\n\nnamespace Api.Reactions;\n\npublic sealed class OnStockReserved : IReaction<StockReservedV1, ConfirmOrder>\n{\n    public static ConfirmOrder Map(StockReservedV1 message) => new(new OrderId(message.ReservationId.Value));\n}\n")),
+    ("A_reaction_maps_to_a_command_of_its_own_module",
+     lambda: (write(CAT + "Catalog.Contracts/PurgeProducts.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Contracts;\n\npublic sealed record PurgeProducts(ProductId ProductId) : ICommand\n{\n    public static Operation Operation { get; } = Operation.Command(\"catalog.purge-products\", \"catalog.react\", IdempotencyMechanism.Key);\n}\n"),
+              write(CAT + "Catalog.Application/PurgeProducts/PurgeProductsHandler.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Application.PurgeProducts;\n\npublic sealed class PurgeProductsHandler : ICommandHandler<Contracts.PurgeProducts>\n{\n    public ValueTask<Result> Handle(Contracts.PurgeProducts command, CancellationToken cancellationToken) => ValueTask.FromResult(Result.Success());\n}\n"),
+              write(ORD + "Ordering.Application/ConfirmOrder/OnReservedPurge.cs", "using Catalog.Contracts;\nusing Catalog.Contracts.IntegrationEvents;\nusing Platform.Application.Abstractions;\n\nnamespace Ordering.Application.ConfirmOrder;\n\npublic sealed class OnReservedPurge : IReaction<StockReservedV1, PurgeProducts>\n{\n    public static PurgeProducts Map(StockReservedV1 message) => new(message.ProductId);\n}\n"))),
+    ("A_reaction_answers_only_a_message_its_module_may_hear",
+     lambda: write(ORD + "Ordering.Application/ConfirmOrder/OnReserveStock.cs", "using Catalog.Contracts.CommandMessages;\nusing Ordering.Contracts;\nusing Platform.Application.Abstractions;\n\nnamespace Ordering.Application.ConfirmOrder;\n\npublic sealed class OnReserveStock : IReaction<ReserveStockV1, ConfirmOrder>\n{\n    public static ConfirmOrder Map(ReserveStockV1 message) => new(new OrderId(message.ReservationId.Value));\n}\n")),
+    ("A_reaction_command_is_keyed_transactional_and_unversioned",
+     lambda: edit(CAT + "Catalog.Application/ReleaseStock/ReleaseStock.cs", "IdempotencyMechanism.Key", "IdempotencyMechanism.Natural")),
 ]
 
 PROGRAM = "src/Api/Program.cs"
@@ -256,6 +275,18 @@ API = [
      lambda: edit(PROGRAM, "app.UseTraceBoundary();\n", "")),
     (["Every_module_context_connects_to_the_one_database"],
      lambda: edit(CAT + "Catalog.Infrastructure/CatalogModule.cs", "        services.AddModuleDbContext<CatalogDbContext>(CatalogDbContext.SchemaName);\n", "        services.AddModuleDbContext<CatalogDbContext>(CatalogDbContext.SchemaName);\n        services.AddDbContext<CatalogDbContext>(options => Microsoft.EntityFrameworkCore.SqlServerDbContextOptionsExtensions.UseSqlServer(options, \"Server=localhost;Database=Catalog\"));\n")),
+    (["A_reaction_commands_policy_admits_its_modules_service_principal_alone"],
+     lambda: edit(CAT + "Catalog.Infrastructure/CatalogModule.cs", "policy => policy.RequireServicePrincipal(CatalogDbContext.ModuleName)", "policy => policy.RequireAuthenticatedUser().RequireClaim(\"permissions\", CatalogPolicies.React)")),
+    (["A_reaction_commands_policy_admits_its_modules_service_principal_alone"],
+     lambda: edit(ORD + "Ordering.Infrastructure/OrderingModule.cs", "policy.RequireServicePrincipal(OrderingDbContext.ModuleName)", "policy.RequireServicePrincipal(\"Catalog\")")),
+    (["A_modules_service_principal_holds_no_policy_but_its_reactions"],
+     lambda: edit(ORD + "Ordering.Infrastructure/OrderingModule.cs", "policy => policy.RequireAuthenticatedUser().RequireClaim(\"tenant\").RequireClaim(\"permissions\", OrderingPolicies.Read)", "policy => policy.RequireAuthenticatedUser()")),
+    (["Every_reaction_in_the_solution_is_registered_with_the_outbox_dispatcher"],
+     lambda: edit(ORD + "Ordering.Infrastructure/OrderingModule.cs", "        services.AddReactions(typeof(OrderingPolicies).Assembly);\n", "")),
+    (["No_route_dispatches_a_reaction_command"],
+     lambda: write("src/Api/Endpoints/Ordering/ConfirmOrderEndpoint.cs", "using Mediator;\nusing Microsoft.AspNetCore.Http.HttpResults;\nusing Ordering.Application.ConfirmOrder;\nusing Ordering.Contracts;\nusing SharedKernel;\n\nnamespace Api.Endpoints.Ordering;\n\npublic sealed class ConfirmOrderEndpoint : IEndpoint<ConfirmOrder>\n{\n    public static string Method => HttpMethods.Post;\n\n    public static string Pattern => \"/ordering/orders/{id:guid}/confirm\";\n\n    public static Delegate Handler => Handle;\n\n    private static async Task<Results<NoContent, ProblemHttpResult>> Handle([ClassOf<OrderId>] Guid id, ISender sender, CancellationToken cancellationToken) =>\n        (await sender.Send(new ConfirmOrder(new OrderId(id)), cancellationToken)).ToNoContent();\n}\n")),
+    (["Every_options_class_the_solution_binds_has_a_validator"],
+     lambda: edit(MESSAGING, "            .Validate(o => o.PollInterval > TimeSpan.Zero && o.BatchSize is > 0 and <= 1000, \"Outbox delivery needs a positive poll interval and a batch size of 1 to 1000.\")\n", "")),
     (["A_missing_database_connection_string_stops_startup", "Every_options_class_the_solution_binds_has_a_validator"],
      lambda: edit("src/Platform/Platform.Infrastructure/PlatformPersistence.cs", "            .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString), $\"ConnectionStrings:{ConnectionStringName} is missing; every module's schema lives in that one database.\")\n", "")),
 ]
@@ -328,9 +359,9 @@ ISOLATED = [
     (DOMAIN_TESTS, ["Every_domain_method_constructor_and_outcome_has_its_test"],
      lambda: (edit(CAT + "Catalog.Domain/Products/RenameOutcome.cs", "    Discontinued,", "    Discontinued,\n    Reserved,"),
               edit(CAT + "Catalog.Application/RenameProduct/RenameProductHandler.cs", "            RenameOutcome.Discontinued => CatalogProblems.ProductDiscontinued.With(),", "            RenameOutcome.Discontinued => CatalogProblems.ProductDiscontinued.With(),\n            RenameOutcome.Reserved => CatalogProblems.ProductDiscontinued.With(),"))),
-    (SQL, ["RenameProduct_ReturnsPreconditionRequired_WhenIfMatchIsMissingOrAny", "ReceiveStock_ReturnsPreconditionRequired_WhenIfMatchIsMissingOrAny"],
+    (SQL, ["RenameProduct_ReturnsPreconditionRequired_WhenIfMatchIsMissingOrAny", "ReceiveStock_ReturnsPreconditionRequired_WhenIfMatchIsMissingOrAny", "CancelOrder_ReturnsPreconditionRequired_WhenIfMatchIsMissingOrAny"],
      lambda: edit(PROGRAM, "        typeof(PreconditionBehavior<,>),\n", "")),
-    (SQL, ["RenameProduct_ReturnsPreconditionFailed_WhenIfMatchIsStale", "ReceiveStock_ReturnsPreconditionFailed_WhenIfMatchIsStale"],
+    (SQL, ["RenameProduct_ReturnsPreconditionFailed_WhenIfMatchIsStale", "ReceiveStock_ReturnsPreconditionFailed_WhenIfMatchIsStale", "CancelOrder_ReturnsPreconditionFailed_WhenIfMatchIsStale"],
      lambda: edit(BEHAVIOR, "if (unit.LoadedVersions.Any(v => !versioned.ExpectedVersion.Matches(v)))", "if (unit.LoadedVersions.Any(v => !versioned.ExpectedVersion.Matches(v)) && versioned.ExpectedVersion.Unmatchable)")),
     (SQL, ["CreateProduct_ReturnsPreconditionFailed_WhenCreateOnlyAndTheIdExists"],
      lambda: edit(CAT + "Catalog.Application/CreateProduct/CreateProductHandler.cs", "return command.CreateOnly ? PlatformProblems.PreconditionFailed.With() : command.ProductId;", "return command.ProductId;")),
@@ -349,7 +380,43 @@ ISOLATED = [
     (SQL, ["Every_step_of_a_command_emits_a_span_nested_in_pipeline_order", "Every_step_of_a_paged_query_emits_a_span_nested_in_pipeline_order"],
      lambda: edit("src/Platform/Platform.Application/Behaviors/AuthorizationBehavior.cs", '        using var activity = DispatchTelemetry.StartStep("authorize", GetType());\n', "")),
     (UNIT, ["A_write_to_a_loaded_aggregate_without_a_precondition_fails_the_dispatch"],
-     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates)", "else if (unit.ChangesLoadedAggregates && message is null)")),
+     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates && context.Causation is null)", "else if (unit.ChangesLoadedAggregates && message is null)")),
+
+    (SQL, ["Delivery_restores_the_writing_transactions_trace_context"],
+     lambda: edit(DISPATCHER, "StartActivity(DispatchTelemetry.DeliverSpan, ActivityKind.Consumer, writer)", "StartActivity(DispatchTelemetry.DeliverSpan, ActivityKind.Consumer)")),
+    (SQL, ["Delivery_restores_the_writing_transactions_trace_context"],
+     lambda: edit(DISPATCHER, "delivery.TraceId.ToHexString()", "ActivityTraceId.CreateRandom().ToHexString()")),
+    (SQL, ["A_redelivered_event_changes_nothing"],
+     lambda: edit(DISPATCHER, "idempotencyKey: message.Id.ToString(),", "idempotencyKey: Guid.NewGuid().ToString(),")),
+    (SQL, ["A_reaction_passes_the_initiating_user_and_its_cause_to_the_messages_it_writes"],
+     lambda: edit(UOW, "InitiatingPrincipalId = dispatch.Causation?.InitiatingPrincipalId ?? dispatch.PrincipalId,", "InitiatingPrincipalId = dispatch.PrincipalId,")),
+    (SQL, ["A_reaction_passes_the_initiating_user_and_its_cause_to_the_messages_it_writes"],
+     lambda: edit(UOW, "        CausationId = dispatch.Causation?.MessageId,\n", "")),
+    (SQL, ["A_reaction_runs_as_its_modules_service_principal_on_behalf_of_the_initiating_user"],
+     lambda: edit("src/Platform/Platform.Application/Behaviors/Audit.cs", "context.Causation?.InitiatingPrincipalId, context.Causation?.MessageId);", "null, context.Causation?.MessageId);")),
+    (SQL, ["A_saga_step_that_fails_after_a_compensable_one_runs_its_compensations"],
+     lambda: edit(ORD + "Ordering.Application/ConfirmOrder/ConfirmOrderHandler.cs", "ConfirmOutcome.Abandoned => Compensate(order),", "ConfirmOutcome.Abandoned => order.Id == default ? Compensate(order) : Result.Success(),")),
+    (SQL, ["A_message_whose_reaction_fails_stays_undelivered_for_the_next_pass"],
+     lambda: edit(DISPATCHER, "DispatchTelemetry.ReactionFailed(logger, message.Id, reaction.Name, result.Problem!.Type.Uri);\n            return false;", "DispatchTelemetry.ReactionFailed(logger, message.Id, reaction.Name, result.Problem!.Type.Uri);\n            return true;")),
+    (SQL, ["The_outbox_is_delivered_without_being_asked"],
+     lambda: edit(MESSAGING, "        services.AddHostedService<OutboxDelivery>();\n", "")),
+    (SQL, ["An_order_whose_stock_is_reserved_is_confirmed"],
+     lambda: edit(UOW, "        TenantId = dispatch.Tenant?.Value,\n", "")),
+    (SQL, ["An_order_whose_stock_is_reserved_is_confirmed"],
+     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates && context.Causation is null)", "else if (unit.ChangesLoadedAggregates)")),
+    (SQL, ["GetOrder_ReturnsNotFound_WhenTheOrderIsAnotherTenants"],
+     lambda: edit(ORD + "Ordering.Infrastructure/Queries/GetOrder/GetOrderHandler.cs", " AND TenantId = {tenant}", "")),
+    (SQL, ["CancelOrder_ReturnsNotFound_WhenTheOrderIsAnotherTenants"],
+     lambda: edit(ORD + "Ordering.Infrastructure/Persistence/OrderRepository.cs", "o => o.Id == id && EF.Property<Guid>(o, TenantColumn) == tenant", "o => o.Id == id")),
+    (UNIT, ["A_reaction_that_loses_a_race_is_not_recorded_so_its_retry_runs_again"],
+     lambda: edit(BEHAVIOR, "        if (attempt is not null && !lostRace)\n", "        if (attempt is not null && (lostRace || !lostRace))\n")),
+
+    (MODEL, ["Published_messages_carry_their_version_in_their_name"],
+     lambda: write(CAT + "Catalog.Contracts/CommandMessages/RestockProduct.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Contracts.CommandMessages;\n\npublic sealed record RestockProduct(ProductId ProductId) : ICommandMessage;\n")),
+    (MODEL, ["Published_messages_leave_only_through_the_outbox"],
+     lambda: write(ORD + "Ordering.Application/PlaceOrder/IStockClient.cs", "using Catalog.Contracts.CommandMessages;\n\nnamespace Ordering.Application.PlaceOrder;\n\npublic interface IStockClient\n{\n    void Reserve(ReserveStockV1 commandMessage);\n}\n")),
+    (MODEL, ["Events_and_outbox_payloads_carry_nothing_restricted"],
+     lambda: write(CAT + "Catalog.Contracts/CommandMessages/AuditSupplierV1.cs", "using Platform.Application.Abstractions;\nusing SharedKernel;\n\nnamespace Catalog.Contracts.CommandMessages;\n\npublic sealed record AuditSupplierV1(ProductId ProductId, [Restricted] string TaxNumber) : ICommandMessage;\n")),
 ]
 
 

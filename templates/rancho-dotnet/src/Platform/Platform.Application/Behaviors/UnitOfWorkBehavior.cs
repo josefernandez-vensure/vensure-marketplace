@@ -61,13 +61,15 @@ public sealed class UnitOfWorkBehavior<TMessage, TResponse>(IUnitOfWorkFactory u
                 result = TResponse.Failure(PlatformProblems.PreconditionFailed.With());
             }
         }
-        else if (unit.ChangesLoadedAggregates)
+        else if (unit.ChangesLoadedAggregates && context.Causation is null)
         {
+            // A reaction carries no If-Match: it applies the state it loads, and a race it loses at commit is retried.
             unit.Discard();
             throw new InvalidOperationException(
                 $"{operation.Id} changed an aggregate it loaded, but its message is not an IVersionedCommand. A write to an existing resource carries If-Match.");
         }
 
+        var lostRace = false;
         if (result.IsSuccess)
         {
             if (attempt is not null)
@@ -91,11 +93,14 @@ public sealed class UnitOfWorkBehavior<TMessage, TResponse>(IUnitOfWorkFactory u
 
             // Someone changed the aggregate between this load and this commit.
             result = TResponse.Failure(message is IVersionedCommand ? PlatformProblems.PreconditionFailed.With() : PlatformProblems.Conflict.With());
+
+            // An unversioned write that lost a race did nothing, so nothing is recorded under its key: its retry runs again.
+            lostRace = message is not IVersionedCommand;
         }
 
         // A failure: nothing the handler staged survives. The failure is recorded on its own, so a replay returns it.
         unit.Discard();
-        if (attempt is not null)
+        if (attempt is not null && !lostRace)
         {
             unit.StageAttempt(attempt, result.Record(fingerprint));
         }

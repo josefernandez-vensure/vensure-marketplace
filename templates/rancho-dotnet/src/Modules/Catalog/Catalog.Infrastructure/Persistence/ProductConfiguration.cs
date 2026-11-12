@@ -20,5 +20,15 @@ internal sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         builder.Property<Guid>(ProductRepository.TenantColumn);
         builder.HasIndex(ProductRepository.TenantColumn);
         builder.Ignore(p => p.DomainEvents);
+        builder.Ignore(p => p.Available);
+
+        builder.OwnsMany(p => p.Reservations, reservation =>
+        {
+            reservation.ToTable("ProductReservations");
+            reservation.WithOwner().HasForeignKey("ProductId");
+            reservation.Property(r => r.Id).HasConversion(id => id.Value, value => new ReservationId(value)).ValueGeneratedNever();
+            reservation.HasKey("ProductId", nameof(StockReservation.Id));
+        });
+        builder.Navigation(p => p.Reservations).HasField("_reservations").UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

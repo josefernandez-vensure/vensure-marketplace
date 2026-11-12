@@ -28,4 +28,16 @@ public static partial class DispatchTelemetry
 
     [LoggerMessage(Level = LogLevel.Information, Message = "{Operation} failed with {ProblemType} in {ElapsedMs} ms")]
     public static partial void Failed(ILogger logger, [Internal] string operation, [Internal] string problemType, [Internal] double elapsedMs);
+
+    /// <summary>The span that delivers one outbox message: a child of the span that wrote it.</summary>
+    public const string DeliverSpan = "deliver";
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Outbox message {MessageId} stays undelivered: {Reaction} failed with {ProblemType}")]
+    public static partial void ReactionFailed(ILogger logger, [Internal] Guid messageId, [Internal] string reaction, [Internal] string problemType);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Outbox message {MessageId} stays undelivered: {Reaction} threw")]
+    public static partial void ReactionThrew(ILogger logger, Exception exception, [Internal] Guid messageId, [Internal] string reaction);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "An outbox delivery pass failed; the next pass retries")]
+    public static partial void DeliveryPassFailed(ILogger logger, Exception exception);
 }

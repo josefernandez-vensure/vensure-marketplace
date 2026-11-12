@@ -1,4 +1,68 @@
 {
+  "Catalog.Contracts.CommandMessages.ReleaseStockV1": {
+    "type": [
+      "object",
+      "null"
+    ],
+    "properties": {
+      "ReservationId": {
+        "type": "object",
+        "properties": {
+          "Value": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ProductId": {
+        "type": "object",
+        "properties": {
+          "Value": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "required": [
+      "ReservationId",
+      "ProductId"
+    ]
+  },
+  "Catalog.Contracts.CommandMessages.ReserveStockV1": {
+    "type": [
+      "object",
+      "null"
+    ],
+    "properties": {
+      "ReservationId": {
+        "type": "object",
+        "properties": {
+          "Value": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ProductId": {
+        "type": "object",
+        "properties": {
+          "Value": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "Quantity": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "ReservationId",
+      "ProductId",
+      "Quantity"
+    ]
+  },
   "Catalog.Contracts.IntegrationEvents.ProductCreatedV1": {
     "type": [
       "object",
@@ -24,6 +88,70 @@
       "At"
     ]
   },
+  "Catalog.Contracts.IntegrationEvents.StockReservationFailedV1": {
+    "type": [
+      "object",
+      "null"
+    ],
+    "properties": {
+      "ReservationId": {
+        "type": "object",
+        "properties": {
+          "Value": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ProductId": {
+        "type": "object",
+        "properties": {
+          "Value": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "required": [
+      "ReservationId",
+      "ProductId"
+    ]
+  },
+  "Catalog.Contracts.IntegrationEvents.StockReservedV1": {
+    "type": [
+      "object",
+      "null"
+    ],
+    "properties": {
+      "ReservationId": {
+        "type": "object",
+        "properties": {
+          "Value": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ProductId": {
+        "type": "object",
+        "properties": {
+          "Value": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "Quantity": {
+        "type": "integer"
+      }
+    },
+    "required": [
+      "ReservationId",
+      "ProductId",
+      "Quantity"
+    ]
+  },
   "Catalog.Contracts.ProductId": {
     "type": "object",
     "properties": {
@@ -46,5 +174,14 @@
     "required": [
       "Value"
     ]
+  },
+  "Catalog.Contracts.ReservationId": {
+    "type": "object",
+    "properties": {
+      "Value": {
+        "type": "string",
+        "format": "uuid"
+      }
+    }
   }
 }

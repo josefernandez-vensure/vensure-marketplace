@@ -8,6 +8,8 @@ using Mediator;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Compliance.Classification;
 using Microsoft.Extensions.Compliance.Redaction;
+using Ordering.Application;
+using Ordering.Infrastructure;
 using Platform.Application.Behaviors;
 using Platform.Infrastructure;
 using SharedKernel;
@@ -27,11 +29,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 builder.Services.AddHttpPlatform();
 builder.Services.AddPlatformPersistence(builder.Configuration.GetConnectionString(PlatformPersistence.ConnectionStringName));
 builder.Services.AddPlatformPaging();
+builder.Services.AddOutboxDelivery(builder.Configuration);
 
 builder.Services.AddMediator((MediatorOptions options) =>
 {
     options.ServiceLifetime = ServiceLifetime.Scoped;
-    options.Assemblies = [typeof(CatalogPolicies), typeof(CatalogModule)];
+    options.Assemblies = [typeof(CatalogPolicies), typeof(CatalogModule), typeof(OrderingPolicies), typeof(OrderingModule)];
 
     // The pipeline, in this order. Changing it needs a reason in the PR.
     options.PipelineBehaviors =
@@ -47,6 +50,7 @@ builder.Services.AddMediator((MediatorOptions options) =>
 });
 
 builder.Services.AddCatalogModule(builder.Configuration);
+builder.Services.AddOrderingModule(builder.Configuration);
 
 var app = builder.Build();
 

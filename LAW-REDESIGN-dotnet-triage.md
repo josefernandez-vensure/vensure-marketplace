@@ -28,7 +28,7 @@ Moved to increment 2, because they need EF migrations: BE-87 (a committed migrat
 
 ## Increment 2: checks that need the platform
 
-These test `Result`, the operation declaration, the pipeline, the page and cursor, the outbox, the endpoint abstraction, the EF model or the built host, so the platform is built first. The required behaviour tests become the template's own reference tests, which modular law §11 already lists. The work is split into five slices.
+These test `Result`, the operation declaration, the pipeline, the page and cursor, the outbox, the endpoint abstraction, the EF model or the built host, so the platform is built first. The required behaviour tests become the template's own reference tests, which modular law §11 already lists. The work is split into six slices, all done.
 
 ### Slice 2a: the dispatch core (done)
 
@@ -121,11 +121,37 @@ What differs from the old rows:
 - **BE-139:** every caller is outside the trust boundary, because the template has one edge. A deployment with an internal edge whose callers it trusts decides that at the edge, which the template doesn't model.
 - **BE-120:** deferred, below; the template has no upload endpoint.
 
-### Slice 2f (to do)
+### Slice 2f: outbox delivery, reactions and a saga (done)
 
-| Slice | Rows |
+The outbox dispatcher and the hosted service that runs it; reactions (`IReaction<TMessage, TCommand>`) and command messages (`ICommandMessage`); the module's service principal; the cause a reaction carries (`Causation`: the message and the initiating user) into its audit record and into every message it writes; the tenant scope carried on each outbox row; and the order saga, between Catalog and a minimal second module, `Ordering`, created with the `dotnet` CLI. All 176 tests pass, and `check-rancho-dotnet.py` catches 165 of 165 seeds, 32 of them new.
+
+| Mechanism | Rows |
 |---|---|
-| 2f Outbox delivery and reactions (split from 2b) | test BE-92 (delivery restores the trace context); reactions and sagas, modular law §5 |
+| The types themselves | §5, a reaction maps one message to one command: `IReaction<TMessage, TCommand>` has only a `static abstract Map`, so a reaction holds no dependency and can't load, write or dispatch; `TCommand` must be a command. The dispatcher sends the command through the pipeline, with the message's id as its idempotency key, in a scope of its own, and marks the message delivered only when every reaction succeeded (at least once). §5, a reaction runs as its module's service principal: `ServiceIdentity` is internal to `Platform.Infrastructure`, so only the dispatcher builds one and no authentication handler can produce it; `RequireServicePrincipal(module)` is a policy only that principal holds. Only the dispatcher enters a scope's dispatch context (`DispatchScope` is internal). §5, every outbox message carries the initiating user's id and its cause: `OutboxRows.For` writes them from the dispatch context, so a reaction passes both on to whatever it writes. §10, the reaction's audit record names the user and the message (`AuditEntry.OnBehalfOf`, `CausationId`). §5, a command message goes to the sending module's own outbox (`IOutbox.Send`). |
+| `tests/Architecture.Tests` | §5: a reaction lives in its module's Application and maps to a command of its own module; it answers a domain event of its own module, any integration event, or a command message its module owns; its command is keyed, transactional and unversioned. BE-33 widened: command messages, like integration events, leave only through the outbox and carry their version in their name. BE-55/ROOT-16: command messages are outbox payloads, so nothing `Restricted` enters one. |
+| `tests/Api.Tests`, against the built host | §5: every reaction in the solution is registered with the dispatcher; each reaction command's policy admits its own module's service principal and refuses every other module's and a caller holding every permission; a module's service principal holds no other policy; no route dispatches a reaction's command |
+| `tests/Catalog.IntegrationTests` | BE-92: delivery restores the writing transaction's trace context: the delivery span is the writer's span's child, and the reaction's log line and audit record carry the writer's trace id. §5: a reaction runs as its module's service principal on behalf of the initiating user, and passes that user and its cause on; a redelivered message changes nothing (§11); a message whose reaction fails stays undelivered for the next pass; the host delivers on its own. The saga: an order whose stock is reserved is confirmed, one whose stock can't be is rejected, and a step that fails after a compensable one runs its compensation (§11); a confirmed order is past the point of no return. Ordering's versioned write answers 428 and 412 (BE-115), and another tenant's order is never read or cancelled (BE-117). |
+| `tests/Platform.Tests` | A reaction that loses a race at commit isn't recorded under its key, so its retry runs again; its failure is audited with its cause |
+| `tests/Domain.Tests` | Every outcome of `Product.ReserveStock` and `ReleaseStock` and of `Order` (BE-138 reaches the new module by itself) |
+
+Decided while building:
+
+- **The saga is choreographed** (modular law §5's default): an order is placed pending and sends Catalog's `ReserveStockV1`; Catalog replies with `StockReservedV1` or `StockReservationFailedV1`; Ordering confirms or rejects. Reserving is the compensable step and confirming the point of no return; an order cancelled in between is abandoned, and its confirmation sends `ReleaseStockV1`, which records the release and deletes nothing. A refusal is a reply, never a failed dispatch, so it commits and isn't retried. A reservation lives inside the product aggregate, since reserving changes the product's available stock in the same transaction.
+- **The tenant scope travels with the message.** An outbox row records the writer's tenant, and the dispatcher scopes the reaction to it; without it, a reaction's repository would find nothing.
+- **A reaction is exempt from the If-Match guard** (slice 2e): it carries no client's version and applies the state it loads; the aggregate's concurrency token still refuses a lost race at commit. An unversioned write that loses a race is not recorded under its key, since nothing happened; a reaction's retry under the same key runs again rather than replaying the conflict.
+- **A reaction whose command fails leaves its message undelivered**, whatever the failure, so the next pass retries it; reactions are written so that a business refusal is a successful reply.
+- An outbox row's `Type` is the message type's full name, not its assembly-qualified name, so a new assembly version still finds its reactions.
+- `Internals_are_visible_only_to_tests` now admits a friend whose name ends in `Tests`, so `Catalog.IntegrationTests` can drive the dispatcher; before, it required `.Tests`.
+
+What differs from the law, or isn't checked:
+
+- **No dead-letter and no attempt count.** A message whose reaction always fails is retried on every pass and logged each time; when the failure was recorded under its key, each retry replays it, so only an operator clears it. Each pass reads the oldest `BatchSize` undelivered messages of each module, so that many permanently failing messages would starve newer ones.
+- **No lease on a message.** Two instances may deliver the same message at once; the idempotency key makes the second a replay, but both do the work of dispatching.
+- **No orchestrator reference.** The saga has two steps and ordered compensations aren't needed, so the law's default applies. The orchestrator rules (more than three steps, or compensations in order) have no reference or check yet.
+- "A step that must stop when the user loses access checks that explicitly" has no reference and no check; the reactions here act on stock and orders, which the user's access doesn't gate.
+- "A read straight after a command may not show its reactions yet" is stated in `OrderResponse`'s doc, not checked.
+- A domain event can't reach another module's reaction: the reference table keeps one module's Application from naming another's Domain, and reactions live only in Application. The architecture test still states it, as one arm of the test of what a reaction may hear.
+- The SQL Server test project is still named `Catalog.IntegrationTests`, though it now tests Ordering too.
 
 ## Deferred: features modular law §12 doesn't cover yet
 
