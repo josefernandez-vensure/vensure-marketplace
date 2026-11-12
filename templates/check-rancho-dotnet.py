@@ -1,53 +1,83 @@
 """Prove the rancho-dotnet template's checks bite.
 
 Seeds one violation per check into a copy of the template and confirms the build
-or the architecture tests fail on it. Run it after changing a check.
+or the named tests fail on it. Run it after changing a check.
 
 Usage, from the repository root:  python -I templates/check-rancho-dotnet.py
+
+Each seed gets its own copy, and runs only the tests it expects to fail. The SQL
+Server seeds share one server, started here in Docker, each run on a database of
+its own (the fixture reads RANCHO_TEST_SQL). SEEDS=<name>,<name> reruns only
+those seeds; WORKERS=<n> runs that many seeds at once (default 6).
 """
+import concurrent.futures
 import functools
 import os
+import secrets
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 print = functools.partial(print, flush=True)
 
 SRC = Path(__file__).resolve().parent / "rancho-dotnet"
-WORK = Path(tempfile.mkdtemp(prefix="rancho-dotnet-seeded-"))
 CAT = "src/Modules/Catalog/"
+WORKERS = int(os.environ.get("WORKERS", "6"))
+_local = threading.local()
+
+
+def work():
+    """This thread's copy of the template: each seed edits and builds its own."""
+    return _local.work
 
 
 def fresh():
-    if WORK.exists():
-        shutil.rmtree(WORK)
-    shutil.copytree(SRC, WORK, ignore=shutil.ignore_patterns("bin", "obj"))
+    _local.work = Path(tempfile.mkdtemp(prefix="rancho-dotnet-seeded-"))
+    shutil.copytree(SRC, _local.work, dirs_exist_ok=True, ignore=shutil.ignore_patterns("bin", "obj", "TestResults", ".vs"))
+
+
+def done():
+    shutil.rmtree(_local.work, ignore_errors=True)
 
 
 def edit(path, old, new):
-    p = WORK / path
+    p = work() / path
     s = p.read_text(encoding="utf-8")
     assert old in s, f"{old!r} not in {path}"
     p.write_text(s.replace(old, new, 1), encoding="utf-8")
 
 
 def edit_glob(pattern, old, new):
-    matches = list(WORK.glob(pattern))
+    matches = list(work().glob(pattern))
     assert len(matches) == 1, f"{pattern} matches {matches}"
-    edit(str(matches[0].relative_to(WORK)), old, new)
+    edit(str(matches[0].relative_to(work())), old, new)
 
 
 def write(path, text):
-    p = WORK / path
+    p = work() / path
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text, encoding="utf-8")
 
 
 def run(*args):
-    r = subprocess.run(["dotnet", *args], cwd=WORK, capture_output=True, text=True, encoding="utf-8", errors="replace")
+    r = subprocess.run(["dotnet", *args], cwd=work(), capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       env={**os.environ, "DOTNET_CLI_TELEMETRY_OPTOUT": "1"})
     return r.returncode, r.stdout + r.stderr
+
+
+def build(project="Starter.slnx"):
+    """The whole solution, or only the test project a seed runs and what it references."""
+    return run("build", project, "-nologo")
+
+
+def test(project, names):
+    """Only the tests the seed expects to fail. A name that matches no test runs nothing, so it reads as not caught."""
+    filters = [arg for name in names for arg in ("--filter-method", f"*.{name}")]
+    return run("test", "--project", project, "--no-build", *filters)
 
 
 DOMAIN = CAT + "Catalog.Domain/Catalog.Domain.csproj"
@@ -431,71 +461,105 @@ def wanted(*names):
     return not ONLY or any(n in ONLY for n in names)
 
 
+def label(project):
+    return project.split("/")[-1][:6].lower()
+
+
+def build_seed(name, expected, seed):
+    fresh()
+    try:
+        seed()
+        code, out = build()
+        ok = code != 0 and expected in out
+        detail = "" if ok else "\n" + "\n".join(l for l in out.splitlines() if "error" in l)[:2000]
+        return [(name, ok, "build ", detail)]
+    finally:
+        done()
+
+
+def project_seed(kind, project, names, seed):
+    fresh()
+    try:
+        seed()
+        code, out = build(project)
+        if code != 0:
+            return [(names[0], False, kind, "  SEED BROKEN\n" + "\n".join(l for l in out.splitlines() if " error " in l)[:2000])]
+        code, out = test(project, names)
+        return [(name, failed(out, name), kind, "") for name in names]
+    finally:
+        done()
+
+
+def start_sql_server():
+    """One SQL Server for every seed that needs one; each test run makes and drops a database of its own on it."""
+    password = "Aa1!" + secrets.token_urlsafe(16)
+    container = subprocess.run(
+        ["docker", "run", "-d", "-e", "ACCEPT_EULA=Y", "-e", f"MSSQL_SA_PASSWORD={password}", "-p", "127.0.0.1::1433",
+         "mcr.microsoft.com/mssql/server:2022-latest"],
+        capture_output=True, text=True, check=True).stdout.strip()
+    port = subprocess.run(["docker", "port", container, "1433"], capture_output=True, text=True, check=True).stdout.split(":")[-1].strip()
+    for _ in range(120):
+        ready = subprocess.run(
+            ["docker", "exec", container, "/opt/mssql-tools18/bin/sqlcmd", "-C", "-S", "localhost", "-U", "sa", "-P", password, "-Q", "SELECT 1"],
+            capture_output=True, text=True)
+        if ready.returncode == 0:
+            break
+        time.sleep(1)
+    else:
+        subprocess.run(["docker", "rm", "-f", container], capture_output=True)
+        sys.exit("SQL Server did not start")
+    os.environ["RANCHO_TEST_SQL"] = f"Server=127.0.0.1,{port};User Id=sa;Password={password};TrustServerCertificate=true"
+    return container
+
+
+began = time.monotonic()
 failures = []
 
-for name, expected, seed in BUILD:
-    if not wanted(name):
-        continue
-    fresh()
-    seed()
-    code, out = run("build", "Starter.slnx", "-nologo")
-    ok = code != 0 and expected in out
-    print(f"{'FAILS AS EXPECTED' if ok else 'NOT CAUGHT':18} build  {name}")
-    if not ok:
-        failures.append(name)
-        print("\n".join(l for l in out.splitlines() if "error" in l)[:2000])
 
+def report(results, seconds):
+    for name, ok, kind, detail in results:
+        print(f"{'FAILS AS EXPECTED' if ok else 'NOT CAUGHT':18} {kind:6} {name}  ({seconds:.0f}s){detail}")
+        if not ok:
+            failures.append(name)
+
+
+# The architecture seeds go in together: one copy, one build, one test run.
 TEST = [(n, s) for n, s in TEST if wanted(n)]
-fresh()
-for _, seed in TEST:
-    seed()
-code, out = run("build", "Starter.slnx", "-nologo")
-if code != 0:
-    print("Test seeds do not compile:\n" + "\n".join(l for l in out.splitlines() if "error" in l)[:4000])
-    sys.exit(1)
-code, out = run("test", "--project", "tests/Architecture.Tests", "--no-build")
-for name, _ in TEST:
-    caught = failed(out, name)
-    print(f"{'FAILS AS EXPECTED' if caught else 'NOT CAUGHT':18} test   {name}")
-    if not caught:
-        failures.append(name)
-
-for names, seed in API:
-    if not wanted(*names):
-        continue
+if TEST:
+    clock = time.monotonic()
     fresh()
-    seed()
-    code, out = run("build", "Starter.slnx", "-nologo")
-    if code != 0:
-        print(f"{'SEED BROKEN':18} api    {names[0]}\n" + "\n".join(l for l in out.splitlines() if " error " in l)[:2000])
-        failures.append(names[0])
-        continue
-    code, out = run("test", "--project", "tests/Api.Tests", "--no-build")
-    for name in names:
-        caught = failed(out, name)
-        print(f"{'FAILS AS EXPECTED' if caught else 'NOT CAUGHT':18} api    {name}")
-        if not caught:
-            failures.append(name)
+    try:
+        for _, seed in TEST:
+            seed()
+        code, out = build()
+        if code != 0:
+            print("Test seeds do not compile:\n" + "\n".join(l for l in out.splitlines() if "error" in l)[:4000])
+            sys.exit(1)
+        code, out = test("tests/Architecture.Tests", [n for n, _ in TEST])
+        report([(name, failed(out, name), "test  ", "") for name, _ in TEST], time.monotonic() - clock)
+    finally:
+        done()
 
-for project, names, seed in ISOLATED:
-    if not wanted(*names):
-        continue
-    fresh()
-    seed()
-    code, out = run("build", "Starter.slnx", "-nologo")
-    if code != 0:
-        print(f"{'SEED BROKEN':18} {project.split('/')[-1][:6].lower():6} {names[0]}\n" + "\n".join(l for l in out.splitlines() if " error " in l)[:2000])
-        failures.append(names[0])
-        continue
-    code, out = run("test", "--project", project, "--no-build")
-    for name in names:
-        caught = failed(out, name)
-        print(f"{'FAILS AS EXPECTED' if caught else 'NOT CAUGHT':18} {project.split('/')[-1][:6].lower():6} {name}")
-        if not caught:
-            failures.append(name)
+# Every other seed alone, WORKERS at a time.
+jobs = ([(build_seed, (name, expected, seed)) for name, expected, seed in BUILD if wanted(name)]
+        + [(project_seed, ("api", "tests/Api.Tests", names, seed)) for names, seed in API if wanted(*names)]
+        + [(project_seed, (label(project), project, names, seed)) for project, names, seed in ISOLATED if wanted(*names)])
+
+container = start_sql_server() if any(project == SQL and wanted(*names) for project, names, _ in ISOLATED) else None
+try:
+    def timed(job):
+        function, args = job
+        clock = time.monotonic()
+        return function(*args), time.monotonic() - clock
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        for results, seconds in pool.map(timed, jobs):
+            report(results, seconds)
+finally:
+    if container:
+        subprocess.run(["docker", "rm", "-f", container], capture_output=True)
 
 total = (sum(1 for n, _, _ in BUILD if wanted(n)) + len(TEST) + sum(len(n) for n, _ in API if wanted(*n))
          + sum(len(n) for _, n, _ in ISOLATED if wanted(*n)))
-shutil.rmtree(WORK, ignore_errors=True)
-print(f"\n{total - len(failures)} of {total} seeds caught")
+print(f"\n{total - len(failures)} of {total} seeds caught in {(time.monotonic() - began) / 60:.1f} minutes")
 sys.exit(1 if failures else 0)

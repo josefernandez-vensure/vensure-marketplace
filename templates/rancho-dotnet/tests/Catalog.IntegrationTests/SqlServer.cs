@@ -20,11 +20,16 @@ namespace Catalog.IntegrationTests;
 
 /// <summary>
 /// One real SQL Server and the service's one database for the whole run, never an in-memory stand-in, with every module's migrations applied:
-/// twice, to prove a second run changes nothing.
+/// twice, to prove a second run changes nothing. The server is a container of this run's own, or, when <see cref="SharedServerVariable"/>
+/// names one, that server, with a database of this run's own that is dropped at the end.
 /// </summary>
 public sealed class SqlServer : IAsyncLifetime
 {
-    private readonly MsSqlContainer _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
+    /// <summary>A connection string to a server that several runs share, such as the seed proof's; its database name is ignored.</summary>
+    public const string SharedServerVariable = "RANCHO_TEST_SQL";
+
+    private MsSqlContainer? _container;
+    private string? _sharedServer;
 
     public string ConnectionString { get; private set; } = string.Empty;
 
@@ -32,8 +37,17 @@ public sealed class SqlServer : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        await _container.StartAsync();
-        ConnectionString = new SqlConnectionStringBuilder(_container.GetConnectionString()) { InitialCatalog = "Starter" }.ConnectionString;
+        _sharedServer = Environment.GetEnvironmentVariable(SharedServerVariable) is { Length: > 0 } shared ? shared : null;
+        if (_sharedServer is null)
+        {
+            _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
+            await _container.StartAsync();
+        }
+
+        ConnectionString = new SqlConnectionStringBuilder(_sharedServer ?? _container!.GetConnectionString())
+        {
+            InitialCatalog = _sharedServer is null ? "Starter" : $"Starter_{Guid.NewGuid():N}",
+        }.ConnectionString;
         Api = new CatalogApi(ConnectionString);
 
         await Migrate();
@@ -92,7 +106,27 @@ public sealed class SqlServer : IAsyncLifetime
     public async ValueTask DisposeAsync()
     {
         await Api.DisposeAsync();
-        await _container.DisposeAsync();
+        if (_container is not null)
+        {
+            await _container.DisposeAsync();
+        }
+
+        if (_sharedServer is not null)
+        {
+            await DropDatabase();
+        }
+    }
+
+    /// <summary>A shared server keeps only what its runs are using: this run's database goes with it.</summary>
+    private async Task DropDatabase()
+    {
+        SqlConnection.ClearAllPools();
+        var database = new SqlConnectionStringBuilder(ConnectionString).InitialCatalog;
+        await using var master = new SqlConnection(new SqlConnectionStringBuilder(_sharedServer!) { InitialCatalog = "master" }.ConnectionString);
+        await master.OpenAsync();
+        await using var drop = master.CreateCommand();
+        drop.CommandText = $"ALTER DATABASE [{database}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{database}];";
+        await drop.ExecuteNonQueryAsync();
     }
 }
 

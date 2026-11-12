@@ -141,6 +141,7 @@ Decided while building:
 - **A reaction is exempt from the If-Match guard** (slice 2e): it carries no client's version and applies the state it loads; the aggregate's concurrency token still refuses a lost race at commit. An unversioned write that loses a race is not recorded under its key, since nothing happened; a reaction's retry under the same key runs again rather than replaying the conflict.
 - **A reaction whose command fails leaves its message undelivered**, whatever the failure, so the next pass retries it; reactions are written so that a business refusal is a successful reply.
 - An outbox row's `Type` is the message type's full name, not its assembly-qualified name, so a new assembly version still finds its reactions.
+- **The seed proof runs in about 12 minutes, not 54.** Each seed has a copy of its own and runs only the tests it expects to fail, six seeds at a time. The SQL Server seeds share one server the script starts in Docker; each test run makes and drops a database of its own on it (`RANCHO_TEST_SQL`). Without the variable, the integration tests start their own container, as before.
 - `Internals_are_visible_only_to_tests` now admits a friend whose name ends in `Tests`, so `Catalog.IntegrationTests` can drive the dispatcher; before, it required `.Tests`.
 
 What differs from the law, or isn't checked:
