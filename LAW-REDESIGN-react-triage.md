@@ -36,11 +36,28 @@ What differs from the old rows:
 - **FE-24:** the session store is the IAM library's `prismone-iam-storage` key (and its `prismone-cache-storage` and `prismone-iam-original-uri`); a key built at runtime is still not reached.
 - **FE-32:** the closure is Prismatic's runtime dependencies plus Syncfusion's grid. Presentation packages are recognised by a list and a name pattern; one that matches neither is reached by review.
 
-## Increment 2: the class brands (next)
+## Increment 2: data classes (done)
 
-FE-22 (the generator emits a class brand per property and parameter, `Restricted` where `x-data-class` is missing), and the type-aware rules that read it: FE-16 (URL), FE-23 (browser storage), FE-33 (telemetry), FE-34 (no brand asserted outside generated code and the client-state registry), FE-07 (no cast of a response), FE-15 (one problem-details parser), FE-25 (no retained token) and FE-30 (no nested credential).
+`npm run generate` now also runs `scripts/generate-classes.mjs`, which writes `src/generated/classes.gen.ts` from the document: for every schema and every operation's parameters, a Zod schema whose output carries each primitive's class as a `__dataClass` brand. The reference parses every response through its schema, parses user input through the operation's parameter schema before it goes into the URL, and keeps a persisted layout preference through the client-state registry. `check-rancho-react.py` catches 56 of 56 seeds (16 new); a link built from public and internal values passes.
 
-## Increment 3: reference code with the required tests (after)
+| Mechanism | Rows |
+|---|---|
+| `scripts/generate-classes.mjs`, and `scripts/check.mjs` (`generated`) over its output | FE-22, ROOT-16 and ROOT-18 (the class travels with the contract; unclassified is `restricted`) |
+| `rancho/classified-at-boundary` | FE-16 (`to` and `href`, `navigate`, `setSearchParams`, `redirect`, `generatePath`, `createSearchParams`, `history.pushState`/`replaceState`, `location.assign`/`replace`/`href`); FE-23 (`Storage.setItem`, `document.cookie`, `cookieStore.set`, IndexedDB `put`/`add`, `Cache.put`, and a zustand `persist`, which must name `partialize`); FE-33 (the console). Each walks the value's type through objects, arrays, unions, template literals and `JSON.stringify` or `String`, and refuses anything confidential, restricted or unclassified |
+| `rancho/no-class-assertion` | FE-34 (off in `src/shared/lib/client-state.ts`) |
+| `rancho/no-response-assertion` | FE-07 |
+| `rancho/one-problem-parser` | FE-15 |
+| `rancho/identity-exports-no-token`, and `no-restricted-syntax` on nested-credential claims | FE-25, FE-30 |
+
+What differs from the old rows:
+
+- **FE-22:** the brand is a phantom `__dataClass` property, put on by the generated schema's transform, rather than a Zod `.brand()`. The SDK's own types stay unbranded, so a value straight from the client is unclassified and refused at a boundary until it is parsed. Arguments to the generated client aren't branded: its request URLs are outside FE-16.
+- **FE-25:** stronger than the old row. Rather than tracking a token brand through the application, the identity module may export nothing that is, holds or returns a token, so no other module can hold one. Only the module itself is left to review.
+- **FE-30:** the template reads no claims, so the rule is `no-restricted-syntax` over the configured claim names, everywhere.
+- **FE-33:** the template has no telemetry SDK, so the boundary is the console. A project adds its SDK's calls to the rule's list.
+- The server document leaves `HttpValidationProblemDetails.errors` unclassified, so its messages are `restricted` and may not be logged or stored. The .NET template should classify them.
+
+## Increment 3: reference code with the required tests (next)
 
 FE-17, FE-27 (in the shell: no refresh of its own, and a `403` never refreshes), FE-29 (sign-out delegates to the IAM library), FE-35 to FE-37, FE-39 to FE-43: a form, an edit form of a versioned resource, the problem-details parser, the query client's retry rule, the interceptor's `traceparent`, an axe check per route, and the root route's error element.
 

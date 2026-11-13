@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router';
+import { ProductFilter } from '../../features/products/components/ProductFilter';
 import { ProductList } from '../../features/products/components/ProductList';
 
 /** A route composes features; it holds no logic of its own. */
@@ -7,6 +8,7 @@ export function ProductsRoute() {
   return (
     <>
       <h1>Products</h1>
+      <ProductFilter />
       <ProductList nameStartsWith={search.get('name') ?? ''} />
     </>
   );

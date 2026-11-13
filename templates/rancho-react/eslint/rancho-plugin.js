@@ -1,3 +1,5 @@
+import { classifiedAtBoundary, identityExportsNoToken, noClassAssertion, noResponseAssertion, oneProblemParser } from './rancho-typed.js';
+
 // The template's own lint rules: the checks no off-the-shelf rule makes.
 
 const UI_PACKAGES = /^(@prismhr\/components-react|@syncfusion\/)/;
@@ -138,5 +140,10 @@ export default {
     'no-static-style': noStaticStyle,
     'no-ui-reexport': noUiReexport,
     'no-paging-to-the-end': noPagingToTheEnd,
+    'classified-at-boundary': classifiedAtBoundary,
+    'no-class-assertion': noClassAssertion,
+    'no-response-assertion': noResponseAssertion,
+    'one-problem-parser': oneProblemParser,
+    'identity-exports-no-token': identityExportsNoToken,
   },
 };

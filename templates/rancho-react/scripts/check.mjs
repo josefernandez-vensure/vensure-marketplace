@@ -1,6 +1,6 @@
 // The checks lint can't make. Run with `npm run check`; CI runs it on every pull request.
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,9 +66,12 @@ const fail = (check, message) => failures.push(`${check}: ${message}`);
     const { createClient } = await import('@hey-api/openapi-ts');
     const config = await (await import('../openapi-ts.config.js')).default;
     await createClient({ ...config, input: join(root, 'openapi/v1.json'), output: { ...config.output, path: scratch }, logs: { level: 'silent' } });
+    const { generateClasses } = await import('./generate-classes.mjs');
+    writeFileSync(join(scratch, 'classes.gen.ts'), generateClasses(JSON.parse(read('openapi/v1.json'))));
     const files = (dir) => readdirSync(dir).flatMap((name) => statSync(join(dir, name)).isDirectory() ? files(join(dir, name)) : [join(dir, name)]);
-    const expected = new Map(files(scratch).map((f) => [relative(scratch, f), readFileSync(f, 'utf8')]));
-    const actual = new Map(files(join(root, 'src/generated')).map((f) => [relative(join(root, 'src/generated'), f), readFileSync(f, 'utf8')]));
+    const text = (f) => readFileSync(f, 'utf8').replace(/\r\n/g, '\n');
+    const expected = new Map(files(scratch).map((f) => [relative(scratch, f), text(f)]));
+    const actual = new Map(files(join(root, 'src/generated')).map((f) => [relative(join(root, 'src/generated'), f), text(f)]));
     for (const [file, text] of expected) {
       if (!actual.has(file)) fail('generated', `src/generated/${file} is missing; run npm run generate`);
       else if (actual.get(file) !== text) fail('generated', `src/generated/${file} differs from what the generator writes; run npm run generate`);

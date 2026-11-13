@@ -40,9 +40,15 @@ npm run verify
 | Routing is `react-router` | `no-restricted-imports` |
 | Only the identity module uses the identity library or touches its session store, and only its interceptor attaches the token | `no-restricted-imports`, `no-restricted-syntax` |
 | Tests mock the network with MSW, never the generated client | `no-restricted-syntax` |
+| Every value from the server carries its data class: `npm run generate` writes `src/generated/classes.gen.ts`, a schema per type and parameter whose output is classified from `x-data-class`, unclassified as `restricted` | `scripts/generate-classes.mjs`, `scripts/check.mjs` (`generated`) |
+| Only public and internal data reach a URL (links, navigation, search params, history), browser storage (Web Storage, cookies, IndexedDB, the Cache API, a persisted store's `partialize`) or telemetry (the console); unparsed input is unclassified, so it never does | `rancho/classified-at-boundary` |
+| A value takes its class only from a generated schema or the client-state registry (`src/shared/lib/client-state.ts`) | `rancho/no-class-assertion` |
+| A generated response is parsed, never asserted to another type | `rancho/no-response-assertion` |
+| Only `src/shared/lib/problem-details.ts` reads a problem-details body | `rancho/one-problem-parser` |
+| No token leaves the identity module, and nothing reads a credential nested inside one | `rancho/identity-exports-no-token`, `no-restricted-syntax` |
 
 `python -I templates/check-rancho-react.py`, from the repository root, seeds one violation per check into a copy and proves each is caught.
 
 ## Status
 
-Phase 3 of `LAW-REDESIGN.md`, increment 1: the structural checks. Next: the class brands on the generated types and the type-aware rules that read them at the URL, browser storage and telemetry (increment 2); then reference code carrying the required behaviour tests (increment 3).
+Phase 3 of `LAW-REDESIGN.md`. Done: increment 1 (the structural checks) and increment 2 (data classes on every value from the server, and the type-aware rules that read them). Next: reference code carrying the required behaviour tests (increment 3).

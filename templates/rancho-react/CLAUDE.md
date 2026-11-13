@@ -4,7 +4,11 @@ Stack law: /rancho-react:law
 
 - Feature layout and registry: src/features/products/ and src/features/REGISTRY.md
 - Query and key factory: src/features/products/api/products.ts and src/features/products/api/product-keys.ts
-- Store: src/features/products/stores/selection.ts
+- Store: src/features/products/stores/selection.ts; a persisted store: src/features/products/stores/view.ts
+- A response parsed through its generated schema, so it carries its data class: src/features/products/api/products.ts
+- User input parsed before it goes into the URL: src/features/products/components/ProductFilter.tsx
+- Client-only state that crosses a boundary: src/shared/lib/client-state.ts
+- Problem-details parser: src/shared/lib/problem-details.ts
 - Component rendering a query, with its loading, error and empty states: src/features/products/components/ProductList.tsx
 - Route: src/app/routes/products.tsx, in the route tree src/app/router.tsx
 - Identity, the interceptor and sign-out: src/shared/lib/identity.tsx

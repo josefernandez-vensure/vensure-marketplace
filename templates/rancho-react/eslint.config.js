@@ -9,6 +9,10 @@ import rancho from './eslint/rancho-plugin.js';
 const IDENTITY_MODULE = 'src/shared/lib/identity.tsx';
 const STYLES_MODULE = 'src/app/styles.ts';
 const IDENTITY_PACKAGES = ['@vensure-devops-qa/vensureone-iam-react', 'jwt-decode'];
+const PROBLEM_PARSER = 'src/shared/lib/problem-details.ts';
+const CLIENT_STATE_REGISTRY = 'src/shared/lib/client-state.ts';
+// Claims that carry another credential inside a token: never read.
+const NESTED_CREDENTIAL_CLAIMS = /^(idp_access_token|idp_refresh_token|access_token|refresh_token)$/;
 const IDENTITY_STORAGE_KEYS = /^prismone-(iam-storage|cache-storage|iam-original-uri)$/;
 const OTHER_FORM_LIBRARIES = ['formik', 'react-final-form', 'final-form', '@tanstack/react-form', 'react-hook-form-mui', '@rjsf/core'];
 // UI-class packages: the UI library's own dependencies, and every other presentation package. The application imports
@@ -61,7 +65,11 @@ const MOCKS = [
   { selector: 'CallExpression[callee.object.name="vi"][callee.property.name=/^(mock|doMock)$/][arguments.0.value=/generated/]', message: 'Mock the network with MSW, never the generated client.' },
   { selector: 'CallExpression[callee.object.name="vi"][callee.property.name=/^(mock|doMock)$/] > ImportExpression[source.value=/generated/]', message: 'Mock the network with MSW, never the generated client.' },
 ];
-const restrictedSyntax = ({ identity = false } = {}) => ['error', ...(identity ? [] : [...AUTHORIZATION, ...IDENTITY_STORE]), ...PAGING, ...MOCKS];
+const NESTED_CREDENTIALS = [
+  { selector: `MemberExpression[property.name=${NESTED_CREDENTIAL_CLAIMS}]`, message: 'Never read a credential nested inside a token.' },
+  { selector: `MemberExpression[property.value=${NESTED_CREDENTIAL_CLAIMS}]`, message: 'Never read a credential nested inside a token.' },
+];
+const restrictedSyntax = ({ identity = false } = {}) => ['error', ...(identity ? [] : [...AUTHORIZATION, ...IDENTITY_STORE]), ...NESTED_CREDENTIALS, ...PAGING, ...MOCKS];
 
 const FETCH = { message: 'Reach the server through the generated client, in a feature\'s api/.' };
 const restrictedGlobals = ['error', { name: 'fetch', ...FETCH }, { name: 'XMLHttpRequest', ...FETCH }];
@@ -117,6 +125,11 @@ export default tseslint.config(
       'rancho/no-static-style': 'error',
       'rancho/no-ui-reexport': 'error',
       'rancho/no-paging-to-the-end': 'error',
+      // Data classes: what reaches the URL, browser storage or telemetry is public or internal, by the generated schemas.
+      'rancho/classified-at-boundary': 'error',
+      'rancho/no-class-assertion': 'error',
+      'rancho/no-response-assertion': 'error',
+      'rancho/one-problem-parser': 'error',
     },
   },
   // A flat-config block replaces a rule's options for the files it matches, so each scope restates its whole list.
@@ -126,6 +139,10 @@ export default tseslint.config(
   { files: ['src/features/*/components/**'], rules: { 'no-restricted-imports': restrictedImports({ components: true }) } },
   { files: [STYLES_MODULE], rules: { 'no-restricted-imports': restrictedImports({ styles: true }) } },
   { files: [IDENTITY_MODULE], rules: { 'no-restricted-imports': restrictedImports({ identity: true, shared: true }), 'no-restricted-syntax': restrictedSyntax({ identity: true }) } },
+  { files: [PROBLEM_PARSER], rules: { 'rancho/one-problem-parser': 'off' } },
+  { files: [CLIENT_STATE_REGISTRY], rules: { 'rancho/no-class-assertion': 'off' } },
+  // A token never leaves the identity module, and nothing reads a credential nested inside one.
+  { files: [IDENTITY_MODULE], rules: { 'rancho/identity-exports-no-token': 'error' } },
   // Only the generated client and the identity module's interceptor call fetch.
   { files: [IDENTITY_MODULE], rules: { 'no-restricted-globals': 'off', 'no-restricted-properties': 'off' } },
 );

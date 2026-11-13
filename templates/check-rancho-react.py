@@ -31,6 +31,9 @@ _local = threading.local()
 PRODUCTS = "src/features/products/"
 LIST = PRODUCTS + "components/ProductList.tsx"
 API = PRODUCTS + "api/products.ts"
+FILTER = PRODUCTS + "components/ProductFilter.tsx"
+VIEW = PRODUCTS + "stores/view.ts"
+IDENTITY = "src/shared/lib/identity.tsx"
 
 
 def work():
@@ -78,6 +81,19 @@ def edit_json(path, change):
     data = json.loads(p.read_text(encoding="utf-8"))
     change(data)
     p.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def classify(schema, prop, data_class):
+    """Changes a property's class in the server's document (None removes it) and regenerates the classes."""
+    def change(d):
+        p = d["components"]["schemas"][schema]["properties"][prop]
+        if data_class:
+            p["x-data-class"] = data_class
+        else:
+            p.pop("x-data-class", None)
+    edit_json("openapi/v1.json", change)
+    code, out = node("scripts/generate-classes.mjs")
+    assert code == 0, out
 
 
 def node(*args):
@@ -190,6 +206,48 @@ SEEDS = [
     # Tests mock the network, not the client.
     ("Tests_mock_no_generated_client", "lint", "no-restricted-syntax",
      lambda: edit(LIST.replace(".tsx", ".test.tsx"), "import { ProductList } from './ProductList';", "import { ProductList } from './ProductList';\n\nvi.mock('../../../generated/sdk.gen');")),
+    # Data classes (increment 2): the generated schemas classify every value, unclassified is restricted, and only
+    # public and internal data reach the URL, browser storage or telemetry.
+    ("Generated_classes_are_not_edited", "check", "generated: src/generated/classes.gen.ts differs",
+     lambda: edit("src/generated/classes.gen.ts", '"name": classified("public", z.string()),', '"name": classified("internal", z.string()),')),
+    ("Unparsed_input_goes_into_no_URL", "lint", "rancho/classified-at-boundary",
+     lambda: edit(FILTER, "setSearch(nameStartsWith ? { name: nameStartsWith } : {});", "setSearch({ name: text });")),
+    ("Unparsed_input_goes_into_no_link", "lint", "rancho/classified-at-boundary",
+     lambda: (edit(FILTER, "    <PhrInputText", "    <>\n    <a href={`/products?name=${search.get('name') ?? ''}`}>Share</a>\n    <PhrInputText"),
+              edit(FILTER, "    />\n  );", "    />\n    </>\n  );"))),
+    ("Confidential_data_goes_into_no_URL", "lint", "rancho/classified-at-boundary",
+     lambda: (classify("ProductSummary", "name", "confidential"),
+              edit(LIST, "              {product.name}", "              <Link to={`/products?name=${product.name}`}>{product.name}</Link>"),
+              edit(LIST, "import { useProductList }", "import { Link } from 'react-router';\nimport { useProductList }"))),
+    ("Unclassified_data_is_restricted", "lint", "rancho/classified-at-boundary",
+     lambda: (classify("ProductSummary", "name", None),
+              edit(LIST, "              {product.name}", "              <Link to={`/products?name=${product.name}`}>{product.name}</Link>"),
+              edit(LIST, "import { useProductList }", "import { Link } from 'react-router';\nimport { useProductList }"))),
+    ("Unparsed_input_goes_into_no_storage", "lint", "rancho/classified-at-boundary",
+     lambda: edit(FILTER, "        const { nameStartsWith }", "        localStorage.setItem('products.filter', JSON.stringify({ name: text }));\n        const { nameStartsWith }")),
+    ("Unparsed_input_goes_into_no_cookie", "lint", "rancho/classified-at-boundary",
+     lambda: edit(FILTER, "        const { nameStartsWith }", "        document.cookie = `filter=${text}`;\n        const { nameStartsWith }")),
+    ("A_persisted_store_names_what_it_persists", "lint", "rancho/classified-at-boundary",
+     lambda: edit(VIEW, "      partialize: ({ density }) => ({ density }),\n", "")),
+    ("A_persisted_store_persists_only_classified_state", "lint", "rancho/classified-at-boundary",
+     lambda: edit(VIEW, "partialize: ({ density }) => ({ density }),", "partialize: ({ density }) => ({ density, note: String(density).toUpperCase() }),")),
+    ("Unparsed_input_goes_into_no_telemetry", "lint", "rancho/classified-at-boundary",
+     lambda: edit(FILTER, "        const { nameStartsWith }", "        console.info('filtered', text);\n        const { nameStartsWith }")),
+    ("Nothing_asserts_a_data_class", "lint", "rancho/no-class-assertion",
+     lambda: (edit(FILTER, "        const { nameStartsWith } = productFilter.parse({ nameStartsWith: text });", "        const nameStartsWith = text as Classified<string, 'public'>;"),
+              edit(FILTER, "import { productFilter } from '../api/products';", "import type { Classified } from '../../../generated/classes.gen';"))),
+    ("Nothing_asserts_a_response_type", "lint", "rancho/no-response-assertion",
+     lambda: (edit(API, "return zPageOfProductSummary.parse(data);", "return data as PageOfProductSummary;"),
+              edit(API, "import { productKeys } from './product-keys';", "import type { PageOfProductSummary } from '../../../generated/types.gen';\nimport { productKeys } from './product-keys';"))),
+    ("Only_the_parser_reads_a_problem", "lint", "rancho/one-problem-parser",
+     lambda: write(PRODUCTS + "api/product-title.ts", "import { catalogGetProduct } from '../../../generated/sdk.gen';\n\n"
+                   "export async function failure(id: string) {\n  const { error } = await catalogGetProduct({ path: { id } });\n  return error?.title;\n}\n")),
+    ("A_token_never_leaves_the_identity_module", "lint", "rancho/identity-exports-no-token",
+     lambda: edit(IDENTITY, "/** Sign-out goes", "export function useAccessToken() {\n  return useAuth().getAccessToken;\n}\n\n/** Sign-out goes")),
+    ("The_identity_module_exports_no_token_store", "lint", "rancho/identity-exports-no-token",
+     lambda: edit(IDENTITY, "/** Sign-out goes", "export const session = () => new StorageService().getTokens();\n\n/** Sign-out goes")),
+    ("No_nested_credential_is_read", "lint", "no-restricted-syntax",
+     lambda: edit(IDENTITY, "/** Sign-out goes", "export const upstream = (claims: Record<string, string>) => claims.idp_access_token;\n\n/** Sign-out goes")),
     # The template's own tests run.
     ("The_tests_run", "test", "ProductList",
      lambda: edit(LIST, "No products match.", "Nothing here.")),
