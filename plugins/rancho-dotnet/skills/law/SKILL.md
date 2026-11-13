@@ -5,11 +5,7 @@ description: The .NET law - modules as services, the codebase as the reference, 
 
 # .NET Law
 
-A tree bound here is a modular monolith: each module is a bounded context, treated as a separate service. Its checks enforce most of how the code is built. This law states what they can't: how to use the codebase as the reference, and the decisions neither a check nor an example shows.
-
-## Role
-
-`server`. This tree publishes the contract law, `references/contract.md` in `/rancho:law`, and meets it through the platform the checks protect.
+A tree bound here is a modular monolith: each module is a bounded context, treated as a separate service. It publishes the HTTP contract of the core law (§5), and meets it through the platform the checks protect. Its checks enforce most of how the code is built. This law states what they can't: how to use the codebase as the reference, and the decisions neither a check nor an example shows.
 
 ## 1. The codebase is the reference
 
@@ -17,7 +13,6 @@ A tree bound here is a modular monolith: each module is a bounded context, treat
 - Reference code is held to this law. Where the two disagree, the law wins: say so, and fix the reference in the same change or report it.
 - For a kind with no reference yet, build it from this law. It is reviewed as the new reference, and its path is added to the list in the same change.
 - Code not on the list is precedent, not reference. Follow it where the law and the references are silent and a second occurrence confirms it. Otherwise ask.
-- If two rules leave no compliant answer, stop and ask.
 
 ### The checks
 
@@ -111,8 +106,6 @@ The checks already run over every route and message: a principal without the pol
 - A query that reads with SQL: it projects into its response and applies the scope, against SQL Server.
 - A reaction: a redelivered message changes nothing.
 - A saga: a step that fails after a compensable one runs its compensations.
-
-Don't write a test that proves only what the build proves, such as that a type exists or a reference resolves.
 
 ## 10. Not yet covered
 
