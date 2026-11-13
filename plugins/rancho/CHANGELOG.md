@@ -1,5 +1,9 @@
 # Changelog
 
+## 5.0.0
+
+- **Breaking.** The core law is rewritten to 1,500 words or fewer: one reading rule (core then the tree's bound law), access, data classes and egress, observability and audit, and the HTTP contract, merged in from `references/contract.md`, which is gone. Roles, standalone laws, annexes, the `⚙` mark, rule ids, `LAW-EXCEPTIONS.md` and `ENFORCEMENT-STATUS.md` are gone: a suppression carries its reason, and a disagreement with the law is an issue on this repository. Released with `rancho-dotnet` 4.0.0 and `rancho-react` 3.0.0.
+
 ## 4.1.0
 
 - **A standalone law may declare a role** (core §2), in a `## Role`

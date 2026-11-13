@@ -60,15 +60,14 @@ every project. The skills are usable independently.
 
 | | Invoke | What it does |
 |---|---|---|
-| skill `law` | `/rancho:law` | The core engineering law: how to use the law, which law binds each tree and when to read it, and the principles every tree keeps - access, data classification and egress, AI-agent permissions, observability and audit. Beside it, the contract law: what a server and a client agree on across HTTP. The enforcement inventory loads on demand. |
+| skill `law` | `/rancho:law` | The core engineering law: how to read the law, and what every tree keeps - access, data classes and egress, observability and audit, and the HTTP contract between a server and its clients. |
 | skill `vaca` | `/rancho:vaca` | Vensure Agentic Code Assistant. Spec-driven delivery: PRD → epic → GitHub issues → parallel agents → shipped code. |
 | command | `/rancho:help` | The VACA reference card: the five phases, the phrases that drive each, and where VACA keeps its state. |
 
 The two are meant to work together. VACA decides *what* gets built and in what
 order; the law decides what the finished code must look like. Agents that VACA
-launches read the core law, then the contract law where the tree's stack law
-declares a role, then the stack law bound to the tree they work in,
-then each of its annexes whose trigger the tree meets, before writing anything.
+launches read the core law, then the stack law bound to the tree they work in,
+before writing anything.
 
 A `SessionStart` hook states that the law is binding and points at the skill. It
 deliberately restates no rules, so there is exactly one copy of each to keep
@@ -86,13 +85,14 @@ it: the reference card, then one feature from ideation to archive.
 
 ### Stack laws
 
-A stack law carries the core law and the contract law in one technology. Each is a plugin of its
+A stack law states how one technology meets the core law. Each is a plugin of its
 own, enabled per project, and each holds one skill, `law`.
 
-| Plugin | Invoke | Role | What it governs |
-|---|---|---|---|
-| `rancho-dotnet` | `/rancho-dotnet:law` | server | .NET 10 modular monoliths: modules as services, the codebase as the reference, and the decisions the checks of the `rancho-dotnet` template (`templates/rancho-dotnet/`) can't show. |
-| `rancho-react` | `/rancho-react:law` | client | React micro-frontends in the PrismOne shell: the codebase as the reference, and the decisions the checks of the `rancho-react` template (`templates/rancho-react/`) can't show. |
+| Plugin | Invoke | What it governs |
+|---|---|---|
+| `rancho-dotnet` | `/rancho-dotnet:law` | .NET 10 modular monoliths: modules as services, the codebase as the reference, and the decisions the checks of the `rancho-dotnet` template (`templates/rancho-dotnet/`) can't show. |
+| `rancho-react` | `/rancho-react:law` | React micro-frontends in the PrismOne shell: the codebase as the reference, and the decisions the checks of the `rancho-react` template (`templates/rancho-react/`) can't show. |
+
 A project binds each of its trees with one line in the `CLAUDE.md` at the
 tree's root:
 
@@ -433,11 +433,11 @@ vensure-marketplace/
 ├── .claude-plugin/
 │   └── marketplace.json      the catalog — one entry per plugin
 ├── plugins/
-│   ├── rancho-dotnet/        stack law, role server: skills/law/
-│   ├── rancho-react/         stack law, role client: skills/law/
+│   ├── rancho-dotnet/        stack law: skills/law/
+│   ├── rancho-react/         stack law: skills/law/
 │   └── rancho/
 │       ├── .claude-plugin/plugin.json
-│       ├── skills/law/       the core law: SKILL.md + references/ (contract law, inventory)
+│       ├── skills/law/       the core law: SKILL.md
 │       ├── skills/vaca/      SKILL.md + references/ + scripts/
 │       ├── commands/help.md  the /rancho:help command
 │       ├── hooks/hooks.json  SessionStart: the prime directive
