@@ -1,6 +1,6 @@
 # Rancho modular .NET template
 
-A modular .NET service whose build enforces the `rancho-modular-dotnet` law. Rules a check can enforce live here as code, not as prose in the law.
+A modular .NET service whose build enforces the `rancho-dotnet` law. Rules a check can enforce live here as code, not as prose in the law.
 
 ```bash
 dotnet new install ./templates/rancho-dotnet
@@ -54,4 +54,4 @@ dotnet ef migrations add <Name> --project src/Modules/<Module>/<Module>.Infrastr
 
 ## Status
 
-Phase 1 of `LAW-REDESIGN.md`. Done: increment 1 (structural checks) and increment 2: slice 2a (the dispatch core), slice 2b (persistence), slice 2c (paging), slice 2d (data classification and OpenAPI), slice 2e (concurrency, tenancy and the remaining behaviour tests), and slice 2f (outbox delivery, reactions and a saga). The features modular law §12 doesn't cover yet (caching, AI models, real-time push, uploads) are deferred until a project needs them.
+Phase 1 of `LAW-REDESIGN.md`. Done: increment 1 (structural checks) and increment 2: slice 2a (the dispatch core), slice 2b (persistence), slice 2c (paging), slice 2d (data classification and OpenAPI), slice 2e (concurrency, tenancy and the remaining behaviour tests), and slice 2f (outbox delivery, reactions and a saga). The features the law doesn't cover yet (its §10) (caching, AI models, real-time push, uploads) are deferred until a project needs them.

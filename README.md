@@ -91,10 +91,8 @@ own, enabled per project, and each holds one skill, `law`.
 
 | Plugin | Invoke | Role | What it governs |
 |---|---|---|---|
-| `rancho-dotnet` | `/rancho-dotnet:law` | server | .NET 10: DDD modules and project references, EF Core, authorization, data classification, AI agents, quotas, observability, configuration, real-time, the API layer. |
+| `rancho-dotnet` | `/rancho-dotnet:law` | server | .NET 10 modular monoliths: modules as services, the codebase as the reference, and the decisions the checks of the `rancho-dotnet` template (`templates/rancho-dotnet/`) can't show. |
 | `rancho-react` | `/rancho-react:law` | client | React: feature boundaries, generated API types, TanStack Query, forms, components and styling, routing, authentication, browser data boundaries. |
-| `rancho-modular-dotnet` | `/rancho-modular-dotnet:law` | server | Draft, 0.2.0. A minimal, standalone law for .NET modular monoliths: modules as services, one aggregate per transaction, sagas across modules. The project's own reference code is the guide for everything it does not state. It does not carry the core law, and publishes the contract law the client stack laws consume. |
-
 A project binds each of its trees with one line in the `CLAUDE.md` at the
 tree's root:
 
@@ -437,7 +435,6 @@ vensure-marketplace/
 ├── plugins/
 │   ├── rancho-dotnet/        stack law, role server: skills/law/
 │   ├── rancho-react/         stack law, role client: skills/law/
-│   ├── rancho-modular-dotnet/  standalone .NET modular-monolith law (draft): skills/law/
 │   └── rancho/
 │       ├── .claude-plugin/plugin.json
 │       ├── skills/law/       the core law: SKILL.md + references/ (contract law, inventory)
