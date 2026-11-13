@@ -60,7 +60,17 @@ For every project that binds `rancho-dotnet` or `rancho-react`. Upgrade the thre
 
 ## Staying on 4.x for now
 
-The 4.x law is frozen under the `law-archive-4.1` tag. Its `marketplace.json` has the same name as the current marketplace, and Claude Code registers only one marketplace per name. So 4.x is served as a release channel: the `law-4.x` branch, which is the tag with its marketplace renamed `vensure-marketplace-4x`. A project that stays on 4.x commits the following to its `.claude/settings.json`:
+The 4.x law is frozen under the `law-archive-4.1` tag. Its `marketplace.json` has the same name as the current marketplace, and Claude Code registers only one marketplace per name. So 4.x is served as a release channel: the `law-4.x` branch, which is the tag with its marketplace renamed `vensure-marketplace-4x`. In a project that stays on 4.x, run these from its root:
+
+```bash
+claude plugin marketplace add "josefernandez-vensure/vensure-marketplace#law-4.x" --scope project
+```
+
+```bash
+claude plugin install rancho@vensure-marketplace-4x --scope project
+```
+
+Install the 4.x stack laws the same way, for example `rancho-react@vensure-marketplace-4x`. Then turn off the 5.0 plugins for this project in its `.claude/settings.json`, and commit the file. The finished file looks like this:
 
 ```json
 {
@@ -78,7 +88,7 @@ The 4.x law is frozen under the `law-archive-4.1` tag. Its `marketplace.json` ha
 }
 ```
 
-The 5.0 plugins are turned off in that project, so it never loads two `rancho` plugins. Try it on one machine before rolling it out. Leave the channel as soon as the migration lands; it gets no fixes.
+The project then loads only the 4.x plugins, rancho 4.1.0 and rancho-react 2.1.0. Every other project on the machine keeps 5.0, and both marketplaces stay registered side by side. Each developer who clones the project runs the same two commands. Leave the channel as soon as the migration lands; it gets no fixes.
 
 ## Done when
 
