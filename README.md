@@ -92,7 +92,7 @@ own, enabled per project, and each holds one skill, `law`.
 | Plugin | Invoke | Role | What it governs |
 |---|---|---|---|
 | `rancho-dotnet` | `/rancho-dotnet:law` | server | .NET 10 modular monoliths: modules as services, the codebase as the reference, and the decisions the checks of the `rancho-dotnet` template (`templates/rancho-dotnet/`) can't show. |
-| `rancho-react` | `/rancho-react:law` | client | React: feature boundaries, generated API types, TanStack Query, forms, components and styling, routing, authentication, browser data boundaries. |
+| `rancho-react` | `/rancho-react:law` | client | React micro-frontends in the PrismOne shell: the codebase as the reference, and the decisions the checks of the `rancho-react` template (`templates/rancho-react/`) can't show. |
 A project binds each of its trees with one line in the `CLAUDE.md` at the
 tree's root:
 

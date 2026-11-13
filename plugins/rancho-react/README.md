@@ -1,31 +1,24 @@
-# rancho-react — React Stack Law
+# rancho-react — React Law
 
-The stack law for a React client tree. It carries the core engineering law in
-`rancho` (`/rancho:law`) in React: structure and feature boundaries, generated
-API types, server and client state, forms, components and styling, routing,
-authentication, errors, data boundaries in the browser, real-time, and testing.
+The law for a React micro-frontend that the PrismOne shell mounts. It is short
+because the checks carry the rest. The `rancho-react` template
+(`templates/rancho-react/` in this repository) builds them into the tree, on the
+organization's stack (Prismatic, VensureOne IAM, React Router, single-spa): its
+lint rules, including type-aware rules that read each value's data class, a
+check script, and reference code with the tests the law requires. The law
+states what those checks and the reference code can't show.
 
-It is a stack law, not a law of its own. `/rancho:law` governs, and this plugin
-needs `rancho` installed beside it. It assumes nothing about the server's stack:
-it reads only the OpenAPI document the server publishes.
+`/rancho:law` governs, and this plugin needs `rancho` installed beside it. The
+law reads only the OpenAPI document the server publishes.
 
 ## Layout
 
 ```
 rancho-react/
 ├── .claude-plugin/plugin.json
-├── RECORDS.md                   rationale and history the law no longer carries
 └── skills/law/
-    ├── SKILL.md                 the stack law: role client, §1–§14
-    └── references/
-        ├── annex-realtime.md    §12; binds once the tree meets its trigger: the first
-        │                        real-time channel the client opens - SignalR,
-        │                        `WebSocket`, `EventSource`, or any other
-        └── enforcement.md       every ⚙ here, and the core rules this role carries
+    └── SKILL.md                 the React law
 ```
-
-Section numbers are those of `frontend.md` in rancho 1.7.0, which this file was.
-Records written before 2.0.0 cite them unchanged.
 
 ## Using it in a project
 
@@ -46,19 +39,24 @@ Project scope enables it in the project's settings, which are committed:
 }
 ```
 
-Then bind the tree that holds the React code:
+Then bind the tree that holds the React code, and list its reference code:
 
 ```
 // <tree>/CLAUDE.md
 Stack law: /rancho-react:law
+
+## Reference
+
+- Query and key factory: src/features/<feature>/api/
+- ...
 ```
 
-A tree is the directory at whose root that `CLAUDE.md` sits. Core §2 states the
-binding rules: one stack law per tree, and an unbound tree stops work.
+The template's own `CLAUDE.md` is a complete example. A tree that adopts the
+law adopts the template's checks with it.
 
 ## Changing it
 
-Under core §7: change the rule here first, then bring the codebase into
-compliance. A rule every client stack law would need belongs in the core law,
-not here. A new ⚙ gets an `FE-` row in `references/enforcement.md`; the prefix
-belongs to this plugin.
+Fix the code first. Then ask whether a check, a better reference, or a
+structural change prevents a repeat; ship that in the template. Only if none
+does, add one sentence to the law, within its 2,500 words, bump the version and
+add one changelog line. The pull request records why.
