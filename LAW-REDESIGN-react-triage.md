@@ -83,6 +83,27 @@ What differs from the old rows:
 
 ## Deferred and dropped
 
-- **FE-18** (real-time) stays with the annex: "stop and ask" until a project opens a real-time channel.
+- **FE-18** (real-time) and its annex go: "stop and ask" until a project opens a real-time channel.
 - **FE-10** stays dropped.
 - The TanStack Router rules (§2's generator configuration, §8's typed route tree) go with the router decision.
+
+## The law (done)
+
+`rancho-react` 2.1.0 (4,238 words) became 3.0.0, in 1,901 words. Every sentence was put to the admission test against the checks and the reference code above. The real-time annex is gone; `enforcement.md` and `RECORDS.md` stay until phase 6.
+
+| Kept in the law, because no check or reference reaches it | From 2.1.0 |
+|---|---|
+| The codebase as the reference; the checks are the law; suppressions give their reason; lists are extended in the configuration | §1 (new form, as in the .NET law) |
+| Promote to `shared/` on the second consumer; a screen of two features is a route; vocabulary shared with the server, not shape | §2 |
+| The query cache is memory only; server data is never copied into state; responses are parsed; mutations declare their invalidations; a mutation retries only with a key; aggregates come from the server | §3, §4 |
+| Forms: a schema mirroring the server's; field errors on their fields; the edit form's whole etag discipline, now: mounted once, reset only by its own write or a `412`, never fed by `values` | §6 |
+| No wrapper that only forwards or restyles; a gap in Prismatic is an issue with its owners; keyboard and accessible names | §7 |
+| Params parsed before use; thin routes; hiding UI is not access control | §8 |
+| The shell's session: no sign-in or refresh of the application's own; claims for display only; grants declared once and narrowest; storage under `appStorageKey`, cleared at sign-out; no secret in the bundle | §9 |
+| How a failure is shown; error elements per route | §10 |
+| Registry schemas accept closed sets; the referrer-policy condition, declared to the shell's owners; SDKs scrub what they capture by themselves; no export from paged reads | §3, §11 |
+| The tests each kind of code needs | §13 |
+
+Dropped because a check, the platform or the reference now carries it: the folder tree, the dependency direction, the feature registry, the generated types and their brands, the boundary rules for URLs, storage and telemetry, the key factory, paging, store placement, the form library, the UI-library, stylesheet and presentation-package rules, the identity module's monopoly and the interceptor, nested credentials, the problem parser's monopoly, MSW, and the client-wide retry, `traceparent`, `401`, `403` and sign-out behaviour, each now a test. Dropped as judgement the reference shows: escalating from component state to a store, the seven-props guideline, presentational components, and showing that a `429` throttles.
+
+The standalone branch of authentication (a sign-in flow, a token store and a session of the application's own) leaves the law with the decision to build for the shell: an application outside it is "stop and ask".

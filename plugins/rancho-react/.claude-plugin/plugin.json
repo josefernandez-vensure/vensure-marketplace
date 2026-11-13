@@ -1,8 +1,8 @@
 {
   "name": "rancho-react",
-  "displayName": "Rancho — React Stack Law",
-  "version": "2.1.0",
-  "description": "The React client stack law: feature boundaries, generated API types, TanStack Query, forms, authentication and browser data boundaries, carrying the rancho core law in React.",
+  "displayName": "Rancho — React Law",
+  "version": "3.0.0",
+  "description": "The React law for micro-frontends in the PrismOne shell: the codebase as the reference, and the decisions the rancho-react template's checks can't show.",
   "license": "MIT",
   "author": {
     "name": "Vensure Engineering"
@@ -13,6 +13,7 @@
     "react",
     "typescript",
     "tanstack",
+    "single-spa",
     "client"
   ]
 }
