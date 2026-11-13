@@ -1,8 +1,8 @@
 {
   "name": "rancho-dotnet",
-  "displayName": "Rancho — .NET Stack Law",
-  "version": "3.0.0",
-  "description": "The .NET server stack law: DDD modules, EF Core, authorization, data classification, AI agents and observability, carrying the rancho core law in .NET.",
+  "displayName": "Rancho — .NET Law",
+  "version": "4.0.0",
+  "description": "The .NET law for modular monoliths: modules as services, the codebase as the reference, and the decisions the rancho-dotnet template's checks can't show.",
   "license": "MIT",
   "author": {
     "name": "Vensure Engineering"
@@ -13,6 +13,7 @@
     "dotnet",
     "ddd",
     "ef-core",
+    "modular-monolith",
     "server"
   ]
 }

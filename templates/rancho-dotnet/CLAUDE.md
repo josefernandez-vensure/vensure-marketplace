@@ -1,4 +1,4 @@
-Stack law: /rancho-modular-dotnet:law
+Stack law: /rancho-dotnet:law
 
 ## Reference
 

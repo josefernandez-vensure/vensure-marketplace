@@ -35,10 +35,10 @@
     },
     {
       "name": "rancho-dotnet",
-      "displayName": "Rancho — .NET Stack Law",
+      "displayName": "Rancho — .NET Law",
       "source": "./plugins/rancho-dotnet",
-      "description": "The .NET server stack law: DDD modules, EF Core, authorization, data classification, AI agents and observability, carrying the rancho core law in .NET.",
-      "version": "3.0.0",
+      "description": "The .NET law for modular monoliths: modules as services, the codebase as the reference, and the decisions the rancho-dotnet template's checks can't show.",
+      "version": "4.0.0",
       "author": {
         "name": "Vensure Engineering"
       },
@@ -50,6 +50,7 @@
         "dotnet",
         "ddd",
         "ef-core",
+        "modular-monolith",
         "server"
       ],
       "tags": [
@@ -82,31 +83,6 @@
         "governance",
         "stack-law",
         "react"
-      ],
-      "license": "MIT"
-    },
-    {
-      "name": "rancho-modular-dotnet",
-      "displayName": "Rancho — Modular .NET Law",
-      "source": "./plugins/rancho-modular-dotnet",
-      "description": "A minimal law for .NET modular monoliths: modules as services, one aggregate per transaction, sagas across modules. The project's own code is the reference for everything the law does not state.",
-      "version": "0.2.0",
-      "author": {
-        "name": "Vensure Engineering"
-      },
-      "repository": "https://github.com/josefernandez-vensure/vensure-marketplace",
-      "category": "development",
-      "keywords": [
-        "governance",
-        "law",
-        "dotnet",
-        "ddd",
-        "modular-monolith"
-      ],
-      "tags": [
-        "governance",
-        "law",
-        "dotnet"
       ],
       "license": "MIT"
     }
