@@ -107,10 +107,57 @@ Ship it as one breaking release, so consuming projects upgrade once: `rancho` 5.
 | 4. Core (done: `plugins/rancho/skills/law/SKILL.md`, 1,479 words; triage in #33) | Merge the contract into core; state the one reading rule; delete standalone, roles, annexes and inventories from the model | ≤ 1,500 words |
 | 5. Pointers (done: `scripts/prime-directive.sh` prints the five-line directive only where the root `CLAUDE.md`, or any `CLAUDE.md` git tracks, holds `Stack law:`, so a repository that binds only its trees counts; the read-only rule for the installed plugins still prints everywhere, as the plugin guard's backstop. The greps now match only the files phase 6 deletes, these working files and old CHANGELOG entries) | Make the prime directive conditional and short; the three VACA reading-rule passages become one pointer each | `grep "stands alone"` and `grep "contract law"` return nothing outside the archive tag |
 | 6. Clean-up (done: the records, ledgers, inventories, `AUTHORING.md`, `tools/` and these triage files are gone, and each CHANGELOG starts at the 5.0 release; all of it is under `law-archive-4.1` or in the phase PRs) | Delete RECORDS, ledgers, `enforcement.md`, `AUTHORING.md` and `tools/`; trim the READMEs | The repo holds the laws, VACA, and the READMEs |
-| 7. Prove it | Re-run 3–5 completed tasks from a consuming project with the new law (and the old one if possible). Compare: the build and tests pass, review findings, tokens loaded. | No new class of defect; load ≤ 4k words |
+| 7. Prove it (done: three Deal Vault tasks re-run, no new class of defect, load 3,484 words for .NET and 3,472 for React; see *Phase 7 result*) | Re-run 3–5 completed tasks from a consuming project with the new law (and the old one if possible). Compare: the build and tests pass, review findings, tokens loaded. | No new class of defect; load ≤ 4k words |
 | 8. Upgrade note | One page for consuming projects: add `## Reference` to each tree's `CLAUDE.md`, adopt the template's checks, and fold `LAW-EXCEPTIONS.md` entries into suppression comments or issues. `ENFORCEMENT-STATUS.md` is no longer required. | Note in the release |
 
 Phase 1 is the largest, and the only one that builds new code. Everything after it is mostly deleting.
+
+## Phase 7 result
+
+Three completed Deal Vault tasks were re-run, each from the commit before it, in a clone with its later history removed. The agent read only the 5.0 laws. A separate reviewer then compared each re-run with what shipped under the 4.x law.
+
+| Task | Tree | Verification | New defects in the re-run | Caused by the 5.0 law |
+|---|---|---|---|---|
+| #179 Queries and the published contract (shipped `09b1ecd`) | .NET | build: 0 warnings; 1,383 tests pass | 3 low: no validator on `GetCompany`; the acquisitions paging walk covers one sort; one DTO outside its feature folder | none: the law, a check or the task still covers each (agent slips) |
+| #181 company-page (shipped `230608e`) | React | lint, type check, 815 tests and the build pass | 2 low: the nil GUID shows an error, not "not found"; two failure paths drop the reference id | none: one the law covers (agent slip), one neither law covers |
+| #222 Transaction-less commands and the system principal (shipped `d06810c`) | .NET | build: 0 warnings; 1,619 tests pass | 2 low: one log line names the correlation id `CorrelationId`, where the enricher uses `correlation_id`; the outbox check doesn't follow helpers | none: one the codebase's precedent covers (agent slip), one the 4.x law also left to review |
+
+In each case, the re-run avoided something that shipped got wrong:
+
+- **#181** showed no server problem text. Shipped showed `title` for every problem type, against both laws, and showed no reference id.
+- **#222** needed no file-name exemptions in its principal check.
+- **#179** has a sturdier case-insensitive search.
+
+Measured load:
+
+| Stack | 4.x words | 5.0 words |
+|---|---|---|
+| .NET | 14,762, plus annexes | 3,484 |
+| React | 9,088 | 3,472 |
+
+The reviewers proposed no law sentence that passes the admission test. They proposed checks instead:
+
+- **A cursor bound to its sort**, so one replayed under another sort is refused.
+- **`IBackgroundDispatch` used only by hosted services.**
+- **`ExecuteUpdate`, `ExecuteDelete` and raw SQL banned** outside the platform's bookkeeping.
+- **A generated parameter schema that carries the server's constraints**, such as the nil GUID.
+
+### What the re-runs found that phase 8 must settle
+
+- **The React law assumes the template's stack.** Deal Vault uses TanStack Router, pnpm, and shadcn or `@vensure-devops-qa/prismatic-react`. About six React rules point at template pieces it lacks:
+  - `npm run verify` and `scripts/check.mjs`;
+  - Prismatic and `layout.css`;
+  - the generated parameter schema;
+  - `ProblemMessage` with `x-problem-types`;
+  - `tests/routes.test.tsx` and axe.
+- **Core §5 and §4 against an existing contract.** Deal Vault has its own conventions in four places:
+  - for concurrency, `version` and `expectedVersion` with `409` (AD-7), where core §5 says `ETag`, `If-Match`, `428` and `412`;
+  - `x-data-classification`, where core §5 says `x-data-class`, and its parameters aren't classified;
+  - a correlation id that is a GUID v7, not the W3C trace id;
+  - no audit trail.
+- **Service principals per module, or one system principal?** .NET §5 says "its module's service principal"; Deal Vault's task wanted one shared principal.
+- **No binding, no `## Reference`.** The two older commits predate Deal Vault's `Stack law:` lines, and no commit has a `## Reference` section, so every run worked from precedent. Core §1 would have stopped the two unbound runs.
+- **A check defect in Deal Vault:** its FE-16 URL rule never finishes on typed fixture ids.
 
 ## Gaps the templates don't yet close
 
