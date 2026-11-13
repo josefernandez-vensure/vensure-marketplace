@@ -27,7 +27,7 @@ rancho/
 ├── scripts/                     hook scripts, lib/ holds their shared state
 ├── bin/                         executables added to PATH          [empty]
 ├── hooks/hooks.json             event handlers             [four events]
-├── context/prime-directive.md   payload the SessionStart hook prints
+├── context/                     what scripts/prime-directive.sh prints at SessionStart
 ├── AUTHORING.md                 the 4.x rules for changing the law, no longer read
 ├── RECORDS.md                   rationale and history moved out of the law
 ├── .mcp.json                    MCP servers                        [empty]
@@ -248,8 +248,8 @@ make such an edit when asked to change the law, so one more hook refuses it:
   `Set-Content`, `git checkout`, …) or an output redirect. Redirects to
   `/dev/null` and `$null` do not count, so reading the installed plugin stays
   allowed. A shell command cannot be parsed with `grep`, so a determined
-  enough command gets through; the prime directive states the rule for that
-  case.
+  enough command gets through; `context/plugins-read-only.md`, printed at
+  every session start, states the rule for that case.
 - **`CLAUDE_CONFIG_DIR` is honoured.** A relocated config directory is protected
   as well as the default one.
 - **Plugin data is not protected.** `~/.claude/plugins/data/` is where
@@ -279,9 +279,11 @@ only what its checks and its reference code can't show. The checks ship in
 
 Only the frontmatter `description` is always in context; the body loads when
 the skill triggers. Skills are model-invoked, which is a weaker guarantee than
-the law's own claim that it binds. The `SessionStart` hook closes that gap: it
-states that the law binds and that the skill must be read, and deliberately
-restates no rules - so there is exactly one copy of every rule to keep current.
+the law's own claim that it binds. The `SessionStart` hook closes that gap: in
+a repository whose root `CLAUDE.md`, or any `CLAUDE.md` git tracks, holds a
+`Stack law:` line, it prints five lines saying that the law binds and that
+`/rancho:law` must be read. It points at core §1 and restates no rules, so
+there is exactly one copy of every rule to keep current.
 
 ### Binding a project
 

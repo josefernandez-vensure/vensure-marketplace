@@ -58,5 +58,5 @@ Core §5 states these, and no check or reference yet shows them:
 
 ## Left for later phases
 
-- Phase 5: the prime directive, `skills/vaca/SKILL.md`, `agents/vaca-stream.md` and `help.sh` still describe the contract law, roles, standalone laws and annexes.
+- Phase 5 (done): the prime directive, `skills/vaca/SKILL.md`, `agents/vaca-stream.md` and `help.sh` each point at core §1.
 - Phase 6: `plugins/rancho/skills/law/references/enforcement.md` still cites `contract §N`, and `AUTHORING.md`, `RECORDS*` and `tools/` describe the 4.x model. No law reads them; the rancho README says so.
