@@ -51,6 +51,8 @@ Then bind each tree - see [Stack laws](#stack-laws).
 
 Run `/reload-plugins` if the install summary asks you to.
 
+Upgrading a project from rancho 4.x? Follow [UPGRADE-5.0.md](UPGRADE-5.0.md).
+
 ## Plugins
 
 ### rancho — Dev Assistant
@@ -449,6 +451,7 @@ vensure-marketplace/
 │   ├── rancho-react/         the React checks and reference code
 │   └── check-rancho-*.py     plant a violation, confirm the right check fails
 ├── LAW-REDESIGN.md           the 5.0 redesign plan, until it is finished
+├── UPGRADE-5.0.md            the one-page upgrade note for consuming projects
 └── README.md
 ```
 
