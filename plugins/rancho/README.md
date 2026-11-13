@@ -12,8 +12,7 @@ rancho/
 ├── .claude-plugin/plugin.json   manifest — the only file that goes in here
 ├── skills/                      skills as <name>/SKILL.md    [law, vaca]
 │   ├── law/
-│   │   ├── SKILL.md             the core law
-│   │   └── references/          enforcement.md: the 4.x inventory, no longer read
+│   │   └── SKILL.md             the core law
 │   └── vaca/
 │       ├── SKILL.md             Vensure Agentic Code Assistant
 │       ├── references/          one file per phase, plus conventions.md
@@ -28,8 +27,6 @@ rancho/
 ├── bin/                         executables added to PATH          [empty]
 ├── hooks/hooks.json             event handlers             [four events]
 ├── context/                     what scripts/prime-directive.sh prints at SessionStart
-├── AUTHORING.md                 the 4.x rules for changing the law, no longer read
-├── RECORDS.md                   rationale and history moved out of the law
 ├── .mcp.json                    MCP servers                        [empty]
 ├── .lsp.json                    LSP servers                        [empty]
 └── settings.json                default settings when enabled      [empty]
@@ -335,6 +332,3 @@ no check, better reference or structural change would prevent a repeat. Then
 add one sentence to one law, within its budget, bump that plugin's version, and
 add one changelog line; the PR says why. A disagreement with the law, from any
 project, is an issue on this repository.
-
-`AUTHORING.md`, `RECORDS.md` and the `references/enforcement.md` inventories
-describe the 4.x law. No law reads them any more.

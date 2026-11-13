@@ -444,6 +444,11 @@ vensure-marketplace/
 │       ├── output-styles/
 │       └── ...               agents/, workflows/, monitors/, themes/, bin/
 │                             are scaffolded but empty
+├── templates/
+│   ├── rancho-dotnet/        the .NET checks and reference code, as a dotnet new template
+│   ├── rancho-react/         the React checks and reference code
+│   └── check-rancho-*.py     plant a violation, confirm the right check fails
+├── LAW-REDESIGN.md           the 5.0 redesign plan, until it is finished
 └── README.md
 ```
 

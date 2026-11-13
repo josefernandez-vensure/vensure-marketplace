@@ -101,16 +101,27 @@ Ship it as one breaking release, so consuming projects upgrade once: `rancho` 5.
 | Phase | Work | Done when |
 |---|---|---|
 | 0. Freeze | Tag `law-archive-4.1`. No more amendments to the current law. | Tag pushed |
-| 1. .NET checks (done: `templates/rancho-dotnet/`; triage in `LAW-REDESIGN-dotnet-triage.md`) | Turn each of the ~95 build-checkable rows in `rancho-dotnet`'s `enforcement.md` (`arch`, `contract`, `roslyn`, `proj`, `ci`) into a test or config in the template, or drop it. Turn the 32 `required-test` rows into the short list of behaviour tests in the law (modular-dotnet §11 already has this form). | The template builds, its arch tests pass on itself, and they fail on a seeded violation |
-| 2. .NET law (done: `plugins/rancho-dotnet/skills/law/SKILL.md`, 1,931 words; triage's last section) | Port into modular-dotnet only the rules from `rancho-dotnet` that pass the admission test and aren't caught by phase 1. Drop the "stands alone" line and its own data-class and trace-id sections; core carries them. | ≤ 2,500 words; `rancho-dotnet` 3.x SKILL.md retired |
-| 3. React (done: `templates/rancho-react/` and `plugins/rancho-react/skills/law/SKILL.md`, 1,901 words; triage in `LAW-REDESIGN-react-triage.md`) | The same as phases 1 and 2: the ESLint config package, then the law rewritten | ≤ 2,500 words |
-| 4. Core (done: `plugins/rancho/skills/law/SKILL.md`, 1,479 words; triage in `LAW-REDESIGN-core-triage.md`) | Merge the contract into core; state the one reading rule; delete standalone, roles, annexes and inventories from the model | ≤ 1,500 words |
+| 1. .NET checks (done: `templates/rancho-dotnet/`; triage in #30) | Turn each of the ~95 build-checkable rows in `rancho-dotnet`'s `enforcement.md` (`arch`, `contract`, `roslyn`, `proj`, `ci`) into a test or config in the template, or drop it. Turn the 32 `required-test` rows into the short list of behaviour tests in the law (modular-dotnet §11 already has this form). | The template builds, its arch tests pass on itself, and they fail on a seeded violation |
+| 2. .NET law (done: `plugins/rancho-dotnet/skills/law/SKILL.md`, 1,931 words; #31) | Port into modular-dotnet only the rules from `rancho-dotnet` that pass the admission test and aren't caught by phase 1. Drop the "stands alone" line and its own data-class and trace-id sections; core carries them. | ≤ 2,500 words; `rancho-dotnet` 3.x SKILL.md retired |
+| 3. React (done: `templates/rancho-react/` and `plugins/rancho-react/skills/law/SKILL.md`, 1,901 words; triage in #32) | The same as phases 1 and 2: the ESLint config package, then the law rewritten | ≤ 2,500 words |
+| 4. Core (done: `plugins/rancho/skills/law/SKILL.md`, 1,479 words; triage in #33) | Merge the contract into core; state the one reading rule; delete standalone, roles, annexes and inventories from the model | ≤ 1,500 words |
 | 5. Pointers (done: `scripts/prime-directive.sh` prints the five-line directive only where the root `CLAUDE.md`, or any `CLAUDE.md` git tracks, holds `Stack law:`, so a repository that binds only its trees counts; the read-only rule for the installed plugins still prints everywhere, as the plugin guard's backstop. The greps now match only the files phase 6 deletes, these working files and old CHANGELOG entries) | Make the prime directive conditional and short; the three VACA reading-rule passages become one pointer each | `grep "stands alone"` and `grep "contract law"` return nothing outside the archive tag |
-| 6. Clean-up | Delete RECORDS, ledgers, `enforcement.md`, `AUTHORING.md` and `tools/`; trim the READMEs | The repo holds the laws, VACA, and the READMEs |
+| 6. Clean-up (done: the records, ledgers, inventories, `AUTHORING.md`, `tools/` and these triage files are gone, and each CHANGELOG starts at the 5.0 release; all of it is under `law-archive-4.1` or in the phase PRs) | Delete RECORDS, ledgers, `enforcement.md`, `AUTHORING.md` and `tools/`; trim the READMEs | The repo holds the laws, VACA, and the READMEs |
 | 7. Prove it | Re-run 3–5 completed tasks from a consuming project with the new law (and the old one if possible). Compare: the build and tests pass, review findings, tokens loaded. | No new class of defect; load ≤ 4k words |
 | 8. Upgrade note | One page for consuming projects: add `## Reference` to each tree's `CLAUDE.md`, adopt the template's checks, and fold `LAW-EXCEPTIONS.md` entries into suppression comments or issues. `ENFORCEMENT-STATUS.md` is no longer required. | Note in the release |
 
 Phase 1 is the largest, and the only one that builds new code. Everything after it is mostly deleting.
+
+## Gaps the templates don't yet close
+
+The laws state these, but no check or reference code shows them yet. They come from the phase 1, 3 and 4 triage files, which phase 6 deleted; the PRs that added them (#30 to #33) keep the row-by-row record.
+
+- **.NET OpenAPI document:** it emits no `x-problem-types`, so the React client shows every problem generically. It also doesn't declare `Idempotency-Key` on a keyed operation, so the client sets that header through its `headers` option.
+- **.NET responses:** none sends `Cache-Control: no-store` for `Confidential` or `Restricted` data, or `private` for a representation that depends on the principal. There is no CORS policy, so nothing exposes `ETag` or `Retry-After` to a client on another origin.
+- **.NET effects and audit:** an effect a repeat would duplicate, such as an email, has no outbox delivery mechanism, because a reaction's command must be transactional. The audit trail records commands and denials, but not `Restricted` reads or exports. It is append-only by convention, not by a database permission.
+- **Telemetry:** no processor drops an exception message our code didn't write (core §3). The React template has no telemetry SDK, so its scrubbing test arrives with the first one.
+- **CI:** `check-migrations.sh` and `check-contracts.sh` are written for CI, but this repository runs none.
+- **The IAM library** imports `react-router-dom`, which React Router 8 no longer publishes. The template installs version 7 for that one import.
 
 ## Open decisions
 
