@@ -1,6 +1,7 @@
 import type { z } from 'zod';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { appStorageKey } from '../../../shared/lib/app-storage';
 import { productListDensity } from '../../../shared/lib/client-state';
 
 type Density = z.output<typeof productListDensity>;
@@ -18,7 +19,7 @@ export const useProductListView = create<ProductListView>()(
       setDensity: (density) => set({ density: productListDensity.parse(density) }),
     }),
     {
-      name: 'products.view',
+      name: appStorageKey('products.view'),
       storage: createJSONStorage(() => localStorage),
       partialize: ({ density }) => ({ density }),
     },

@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, type ReactNode } from 'react';
 import {
   IamProvider,
   StorageService,
@@ -6,6 +7,8 @@ import {
   useAuth,
   type VenAuthOptions,
 } from '@vensure-devops-qa/vensureone-iam-react';
+import { onUnauthorized } from './session';
+import { signOut } from './sign-out';
 
 // The one module that touches the identity library. The PrismOne shell signs the user in and keeps the session in
 // the library's own store; this application never runs a sign-in flow, never refreshes a token, and never stores one.
@@ -24,14 +27,26 @@ const options: VenAuthOptions = {
 };
 
 export function IdentityProvider({ children }: { children: ReactNode }) {
-  return <IamProvider options={options}>{children}</IamProvider>;
+  return (
+    <IamProvider options={options}>
+      <SignInOnUnauthorized />
+      {children}
+    </IamProvider>
+  );
+}
+
+/** A 401 hands the user to the shell's sign-in page, once; the application never refreshes a token itself. */
+function SignInOnUnauthorized() {
+  const { signIn } = useAuth();
+  useEffect(() => onUnauthorized(() => signIn()), [signIn]);
+  return null;
 }
 
 /** The interceptor: the only place a token is attached to a request. It reads the session store on every call. */
 export const authorizedFetch: typeof fetch = createFetchWithAuth(new StorageService());
 
-/** Sign-out goes through the shell's session: the library clears its store and ends the provider session. */
 export function useSignOut(): () => Promise<void> {
-  const { signOut } = useAuth();
-  return signOut;
+  const queryClient = useQueryClient();
+  const { signOut: endSession } = useAuth();
+  return () => signOut({ queryClient, endSession });
 }

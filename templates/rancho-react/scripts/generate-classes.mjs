@@ -70,6 +70,10 @@ export function generateClasses(document) {
     lines.push(`export const ${zodName(schemaName)} = ${zod(schema)};`);
     lines.push(`export type ${ident(schemaName)}Classified = z.output<typeof ${zodName(schemaName)}>;`, '');
   }
+  // The problem types the document marks user-facing (x-problem-types): only their titles are shown to a user.
+  const userFacing = (document['x-problem-types'] ?? []).filter((p) => p?.userFacing === true).map((p) => JSON.stringify(p.type));
+  lines.push('/** The problem types whose title a user may see; every other problem is shown generically. */');
+  lines.push(`export const userFacingProblemTypes: ReadonlySet<string> = new Set([${userFacing.join(', ')}]);`, '');
   for (const [path, item] of Object.entries(document.paths ?? {})) {
     for (const [method, operation] of Object.entries(item)) {
       if (!operation?.operationId || !Array.isArray(operation.parameters)) continue;

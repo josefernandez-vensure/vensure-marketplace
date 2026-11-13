@@ -47,8 +47,21 @@ npm run verify
 | Only `src/shared/lib/problem-details.ts` reads a problem-details body | `rancho/one-problem-parser` |
 | No token leaves the identity module, and nothing reads a credential nested inside one | `rancho/identity-exports-no-token`, `no-restricted-syntax` |
 
-`python -I templates/check-rancho-react.py`, from the repository root, seeds one violation per check into a copy and proves each is caught.
+The behaviour only a test can prove has its reference test, each written against MSW with the application's real client and query client:
+
+| Behaviour | Test |
+|---|---|
+| Every call to the server carries a `traceparent`; a `401` asks the shell to sign the user in once and is never retried; a `403` is a final answer | `src/shared/lib/api-client.test.ts` |
+| The query client never retries a `4xx` but `408` and `429`, and waits for `Retry-After` | `src/shared/lib/query-client.test.ts` |
+| A form refuses invalid values and shows the server's field errors on their fields; an edit form sends the `etag` of the values it was last reset from, and a `412` refetches without retrying the write | `src/features/products/components/RenameProductForm.test.tsx` |
+| A retried mutation sends one idempotency key per intent | `src/features/products/api/product.test.tsx` |
+| A query's loading, error and empty states | `src/features/products/components/ProductList.test.tsx` |
+| Sign-out clears the caches and what the application stored, then hands over to the shell's sign-out | `src/shared/lib/sign-out.test.ts` |
+| A problem of a type not marked user-facing shows neither its title nor its detail, but offers the trace id | `src/shared/lib/ProblemMessage.test.tsx` |
+| Every route passes axe (and a route missing from the test fails it); the root error element shows a render failure | `tests/routes.test.tsx` |
+
+`python -I templates/check-rancho-react.py`, from the repository root, seeds one violation per check into a copy and proves each is caught; for each behaviour test, it breaks the behaviour and proves the test fails.
 
 ## Status
 
-Phase 3 of `LAW-REDESIGN.md`. Done: increment 1 (the structural checks) and increment 2 (data classes on every value from the server, and the type-aware rules that read them). Next: reference code carrying the required behaviour tests (increment 3).
+Phase 3 of `LAW-REDESIGN.md`. Done: increment 1 (the structural checks), increment 2 (data classes on every value from the server, and the type-aware rules that read them) and increment 3 (reference code carrying the behaviour tests). The template has no telemetry or error-reporting SDK yet, so the scrubbing test comes with the first project that adds one.

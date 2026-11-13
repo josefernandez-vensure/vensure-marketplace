@@ -145,4 +145,6 @@ export default tseslint.config(
   { files: [IDENTITY_MODULE], rules: { 'rancho/identity-exports-no-token': 'error' } },
   // Only the generated client and the identity module's interceptor call fetch.
   { files: [IDENTITY_MODULE], rules: { 'no-restricted-globals': 'off', 'no-restricted-properties': 'off' } },
+  // The tests' client uses plain fetch, against MSW, in place of the identity module's.
+  { files: ['tests/setup.ts'], rules: { 'no-restricted-globals': 'off' } },
 );

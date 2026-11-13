@@ -108,6 +108,9 @@ export const zRenameProductResponse = z.object({
 });
 export type RenameProductResponseClassified = z.output<typeof zRenameProductResponse>;
 
+/** The problem types whose title a user may see; every other problem is shown generically. */
+export const userFacingProblemTypes: ReadonlySet<string> = new Set([]);
+
 /** POST /ordering/orders/{id}/cancel: its path parameters. */
 export const zOrderingCancelOrderPath = z.object({
   "id": classified("internal", z.string()),

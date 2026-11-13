@@ -1,8 +1,12 @@
+import { PhrButtonBase } from '@prismhr/components-react';
 import { Outlet, isRouteErrorResponse, useRouteError } from 'react-router';
+import { useSignOut } from '../../shared/lib/identity';
 
 export function RootLayout() {
+  const signOut = useSignOut();
   return (
     <main className="app-layout">
+      <PhrButtonBase buttonConfig={{ title: 'Sign out', type: 'button' }} onClick={() => void signOut()} />
       <Outlet />
     </main>
   );

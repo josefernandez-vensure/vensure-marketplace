@@ -57,9 +57,29 @@ What differs from the old rows:
 - **FE-33:** the template has no telemetry SDK, so the boundary is the console. A project adds its SDK's calls to the rule's list.
 - The server document leaves `HttpValidationProblemDetails.errors` unclassified, so its messages are `restricted` and may not be logged or stored. The .NET template should classify them.
 
-## Increment 3: reference code with the required tests (next)
+## Increment 3: reference code with the required tests (done)
 
-FE-17, FE-27 (in the shell: no refresh of its own, and a `403` never refreshes), FE-29 (sign-out delegates to the IAM library), FE-35 to FE-37, FE-39 to FE-43: a form, an edit form of a versioned resource, the problem-details parser, the query client's retry rule, the interceptor's `traceparent`, an axe check per route, and the root route's error element.
+The template gains the API client's interceptors (a `traceparent` per call, a `401` raising one sign-in request, every failure an `ApiError` with its status and `Retry-After`), the query client's retry rule, a rename form over the versioned product, a keyed stock receipt that is retried, a product route whose params are parsed, sign-out, and how a failure is shown. Its 21 tests pass; `check-rancho-react.py` breaks each behaviour and proves its test fails, and catches 72 of 72 seeds in all (16 new).
+
+Found by the seeds: the first `429` test passed with `Retry-After` ignored, because the default backoff was longer than the header's one second, so it now also proves `Retry-After: 0` retries at once. And the first edit form took the product through React Hook Form's `values`, so a refetch while the user typed replaced their edits and their etag; it now mounts once the product loads, takes it as its default values, and resets only after its own write or a `412`. A test proves a refetch behind the user changes nothing.
+
+| Test | Rows |
+|---|---|
+| `src/shared/lib/api-client.test.ts` | FE-35 (`traceparent` on every call); FE-27, in the shell: a `401` asks the shell to sign the user in once and is never retried, a `403` is a permission error and asks nothing |
+| `src/shared/lib/query-client.test.ts` | FE-37 |
+| `src/features/products/components/RenameProductForm.test.tsx` | FE-41 (and a refetch behind the user changes neither their edits nor the etag they send); FE-36 |
+| `src/features/products/api/product.test.tsx` | FE-40 |
+| `src/features/products/components/ProductList.test.tsx` | FE-39 |
+| `src/shared/lib/sign-out.test.ts` | FE-29, in the shell |
+| `src/shared/lib/ProblemMessage.test.tsx`, `tests/routes.test.tsx` | FE-43; FE-42 (axe over every route, and a test that fails when a route isn't visited) |
+
+What differs from the old rows:
+
+- **FE-27:** in the shell the application never refreshes. A `401` raises one `unauthorized` event, which the identity module answers with the IAM library's `signIn` (the shell's sign-in page). The test proves the API client half; the identity half is one line.
+- **FE-29:** sign-out clears the query cache and every key the application wrote, which all carry its storage prefix (`shared/lib/app-storage.ts`), then calls the IAM library's `signOut`, which clears the shared session store and ends the provider session. Nothing checks that every write uses the prefix; review carries it.
+- **FE-43:** the server document has no `x-problem-types` yet (noticed in .NET slice 2d), so `userFacingProblemTypes` is empty and every problem is shown generically, with its trace id. The generator reads `x-problem-types` (`{ type, userFacing }` entries) once the server emits it.
+- **FE-17** waits for the first project with a telemetry or error-reporting SDK: the template has none to scrub. The console is the telemetry boundary `classified-at-boundary` checks.
+- **FE-40:** the server document declares no `Idempotency-Key` header on `catalog.receive-stock`, so the mutation sets it through the client's `headers` option. The .NET template's document should declare it.
 
 ## Deferred and dropped
 

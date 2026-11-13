@@ -34,6 +34,10 @@ API = PRODUCTS + "api/products.ts"
 FILTER = PRODUCTS + "components/ProductFilter.tsx"
 VIEW = PRODUCTS + "stores/view.ts"
 IDENTITY = "src/shared/lib/identity.tsx"
+CLIENT = "src/shared/lib/api-client.ts"
+QUERY_CLIENT = "src/shared/lib/query-client.ts"
+FORM = PRODUCTS + "components/RenameProductForm.tsx"
+PRODUCT_API = PRODUCTS + "api/product.ts"
 
 
 def work():
@@ -243,11 +247,44 @@ SEEDS = [
      lambda: write(PRODUCTS + "api/product-title.ts", "import { catalogGetProduct } from '../../../generated/sdk.gen';\n\n"
                    "export async function failure(id: string) {\n  const { error } = await catalogGetProduct({ path: { id } });\n  return error?.title;\n}\n")),
     ("A_token_never_leaves_the_identity_module", "lint", "rancho/identity-exports-no-token",
-     lambda: edit(IDENTITY, "/** Sign-out goes", "export function useAccessToken() {\n  return useAuth().getAccessToken;\n}\n\n/** Sign-out goes")),
+     lambda: edit(IDENTITY, "export function useSignOut", "export function useAccessToken() {\n  return useAuth().getAccessToken;\n}\n\nexport function useSignOut")),
     ("The_identity_module_exports_no_token_store", "lint", "rancho/identity-exports-no-token",
-     lambda: edit(IDENTITY, "/** Sign-out goes", "export const session = () => new StorageService().getTokens();\n\n/** Sign-out goes")),
+     lambda: edit(IDENTITY, "export function useSignOut", "export const session = () => new StorageService().getTokens();\n\nexport function useSignOut")),
     ("No_nested_credential_is_read", "lint", "no-restricted-syntax",
-     lambda: edit(IDENTITY, "/** Sign-out goes", "export const upstream = (claims: Record<string, string>) => claims.idp_access_token;\n\n/** Sign-out goes")),
+     lambda: edit(IDENTITY, "export function useSignOut", "export const upstream = (claims: Record<string, string>) => claims.idp_access_token;\n\nexport function useSignOut")),
+    # The required behaviour tests (increment 3): each fails when its behaviour regresses.
+    ("Every_call_carries_a_traceparent", "test", "sends a traceparent on every call",
+     lambda: edit(CLIENT, "if (!request.headers.has('traceparent')) request.headers.set('traceparent', newTraceparent());", "void newTraceparent;")),
+    ("A_401_asks_for_sign_in_once", "test", "asks the shell to sign the user in once",
+     lambda: edit("src/shared/lib/session.ts", "  if (unauthorizedPending) return;\n", "")),
+    ("A_403_never_asks_for_sign_in", "test", "treats a 403 as a final answer",
+     lambda: edit(CLIENT, "if (response?.status === 401) raiseUnauthorized();", "if (response?.status === 401 || response?.status === 403) raiseUnauthorized();")),
+    ("A_403_is_never_retried", "test", "never retries a 403",
+     lambda: edit(QUERY_CLIENT, "return error.status < 400 || error.status >= 500;", "return true;")),
+    ("A_429_waits_for_Retry_After", "test", "waits for a 429",
+     lambda: edit(QUERY_CLIENT, "if (error instanceof ApiError && error.retryAfterMs !== undefined) return error.retryAfterMs;", "")),
+    ("A_form_refuses_invalid_values", "test", "refuses an empty name",
+     lambda: edit(PRODUCTS + "schemas/rename-product.ts", ".min(1, 'Enter a name.')", "")),
+    ("A_form_shows_server_field_errors_on_their_fields", "test", "shows the server's field error",
+     lambda: edit(FORM, "if (field === 'name') form.setError('name', { message: messages.join(' ') });", "void field; void messages;")),
+    ("An_edit_form_resets_to_what_it_wrote", "test", "sends the etag of the values it was last reset from",
+     lambda: edit(FORM, "      form.reset({ name: values.name, etag: written.etag });", "      void written;")),
+    ("A_412_is_not_retried", "test", "refetches on a 412",
+     lambda: edit(PRODUCT_API, "      return zRenameProductResponse.parse(data);\n    },\n    onSuccess", "      return zRenameProductResponse.parse(data);\n    },\n    retry: 1,\n    onSuccess")),
+    ("A_refetch_never_resets_an_edit_in_progress", "test", "keeps the user's edits",
+     lambda: edit(FORM, "<RenameProductFields id={id}", "<RenameProductFields key={product.data.etag} id={id}")),
+    ("A_retried_mutation_keeps_its_key", "test", "sends the same idempotency key",
+     lambda: edit(PRODUCT_API, "headers: { 'If-Match': etag, 'Idempotency-Key': idempotencyKey },", "headers: { 'If-Match': etag, 'Idempotency-Key': `${idempotencyKey}-${crypto.randomUUID()}` },")),
+    ("Sign_out_clears_what_the_application_stored", "test", "clears the caches and what the application stored",
+     lambda: edit("src/shared/lib/sign-out.ts", "  clearAppStorage();\n", "  void clearAppStorage;\n")),
+    ("An_unknown_problem_shows_no_title", "test", "shows neither the title nor the detail",
+     lambda: edit("src/shared/lib/ProblemMessage.tsx", "problem.type && userFacingProblemTypes.has(problem.type) ? problem.title : undefined", "problem.title")),
+    ("Every_route_is_checked_for_accessibility", "test", "lists every route",
+     lambda: edit("src/app/router.tsx", "      { path: 'products/:id', element: <ProductRoute /> },", "      { path: 'products/:id', element: <ProductRoute /> },\n      { path: 'about', element: <h1>About</h1> },")),
+    ("A_route_with_an_accessibility_violation_fails", "test", "passes an automated accessibility check",
+     lambda: edit("src/app/routes/products.tsx", "      <h1>Products</h1>", "      <h1>Products</h1>\n      <input type=\"text\" />")),
+    ("The_root_route_shows_its_error_element", "test", "shows the root error element",
+     lambda: edit("src/app/routes/root.tsx", "<h1>{status === 404 ? 'Page not found' : 'Something went wrong'}</h1>", "<h1>{status === 404 ? 'Page not found' : 'Oops'}</h1>")),
     # The template's own tests run.
     ("The_tests_run", "test", "ProductList",
      lambda: edit(LIST, "No products match.", "Nothing here.")),
@@ -257,7 +294,10 @@ SEEDS = [
 def run_seed(name, runner, expected, seed):
     fresh()
     try:
-        seed()
+        try:
+            seed()
+        except AssertionError as broken:
+            return name, False, runner, f"  SEED BROKEN: {broken}"
         code, out = RUNNERS[runner]()
         ok = code != 0 and expected in out
         return name, ok, runner, "" if ok else "\n    " + "\n    ".join(out.strip().splitlines()[-12:])
