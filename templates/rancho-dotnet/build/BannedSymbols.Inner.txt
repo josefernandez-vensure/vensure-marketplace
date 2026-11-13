@@ -1,0 +1,26 @@
+P:System.DateTime.Now;Take the time as an argument, or inject TimeProvider.
+P:System.DateTime.UtcNow;Take the time as an argument, or inject TimeProvider.
+P:System.DateTime.Today;Take the time as an argument, or inject TimeProvider.
+P:System.DateTimeOffset.Now;Take the time as an argument, or inject TimeProvider.
+P:System.DateTimeOffset.UtcNow;Take the time as an argument, or inject TimeProvider.
+P:System.TimeProvider.System;Inject TimeProvider; the composition root registers it.
+P:System.Environment.TickCount;Inject TimeProvider.
+P:System.Environment.TickCount64;Inject TimeProvider.
+T:System.Diagnostics.Stopwatch;Inject TimeProvider.
+M:System.Environment.GetEnvironmentVariable(System.String);Bind configuration to an options class at the composition root.
+M:System.Environment.GetEnvironmentVariable(System.String,System.EnvironmentVariableTarget);Bind configuration to an options class at the composition root.
+M:System.Environment.GetEnvironmentVariables;Bind configuration to an options class at the composition root.
+M:System.Environment.GetEnvironmentVariables(System.EnvironmentVariableTarget);Bind configuration to an options class at the composition root.
+M:System.Environment.ExpandEnvironmentVariables(System.String);Bind configuration to an options class at the composition root.
+T:Microsoft.Extensions.Hosting.IHostEnvironment;Only the composition root knows the environment.
+T:Microsoft.AspNetCore.Hosting.IWebHostEnvironment;Only the composition root knows the environment.
+T:Microsoft.Extensions.Hosting.Environments;Only the composition root knows the environment.
+T:Microsoft.Extensions.Hosting.HostEnvironmentEnvExtensions;Only the composition root knows the environment.
+P:System.Threading.Thread.CurrentPrincipal;The acting principal comes from the dispatch context.
+P:System.Security.Claims.ClaimsPrincipal.Current;The acting principal comes from the dispatch context.
+M:System.IServiceProvider.GetService(System.Type);Take dependencies through the constructor.
+T:Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions;Take dependencies through the constructor.
+T:Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions;Take dependencies through the constructor.
+T:Microsoft.Extensions.DependencyInjection.IKeyedServiceProvider;Take dependencies through the constructor.
+T:Microsoft.Extensions.DependencyInjection.ActivatorUtilities;Take dependencies through the constructor.
+T:Microsoft.Extensions.DependencyInjection.IServiceScopeFactory;Take dependencies through the constructor.

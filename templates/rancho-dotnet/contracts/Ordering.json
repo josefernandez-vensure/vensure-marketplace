@@ -1,0 +1,11 @@
+{
+  "Ordering.Contracts.OrderId": {
+    "type": "object",
+    "properties": {
+      "Value": {
+        "type": "string",
+        "format": "uuid"
+      }
+    }
+  }
+}

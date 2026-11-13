@@ -1,0 +1,56 @@
+root = true
+
+[*]
+indent_style = space
+insert_final_newline = true
+
+[*.cs]
+indent_size = 4
+
+# Namespaces match folders.
+dotnet_style_namespace_match_folder = true
+dotnet_diagnostic.IDE0130.severity = error
+
+# Outcome translation is a switch expression with no discard arm, so a new enum member fails the build (CS8509).
+# CS8524 only reports unnamed enum values, which no outcome has.
+dotnet_diagnostic.CS8524.severity = none
+
+# Banned APIs: build/BannedSymbols*.txt.
+dotnet_diagnostic.RS0030.severity = error
+
+# Log through [LoggerMessage] with a constant template.
+dotnet_diagnostic.CA1848.severity = error
+dotnet_diagnostic.CA2254.severity = error
+
+# Don't swallow Exception. A deliberate fault-isolation boundary suppresses this with its reason.
+dotnet_diagnostic.CA1031.severity = error
+
+# SQL is parameterized: EF Core's own analyzer refuses concatenated or interpolated raw SQL.
+dotnet_diagnostic.EF1002.severity = error
+dotnet_diagnostic.EF1003.severity = error
+
+# Threading analyzers: no async void, and no blocking on a task (.Wait, .Result, GetResult).
+dotnet_diagnostic.VSTHRD100.severity = error
+dotnet_diagnostic.VSTHRD101.severity = error
+dotnet_diagnostic.VSTHRD002.severity = error
+dotnet_diagnostic.VSTHRD103.severity = error
+dotnet_diagnostic.VSTHRD001.severity = none
+dotnet_diagnostic.VSTHRD003.severity = none
+dotnet_diagnostic.VSTHRD004.severity = none
+dotnet_diagnostic.VSTHRD010.severity = none
+dotnet_diagnostic.VSTHRD011.severity = none
+dotnet_diagnostic.VSTHRD012.severity = none
+dotnet_diagnostic.VSTHRD102.severity = none
+dotnet_diagnostic.VSTHRD104.severity = none
+dotnet_diagnostic.VSTHRD105.severity = none
+dotnet_diagnostic.VSTHRD106.severity = none
+dotnet_diagnostic.VSTHRD107.severity = none
+dotnet_diagnostic.VSTHRD108.severity = none
+dotnet_diagnostic.VSTHRD109.severity = none
+dotnet_diagnostic.VSTHRD110.severity = none
+dotnet_diagnostic.VSTHRD111.severity = none
+dotnet_diagnostic.VSTHRD112.severity = none
+dotnet_diagnostic.VSTHRD113.severity = none
+dotnet_diagnostic.VSTHRD114.severity = none
+dotnet_diagnostic.VSTHRD115.severity = none
+dotnet_diagnostic.VSTHRD200.severity = none
