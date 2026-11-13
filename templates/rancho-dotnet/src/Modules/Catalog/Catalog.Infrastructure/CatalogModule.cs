@@ -1,0 +1,31 @@
+using Catalog.Application;
+using Catalog.Domain.Products;
+using Catalog.Infrastructure.Persistence;
+using FluentValidation;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Platform.Infrastructure;
+
+namespace Catalog.Infrastructure;
+
+public static class CatalogModule
+{
+    public static IServiceCollection AddCatalogModule(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddModuleDbContext<CatalogDbContext>(CatalogDbContext.SchemaName);
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddValidatorsFromAssembly(typeof(CatalogPolicies).Assembly, ServiceLifetime.Scoped);
+
+        // Claims map to policies here, at the composition root. Application code names only the policy.
+        services.AddAuthorizationCore(options =>
+        {
+            // Catalog data is a tenant's: a principal with no tenant holds neither policy.
+            options.AddPolicy(CatalogPolicies.Read, policy => policy.RequireAuthenticatedUser().RequireClaim("tenant").RequireClaim("permissions", CatalogPolicies.Read));
+            options.AddPolicy(CatalogPolicies.Write, policy => policy.RequireAuthenticatedUser().RequireClaim("tenant").RequireClaim("permissions", CatalogPolicies.Write));
+            options.AddPolicy(CatalogPolicies.React, policy => policy.RequireServicePrincipal(CatalogDbContext.ModuleName));
+        });
+        services.AddReactions(typeof(CatalogPolicies).Assembly);
+
+        return services;
+    }
+}

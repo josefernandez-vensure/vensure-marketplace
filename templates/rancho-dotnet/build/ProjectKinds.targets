@@ -1,0 +1,145 @@
+<Project>
+
+  <!--
+    The project reference table. Every project declares <ProjectKind> in its .csproj;
+    the build fails when a project references a project or a package its kind does not allow.
+
+    References: kinds it may reference. "Kind@own" means only the same module's project.
+    Packages:   patterns, last match wins. "*" matches any text; "!" denies.
+    Web:        whether it may use the ASP.NET Core shared framework.
+
+    Four facts decide every row:
+    1. A module reaches another module only through that module's Contracts.
+    2. Inside a module, references point inward: Infrastructure -> Application -> Domain and Contracts.
+    3. Shared projects (SharedKernel, Platform.*) reference no module.
+    4. Nothing references Api.
+  -->
+  <ItemGroup>
+    <RanchoKind Include="SharedKernel"            References=""                                                                       Packages="Microsoft.Extensions.Compliance.Abstractions" />
+    <RanchoKind Include="Domain"                  References="SharedKernel"                                                           Packages="Microsoft.Extensions.Compliance.Abstractions" />
+    <RanchoKind Include="Contracts"               References="SharedKernel;Platform.Application"                                      Packages="" />
+    <RanchoKind Include="Platform.Application"    References="SharedKernel"                                                           Packages="Mediator.Abstractions;FluentValidation;Microsoft.Extensions.*.Abstractions;Microsoft.AspNetCore.Authorization" />
+    <RanchoKind Include="Application"             References="SharedKernel;Platform.Application;Domain@own;Contracts"                 Packages="Mediator.Abstractions;FluentValidation;Microsoft.Extensions.*.Abstractions" />
+    <RanchoKind Include="Platform.Infrastructure" References="SharedKernel;Platform.Application"                                      Packages="*;!Microsoft.AspNetCore.*;Microsoft.AspNetCore.Authorization*;Microsoft.AspNetCore.DataProtection*" />
+    <RanchoKind Include="Infrastructure"          References="SharedKernel;Platform.Application;Platform.Infrastructure;Domain@own;Application@own;Contracts" Packages="*;!Microsoft.AspNetCore.*;Microsoft.AspNetCore.Authorization*;Microsoft.AspNetCore.DataProtection*" />
+    <RanchoKind Include="Api"                     References="SharedKernel;Platform.Application;Platform.Infrastructure;Domain;Application;Infrastructure;Contracts" Packages="*" Web="true" />
+    <RanchoKind Include="Tests"                   References="*"                                                                      Packages="*" Web="true" />
+  </ItemGroup>
+
+  <!-- Denied in every kind: integration tests run against SQL Server, never a stand-in provider. -->
+  <PropertyGroup>
+    <RanchoDeniedPackages>Microsoft.EntityFrameworkCore.InMemory;Microsoft.EntityFrameworkCore.Sqlite*</RanchoDeniedPackages>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <RanchoModule Condition="'$(ProjectKind)' == 'Domain' or '$(ProjectKind)' == 'Application' or '$(ProjectKind)' == 'Infrastructure' or '$(ProjectKind)' == 'Contracts'">$(MSBuildProjectName.Substring(0, $(MSBuildProjectName.LastIndexOf('.'))))</RanchoModule>
+  </PropertyGroup>
+
+  <!-- Each assembly records its kind and module, so the architecture tests can find them. -->
+  <ItemGroup Condition="'$(ProjectKind)' != ''">
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>ProjectKind</_Parameter1>
+      <_Parameter2>$(ProjectKind)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>Module</_Parameter1>
+      <_Parameter2>$(RanchoModule)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <Target Name="RanchoKindInfo" Returns="@(_RanchoSelf)">
+    <ItemGroup>
+      <_RanchoSelf Include="$(MSBuildProjectName)" Kind="$(ProjectKind)" Module="$(RanchoModule)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="RanchoCheckProjectKind" BeforeTargets="CoreCompile" Condition="'$(DesignTimeBuild)' != 'true'">
+    <MSBuild Projects="@(ProjectReference)" Targets="RanchoKindInfo" Condition="'@(ProjectReference)' != ''">
+      <Output TaskParameter="TargetOutputs" ItemName="_RanchoReferenced" />
+    </MSBuild>
+    <RanchoCheckKind
+      Project="$(MSBuildProjectName)"
+      Kind="$(ProjectKind)"
+      Module="$(RanchoModule)"
+      UsesWeb="$(UsingMicrosoftNETSdkWeb)"
+      Kinds="@(RanchoKind)"
+      DeniedPackages="$(RanchoDeniedPackages)"
+      References="@(_RanchoReferenced)"
+      Packages="@(PackageReference)"
+      FrameworkReferences="@(FrameworkReference)" />
+  </Target>
+
+  <UsingTask TaskName="RanchoCheckKind" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Project ParameterType="System.String" Required="true" />
+      <Kind ParameterType="System.String" />
+      <Module ParameterType="System.String" />
+      <UsesWeb ParameterType="System.String" />
+      <Kinds ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <DeniedPackages ParameterType="System.String" />
+      <References ParameterType="Microsoft.Build.Framework.ITaskItem[]" />
+      <Packages ParameterType="Microsoft.Build.Framework.ITaskItem[]" />
+      <FrameworkReferences ParameterType="Microsoft.Build.Framework.ITaskItem[]" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var row = Kinds.FirstOrDefault(k => k.ItemSpec == Kind);
+        if (row == null)
+        {
+            Log.LogError("{0}: <ProjectKind> is '{1}'. Declare one of: {2}.", Project, Kind, string.Join(", ", Kinds.Select(k => k.ItemSpec)));
+            return false;
+        }
+
+        Func<string, Regex> glob = p => new Regex("^" + Regex.Escape(p).Replace("\\*", ".*") + "$", RegexOptions.IgnoreCase);
+        Func<string, string[]> list = s => (s ?? "").Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim()).ToArray();
+
+        var allowedRefs = list(row.GetMetadata("References"));
+        foreach (var r in References ?? new ITaskItem[0])
+        {
+            var refKind = r.GetMetadata("Kind");
+            var refModule = r.GetMetadata("Module");
+            var ok = allowedRefs.Any(a =>
+                a == "*"
+                || a == refKind
+                || (a == refKind + "@own" && refModule == Module));
+            if (!ok)
+                Log.LogError("{0} ({1}) may not reference {2} ({3}). Allowed: {4}. See build/ProjectKinds.targets.",
+                    Project, Kind, r.ItemSpec, refKind == "" ? "no kind" : refKind, allowedRefs.Length == 0 ? "nothing" : string.Join(", ", allowedRefs));
+        }
+
+        var patterns = list(row.GetMetadata("Packages"));
+        var denied = list(DeniedPackages);
+        foreach (var p in Packages ?? new ITaskItem[0])
+        {
+            var id = p.ItemSpec;
+            var assets = p.GetMetadata("IncludeAssets");
+            var analyzerOnly = assets != "" && !Regex.IsMatch(assets, "compile|runtime|all", RegexOptions.IgnoreCase);
+            if (denied.Any(d => glob(d).IsMatch(id)))
+            {
+                Log.LogError("{0}: package {1} is denied in every project. See build/ProjectKinds.targets.", Project, id);
+                continue;
+            }
+            if (analyzerOnly) continue;
+            bool allowed = false;
+            foreach (var pattern in patterns)
+            {
+                var deny = pattern.StartsWith("!");
+                if (glob(deny ? pattern.Substring(1) : pattern).IsMatch(id)) allowed = !deny;
+            }
+            if (!allowed)
+                Log.LogError("{0} ({1}) may not reference package {2}. Allowed: {3}. See build/ProjectKinds.targets.",
+                    Project, Kind, id, patterns.Length == 0 ? "none" : string.Join(", ", patterns));
+        }
+
+        var web = string.Equals(row.GetMetadata("Web"), "true", StringComparison.OrdinalIgnoreCase);
+        var usesWeb = string.Equals(UsesWeb, "true", StringComparison.OrdinalIgnoreCase)
+            || (FrameworkReferences ?? new ITaskItem[0]).Any(f => f.ItemSpec.StartsWith("Microsoft.AspNetCore", StringComparison.OrdinalIgnoreCase));
+        if (usesWeb && !web)
+            Log.LogError("{0} ({1}) may not use the ASP.NET Core shared framework; only Api may.", Project, Kind);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+</Project>

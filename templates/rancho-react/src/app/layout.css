@@ -1,0 +1,5 @@
+/* Layout the UI library has no component for. It styles only this application's own markup, never a phr- component. */
+.app-layout {
+  display: block;
+  padding: 1rem;
+}

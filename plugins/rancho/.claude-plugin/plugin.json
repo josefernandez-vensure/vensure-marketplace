@@ -1,7 +1,7 @@
 {
   "name": "rancho",
   "displayName": "Rancho — Vensure Dev Assistant",
-  "version": "4.1.0",
+  "version": "5.0.0",
   "description": "Vensure's coding assistant: VACA (Vensure Agentic Code Assistant) plus the core engineering law, the same in every project. Stack laws for each technology are separate plugins.",
   "license": "MIT",
   "author": {
