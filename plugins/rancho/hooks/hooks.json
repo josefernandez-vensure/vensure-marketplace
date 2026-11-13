@@ -1,12 +1,12 @@
 {
-  "description": "Puts the prime directive in context at session start, hands each session the current VACA state, holds one session to one issue, and refuses writes into the installed plugin directories.",
+  "description": "Puts the prime directive in context at session start in a repository that binds a law, hands each session the current VACA state, holds one session to one issue, and refuses writes into the installed plugin directories.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "cat \"${CLAUDE_PLUGIN_ROOT}/context/prime-directive.md\""
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/prime-directive.sh\""
           },
           {
             "type": "command",

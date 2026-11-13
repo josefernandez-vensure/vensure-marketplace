@@ -2,7 +2,7 @@
 
 Working file for the law redesign (`LAW-REDESIGN.md`). It is deleted in phase 6; the PR keeps the record. It covers the 136 active rows of `rancho-dotnet`'s `enforcement.md` at rancho 4.1.0; the 12 retired rows are left out.
 
-The checks land in `templates/rancho-dotnet/`. The law they serve is `rancho-modular-dotnet` (open decision 1, taken as recommended).
+The checks land in `templates/rancho-dotnet/`. The law they serve was `rancho-modular-dotnet`, and is `rancho-dotnet` 4.0.0 from phase 2 (open decision 1, taken as recommended).
 
 ## Increment 1: structural checks on a skeleton solution (done)
 
@@ -175,3 +175,37 @@ The rule for these is "stop and ask". Each row comes back as a check when the fi
 | BE-94 Metric tag keys from a closed set | It needs a custom analyzer, and a wrong tag is cheap to fix |
 | BE-136 No `#region` | Cosmetic |
 | BE-09 Domain events in the past tense | Already dropped in 4.1.0 |
+
+## Phase 2: the .NET law (done)
+
+`rancho-modular-dotnet` 0.2.0 became `rancho-dotnet` 4.0.0, in 1,931 words (the budget is 2,500). The 3.x law, its three annexes and the `rancho-modular-dotnet` plugin are gone; the archive tag keeps them. `enforcement.md` and `RECORDS.md` stay until phase 6.
+
+Every sentence of both laws was put to the admission test against the checks above:
+
+| Kept in the law, because no check or reference reaches it | From |
+|---|---|
+| The codebase as the reference; the checks are the law; a suppression gives its reason; a new checkable rule ships its check | modular §0, 3.x §1 |
+| The `dotnet` CLI; a module's projects exist at most once, never per feature | modular §1 and §2, 3.x §2 |
+| Placement by dependencies: pure logic in `Application`, adapters in `Infrastructure` behind a port | modular §3, 3.x §4 |
+| Expected outcomes are values; only an adapter catches, and only where the exception is raised | modular §4 and §5, 3.x §4 |
+| One aggregate per transaction; no external call inside one; a duplicating effect goes through the outbox | modular §5, 3.x §4 |
+| A reaction doesn't re-authorize the user; the saga rules (choreography by default, orchestrator, step order, compensations, pending state) | modular §5 |
+| A change of meaning is a new message version; the overlap of versions; tolerant consumers | 3.x §4 |
+| Whole-aggregate loads; migrations safe for the previous release, destructive changes split, data migrations idempotent, seeds only reference data | modular §6, 3.x §5 |
+| Scope applied in the read; an unreachable authority denies; a pre-validation claim only selects; no weakening defaults; secrets; a stricter limit for an expensive read | modular §8, 3.x §6, §9 and §11 |
+| Egress owners; `Restricted` encrypted at rest; no value in a problem, validation or exception message; the audit trail is append-only | 3.x §7 and §10 |
+| The tests a new operation needs, by kind | modular §11, 3.x §14 |
+| Not yet covered: caching, model calls, real-time push, uploads | modular §12, triage's deferred rows |
+
+Dropped from the modular law because a check or the platform now carries it: the reference table and its four facts, the folder layout, the operation declaration and pipeline order, `Result` translation, ids, private state, events, the outbox's metadata, the reaction's mechanics, idempotency's details, the mapping rules, the endpoint and wire-contract mechanics, deny by default, raw claims, options validation, and the classification mechanism. Its "stands alone" line went, and with it its own data classes and trace id: the core law carries them.
+
+Gaps the law states but the template doesn't yet show, for the first project that meets them:
+
+- **An effect a repeat would duplicate** (an email, a payment) performed from the outbox. The architecture test requires a reaction's command to be transactional, so the delivery of such an effect needs a mechanism of its own.
+- **Auditing a `Restricted` read or an export.** The audit trail records commands and denials only.
+- **`Cache-Control: no-store`** on a `Confidential` or `Restricted` response, and `x-problem-types` in the document (noticed in 2d), are still the contract law's alone.
+- **Telemetry that strips an undeclared exception's message** (core §4) has no processor in the template.
+- **The audit trail is append-only by convention**, not by a database permission (2b).
+- `check-migrations.sh` and `check-contracts.sh` are written for CI, but this repository runs none.
+
+Left to later phases: the core law still names `/rancho-modular-dotnet:law` as its example of a standalone law and gives `/rancho-dotnet:law` annexes (phase 4); the prime directive, VACA and `tools/` still describe annexes and inventories (phases 5 and 6).

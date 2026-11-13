@@ -23,30 +23,10 @@ epic merged, which is exactly when it stops being useful.
 
 ## Before writing anything
 
-Find the law bound to the tree you are about to touch: the nearest
-`CLAUDE.md` that holds a `Stack law:` line, at or above the files in your
-scope, names it, as `Stack law: /<plugin>:law` (core §2). If that law says,
-before its first section, `This law stands alone.`, read it in full, and, if
-it declares a role, the contract law (`references/contract.md` beside the core
-law's `SKILL.md`) in full. Read nothing else: not the core law, and no annex
-or inventory. Skip the next paragraph.
-
-Otherwise, read the core engineering law via the `/rancho:law` skill, then that
-stack law. Read both in
-full, and, between them, the contract law, `references/contract.md` beside
-the core law's `SKILL.md`, wherever the stack law declares a role. A tree bound as `Stack law: none - <reason>` is not a defect: only the
-core law binds it, so read only the core law for it. Then read each annex of
-that stack law whose trigger the tree already
-meets, or the work would meet: annexes are the `references/annex-*.md` files beside the stack law's
-`SKILL.md`, and each names its trigger at its top and in the stack law. They
-are binding: they decide what the code must look like, and reading them
-afterwards is not the same thing. Consult an enforcement inventory
-(`references/enforcement.md`) only by rule id, never whole.
-
-If a tree in your scope has no `Stack law:` line, or names a stack law that is
-not available
-in this session, stop before writing anything, record it in your stream file,
-and report it. Never pick a stack law by guessing from the files.
+Read the engineering law, `/rancho:law`, in full, and the law its §1 names
+for the files in your scope, before writing anything: reading it afterwards is
+not the same thing. Where §1 says to stop, record why in your stream file and
+report it.
 
 Then read, in this order:
 

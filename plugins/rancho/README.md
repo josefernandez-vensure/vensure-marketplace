@@ -12,8 +12,8 @@ rancho/
 ├── .claude-plugin/plugin.json   manifest — the only file that goes in here
 ├── skills/                      skills as <name>/SKILL.md    [law, vaca]
 │   ├── law/
-│   │   ├── SKILL.md             the core law: the index of laws and the principles
-│   │   └── references/          contract.md: the contract law; enforcement.md: the core inventory
+│   │   ├── SKILL.md             the core law
+│   │   └── references/          enforcement.md: the 4.x inventory, no longer read
 │   └── vaca/
 │       ├── SKILL.md             Vensure Agentic Code Assistant
 │       ├── references/          one file per phase, plus conventions.md
@@ -27,8 +27,8 @@ rancho/
 ├── scripts/                     hook scripts, lib/ holds their shared state
 ├── bin/                         executables added to PATH          [empty]
 ├── hooks/hooks.json             event handlers             [four events]
-├── context/prime-directive.md   payload the SessionStart hook prints
-├── AUTHORING.md                 the core law's rules for writing and changing the law
+├── context/                     what scripts/prime-directive.sh prints at SessionStart
+├── AUTHORING.md                 the 4.x rules for changing the law, no longer read
 ├── RECORDS.md                   rationale and history moved out of the law
 ├── .mcp.json                    MCP servers                        [empty]
 ├── .lsp.json                    LSP servers                        [empty]
@@ -248,8 +248,8 @@ make such an edit when asked to change the law, so one more hook refuses it:
   `Set-Content`, `git checkout`, …) or an output redirect. Redirects to
   `/dev/null` and `$null` do not count, so reading the installed plugin stays
   allowed. A shell command cannot be parsed with `grep`, so a determined
-  enough command gets through; the prime directive states the rule for that
-  case.
+  enough command gets through; `context/plugins-read-only.md`, printed at
+  every session start, states the rule for that case.
 - **`CLAUDE_CONFIG_DIR` is honoured.** A relocated config directory is protected
   as well as the default one.
 - **Plugin data is not protected.** `~/.claude/plugins/data/` is where
@@ -265,36 +265,25 @@ that is a reason to take the dependency, not to write a longer regex.
 
 ## The law
 
-`skills/law/` holds the core engineering law: how to use the law, an index of
-the laws with when to read each, and the principles that must hold in every
-tree, whatever it is built with. Beside it, `references/contract.md` is the
-**contract law**: what a server and a client must agree on across HTTP, read in
-every tree whose stack law declares a role. How one technology satisfies both,
-and everything internal to its tree, is a **stack law**,
-shipped as a plugin of its own - `rancho-dotnet` (role `server`) and
-`rancho-react` (role `client`) today. The core law's §2 states that a stack
-law may add rules and never weaken one; `AUTHORING.md` (§2) states the contract
-every stack law meets: a role, a core map from each core section to the section carrying
-it, a gap list, Stack, Testing, and Verification sections, and its own
-enforcement inventory.
+`skills/law/SKILL.md` is the core engineering law, the same in every tree
+whatever it is built with: how to read the law, access, data classes and
+egress, observability and audit, and the HTTP contract between a server and
+its clients. How one technology meets it, and everything internal to its tree,
+is a **stack law**, shipped as a plugin of its own - `rancho-dotnet` and
+`rancho-react` today. A stack law may add rules and never weaken one.
+
+Every tree reads exactly two files: the core law, then the law its `CLAUDE.md`
+binds, as the core law's §1 states. Each law is at most 1,500 words (core) or 2,500 (stack), and holds
+only what its checks and its reference code can't show. The checks ship in
+`templates/`, and each tree's `CLAUDE.md` lists its reference code.
 
 Only the frontmatter `description` is always in context; the body loads when
-the skill triggers. Claude reads the core law, then the contract law where the
-bound stack law declares a role, then the bound stack law in full, then each annex of that stack law whose trigger the tree already meets, or
-the work would meet - the `references/annex-*.md` files beside the stack law's `SKILL.md`, each naming
-its trigger at its top and in the stack law. An inventory,
-`references/enforcement.md`, is consulted only by rule id. A stack law loads
-from its own plugin, and only in a project that enables that plugin. A tree
-bound to a standalone law, one that says `This law stands alone.` before its
-first section, such as `/rancho-modular-dotnet:law`, reads that law, and the
-contract law too where that law declares a role. It reads nothing else.
-`AUTHORING.md` and `RECORDS.md` are for whoever changes the law; a coding agent
-does not read them.
-
-Skills are model-invoked, which is a weaker guarantee than the law's own claim
-that it "is not advisory". The `SessionStart` hook closes that gap: it states
-that the law binds and that the skill must be read, and deliberately restates no
-rules — so there is exactly one copy of every rule to keep current.
+the skill triggers. Skills are model-invoked, which is a weaker guarantee than
+the law's own claim that it binds. The `SessionStart` hook closes that gap: in
+a repository whose root `CLAUDE.md`, or any `CLAUDE.md` git tracks, holds a
+`Stack law:` line, it prints five lines saying that the law binds and that
+`/rancho:law` must be read. It points at core §1 and restates no rules, so
+there is exactly one copy of every rule to keep current.
 
 ### Binding a project
 
@@ -319,35 +308,33 @@ steps, both committed to the project:
    ```
    backend/CLAUDE.md   ->  Stack law: /rancho-dotnet:law
    frontend/CLAUDE.md  ->  Stack law: /rancho-react:law
+   infra/CLAUDE.md     ->  Stack law: none - Bicep only
    ```
 
-   A single-tree repository binds its root `CLAUDE.md`. A repository with two
-   servers on different stacks binds each tree to its own.
+   A single-tree repository binds its root `CLAUDE.md`. A tree bound to none
+   reads only the core law, and its `CLAUDE.md` names its verification commands.
 
-An unbound tree, or one bound to a stack law the session does not have, is a
-defect the law tells Claude to stop on and report, never to guess past.
+An unbound tree, or one bound to a law the session does not have, is a defect
+the law tells Claude to stop on and report, never to guess past.
 
 ### Adding a stack law
 
 A new technology is a new plugin, `plugins/rancho-<stack>/`, holding
-`skills/law/SKILL.md` and `skills/law/references/enforcement.md`. It declares a
-role, maps every core section from §3 and the contract law, lists its gaps,
-carries every core rule its role binds under **Core rules carried**, and takes an
-id prefix of its own. It adds its row to the index in the core law's §2.
-`rancho-dotnet` and `rancho-react` are the worked examples. It depends on the
-core law and never on another stack law, so either tree of a project can change
-stack without touching the other.
+`skills/law/SKILL.md`, and a template of its checks in `templates/`.
+`rancho-dotnet` and `rancho-react` are the worked examples: the codebase as the
+reference, the checks, the stack, the decisions no check or example shows, the
+tests each kind of code needs, and the verification commands. It names the
+owner of each egress boundary in its tree, and how it publishes or consumes the
+HTTP contract. It depends on the core law and never on another stack law, so
+either tree of a project can change stack without touching the other.
 
-### The enforcement inventories
+### Changing the law
 
-The core inventory, `references/enforcement.md`, lists the `ROOT` rows and the
-role each binds, and holds the legend every inventory is read by. Each stack
-law's inventory holds its own rows and the core rows its role carries with
-their mechanism and check. Records - every record that concerns the core law or
-more than one stack law - are in `RECORDS.md`; each stack-law plugin keeps the
-records that concern it alone in its own. Ids are permanent across the split.
+A rule changes only after Claude gets it wrong in a real change, and only when
+no check, better reference or structural change would prevent a repeat. Then
+add one sentence to one law, within its budget, bump that plugin's version, and
+add one changelog line; the PR says why. A disagreement with the law, from any
+project, is an issue on this repository.
 
-Changing a rule: change the law first, then bring the codebase into compliance.
-Per §7 (in `AUTHORING.md`), the document is never edited to accommodate code that violates it. A
-stack-law rule is changed in its own plugin; a rule every stack law of a role
-would need is changed here.
+`AUTHORING.md`, `RECORDS.md` and the `references/enforcement.md` inventories
+describe the 4.x law. No law reads them any more.
