@@ -71,14 +71,6 @@ if [ ! -d ".claude" ]; then
   echo ""
 fi
 
-echo "Code written under VACA is governed by the engineering law: /rancho:law,"
-echo "its contract law, for every tree whose stack law declares a role,"
-echo "the stack law each tree's CLAUDE.md names, as: Stack law: /<plugin>:law,"
-echo "and each annex of that stack law whose trigger the tree already meets,"
-echo "or the work would meet. A tree bound as: Stack law: none - <reason>"
-echo "is not a defect: only the core law binds it, and agents read only that."
-echo "A tree bound to a law that says \"This law stands alone.\" is governed"
-echo "by that law, and by the contract law where it declares a role;"
-echo "agents read only those."
+echo "Code written under VACA follows the engineering law: read /rancho:law (§1)."
 
 exit 0

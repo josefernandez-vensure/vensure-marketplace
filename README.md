@@ -69,9 +69,9 @@ order; the law decides what the finished code must look like. Agents that VACA
 launches read the core law, then the stack law bound to the tree they work in,
 before writing anything.
 
-A `SessionStart` hook states that the law is binding and points at the skill. It
-deliberately restates no rules, so there is exactly one copy of each to keep
-current.
+In a repository that binds a law, a `SessionStart` hook states that the law is
+binding and points at the skill. It deliberately restates no rules, so there is
+exactly one copy of each to keep current.
 
 Three further hooks hold a VACA session to a single issue: two count work
 streams as they launch and finish, and a third refuses further prompts once
@@ -440,7 +440,7 @@ vensure-marketplace/
 │       ├── skills/law/       the core law: SKILL.md
 │       ├── skills/vaca/      SKILL.md + references/ + scripts/
 │       ├── commands/help.md  the /rancho:help command
-│       ├── hooks/hooks.json  SessionStart: the prime directive
+│       ├── hooks/hooks.json  SessionStart: the prime directive, where a law is bound
 │       ├── output-styles/
 │       └── ...               agents/, workflows/, monitors/, themes/, bin/
 │                             are scaffolded but empty
