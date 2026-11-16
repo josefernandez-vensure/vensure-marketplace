@@ -1,11 +1,48 @@
 // Writes src/generated/classes.gen.ts from the server's OpenAPI document: for every schema and every operation's
 // parameters, a Zod schema whose output carries each value's data class (x-data-class) as a brand the type checker
-// reads. A value the document leaves unclassified is restricted. Run by `npm run generate`, after openapi-ts.
+// reads, and which refuses what the server refuses: every constraint keyword the document carries is translated, and a
+// keyword the generator can't translate stops generation rather than being dropped. A value the document leaves
+// unclassified is restricted. Run by `npm run generate`, after openapi-ts.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const CLASSES = ['public', 'internal', 'confidential', 'restricted'];
+
+/** The keywords a schema may carry: structure, the constraints translated below, and annotations that constrain nothing. */
+const STRUCTURE = ['type', 'properties', 'required', 'items', 'additionalProperties', '$ref'];
+const CONSTRAINTS = ['format', 'pattern', 'enum', 'minimum', 'maximum', 'minLength', 'maxLength', 'maxItems'];
+const ANNOTATIONS = ['x-data-class', 'default', 'description', 'title', 'deprecated', 'readOnly', 'writeOnly', 'example', 'examples'];
+const FORMATS = ['uuid', 'int32', 'int64', 'float', 'double'];
+
+/** The shape of a GUID as the server writes and parses it; format uuid in the document. */
+export const GUID = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$';
+export const INT32 = [-2147483648, 2147483647];
+
+/** The export name of an operation's parameter schema for one location, such as zCatalogGetProductPath. */
+export function parameterSchemaName(operationId, location) {
+  const ident = (text) => text.replace(/[^A-Za-z0-9_$]/g, '_');
+  return `z${ident(operationId.replace(/(^|[._-])(\w)/g, (_, __, c) => c.toUpperCase()))}${location[0].toUpperCase()}${location.slice(1)}`;
+}
+
+/** The kinds a schema's values may take: its declared types, or those of its enum's values. */
+export function kindsOf(schema) {
+  const declared = [schema.type ?? (schema.properties ? 'object' : schema.items ? 'array' : undefined)].flat().filter(Boolean);
+  if (declared.length || !schema.enum) return declared;
+  return [...new Set(schema.enum.map((v) => (v === null ? 'null' : typeof v === 'number' ? 'number' : typeof v)))];
+}
+
+function refuseUntranslated(schema, where) {
+  const allowed = schema.$ref ? ['$ref', ...ANNOTATIONS] : [...STRUCTURE, ...CONSTRAINTS, ...ANNOTATIONS];
+  for (const key of Object.keys(schema)) {
+    if (!allowed.includes(key)) {
+      throw new Error(`${where}: "${key}" is a constraint generate-classes.mjs doesn't carry. Teach it, so the client's schema refuses what the server refuses.`);
+    }
+  }
+  if (schema.format && !FORMATS.includes(schema.format)) {
+    throw new Error(`${where}: format "${schema.format}" is a constraint generate-classes.mjs doesn't carry. Teach it.`);
+  }
+}
 
 export function generateClasses(document) {
   const schemas = document.components?.schemas ?? {};
@@ -13,36 +50,58 @@ export function generateClasses(document) {
   const ident = (text) => text.replace(/[^A-Za-z0-9_$]/g, '_');
   const zodName = (schema) => `z${ident(schema)}`;
   const classOf = (schema) => (CLASSES.includes(schema['x-data-class']) ? schema['x-data-class'] : 'restricted');
+  const regex = (pattern) => `.regex(new RegExp(${JSON.stringify(pattern)}))`;
 
-  function zod(schema) {
+  /** A number's bounds: the schema's own, inside its format's range. */
+  function bounds(schema) {
+    const [low, high] = schema.format === 'int32' ? INT32 : [-Infinity, Infinity];
+    return [Math.max(schema.minimum ?? -Infinity, low), Math.min(schema.maximum ?? Infinity, high)];
+  }
+
+  function zod(schema, where) {
+    refuseUntranslated(schema, where);
     if (schema.$ref) return `z.lazy(() => ${zodName(name(schema.$ref))})`;
-    const types = [schema.type ?? (schema.properties ? 'object' : schema.items ? 'array' : undefined)].flat().filter(Boolean);
+    const types = kindsOf(schema);
     const nullable = types.includes('null');
     const kinds = types.filter((t) => t !== 'null');
+    const numeric = kinds.includes('integer') || kinds.includes('number');
+    const [low, high] = bounds(schema);
     const leaf = (kind) => {
       switch (kind) {
         case 'string': {
-          if (schema.enum) return `z.enum([${schema.enum.map((v) => JSON.stringify(v)).join(', ')}])`;
-          return schema.pattern ? `z.string().regex(new RegExp(${JSON.stringify(schema.pattern)}))` : 'z.string()';
+          if (schema.enum) return `z.enum([${schema.enum.filter((v) => typeof v === 'string').map((v) => JSON.stringify(v)).join(', ')}])`;
+          let out = 'z.string()';
+          if (schema.format === 'uuid') out += regex(GUID);
+          if (schema.pattern) out += regex(schema.pattern);
+          if (schema.minLength !== undefined) out += `.min(${schema.minLength})`;
+          if (schema.maxLength !== undefined) out += `.max(${schema.maxLength})`;
+          // A number the server also accepts as text, as in a query string, is held to the same bounds.
+          if (numeric && (Number.isFinite(low) || Number.isFinite(high))) out += `.refine((v) => Number(v) >= ${low} && Number(v) <= ${high})`;
+          return out;
         }
-        case 'integer': return 'z.number().int()';
-        case 'number': return 'z.number()';
+        case 'integer':
+        case 'number': {
+          let out = kind === 'integer' ? 'z.number().int()' : 'z.number()';
+          if (Number.isFinite(low)) out += `.min(${low})`;
+          if (Number.isFinite(high)) out += `.max(${high})`;
+          return out;
+        }
         case 'boolean': return 'z.boolean()';
         default: return undefined;
       }
     };
     let out;
     if (schema.additionalProperties && typeof schema.additionalProperties === 'object' && !schema.properties) {
-      out = `z.record(z.string(), ${zod(schema.additionalProperties)})`;
+      out = `z.record(z.string(), ${zod(schema.additionalProperties, `${where}{}`)})`;
     } else if (kinds.includes('object') || schema.properties) {
       const required = new Set(schema.required ?? []);
       const props = Object.entries(schema.properties ?? {}).map(([key, value]) => {
-        const inner = zod(value);
+        const inner = zod(value, `${where}.${key}`);
         return `  ${JSON.stringify(key)}: ${required.has(key) ? inner : `${inner}.optional()`},`;
       });
       out = `z.object({\n${props.join('\n')}\n})`;
     } else if (kinds.includes('array')) {
-      const items = zod(schema.items ?? {});
+      const items = zod(schema.items ?? {}, `${where}[]`);
       out = schema.maxItems ? `z.array(${items}).max(${schema.maxItems})` : `z.array(${items})`;
     } else {
       const leaves = kinds.map(leaf).filter(Boolean);
@@ -67,7 +126,7 @@ export function generateClasses(document) {
     '',
   ];
   for (const [schemaName, schema] of Object.entries(schemas)) {
-    lines.push(`export const ${zodName(schemaName)} = ${zod(schema)};`);
+    lines.push(`export const ${zodName(schemaName)} = ${zod(schema, `#/components/schemas/${schemaName}`)};`);
     lines.push(`export type ${ident(schemaName)}Classified = z.output<typeof ${zodName(schemaName)}>;`, '');
   }
   // The problem types the document marks user-facing (x-problem-types): only their titles are shown to a user.
@@ -80,9 +139,11 @@ export function generateClasses(document) {
       for (const location of ['path', 'query', 'header']) {
         const params = operation.parameters.filter((p) => p.in === location);
         if (!params.length) continue;
-        const id = `z${ident(operation.operationId.replace(/(^|[._-])(\w)/g, (_, __, c) => c.toUpperCase()))}${location[0].toUpperCase()}${location.slice(1)}`;
-        const props = params.map((p) => `  ${JSON.stringify(p.name)}: ${p.required ? zod(p.schema ?? {}) : `${zod(p.schema ?? {})}.optional()`},`);
-        lines.push(`/** ${method.toUpperCase()} ${path}: its ${location} parameters. */`, `export const ${id} = z.object({\n${props.join('\n')}\n});`, '');
+        const props = params.map((p) => {
+          const inner = zod(p.schema ?? {}, `${method.toUpperCase()} ${path} ${location} ${p.name}`);
+          return `  ${JSON.stringify(p.name)}: ${p.required ? inner : `${inner}.optional()`},`;
+        });
+        lines.push(`/** ${method.toUpperCase()} ${path}: its ${location} parameters. */`, `export const ${parameterSchemaName(operation.operationId, location)} = z.object({\n${props.join('\n')}\n});`, '');
       }
     }
   }

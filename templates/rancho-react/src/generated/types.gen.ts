@@ -68,6 +68,8 @@ export type ProductResponse = {
     etag: string;
 };
 
+export type ProductSort = 'Name' | 'StockOnHand';
+
 export type ProductSummary = {
     id: ProductId;
     name: string;
@@ -210,6 +212,7 @@ export type CatalogListProductsData = {
     path?: never;
     query?: {
         nameStartsWith?: string;
+        sort?: ProductSort;
         pageSize?: number | string;
         cursor?: string;
     };
@@ -325,8 +328,12 @@ export type CatalogGetProductResponse = CatalogGetProductResponses[keyof Catalog
 
 export type CatalogReceiveStockData = {
     body: ReceiveStockRequest;
-    headers?: {
+    headers: {
         'If-Match'?: string;
+        /**
+         * One per intent: every retry of the same intent sends the same key, and a replay returns the recorded result.
+         */
+        'Idempotency-Key': string;
     };
     path: {
         id: string;

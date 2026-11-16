@@ -11,6 +11,8 @@ internal sealed class ProductSummaryRow
 
     public string Name { get; private set; } = string.Empty;
 
+    public int StockOnHand { get; private set; }
+
     public Guid TenantId { get; private set; }
 }
 

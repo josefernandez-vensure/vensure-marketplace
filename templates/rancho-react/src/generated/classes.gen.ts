@@ -16,7 +16,7 @@ export const zCancelOrderResponse = z.object({
 export type CancelOrderResponseClassified = z.output<typeof zCancelOrderResponse>;
 
 export const zCreateProductRequest = z.object({
-  "id": classified("internal", z.string()),
+  "id": classified("internal", z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).regex(new RegExp("^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))),
   "name": classified("public", z.string()),
 });
 export type CreateProductRequestClassified = z.output<typeof zCreateProductRequest>;
@@ -24,7 +24,7 @@ export type CreateProductRequestClassified = z.output<typeof zCreateProductReque
 export const zHttpValidationProblemDetails = z.object({
   "type": classified("internal", z.string()).nullable().optional(),
   "title": classified("internal", z.string()).nullable().optional(),
-  "status": classified("internal", z.union([z.number().int(), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$"))])).nullable().optional(),
+  "status": classified("internal", z.union([z.number().int().min(-2147483648).max(2147483647), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$")).refine((v) => Number(v) >= -2147483648 && Number(v) <= 2147483647)])).nullable().optional(),
   "detail": classified("internal", z.string()).nullable().optional(),
   "instance": classified("internal", z.string()).nullable().optional(),
   "errors": z.record(z.string(), z.array(classified("restricted", z.string()))).optional(),
@@ -32,14 +32,14 @@ export const zHttpValidationProblemDetails = z.object({
 export type HttpValidationProblemDetailsClassified = z.output<typeof zHttpValidationProblemDetails>;
 
 export const zOrderId = z.object({
-  "value": classified("internal", z.string()).optional(),
+  "value": classified("internal", z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).regex(new RegExp("^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))).optional(),
 });
 export type OrderIdClassified = z.output<typeof zOrderId>;
 
 export const zOrderResponse = z.object({
   "id": z.lazy(() => zOrderId),
   "productId": z.lazy(() => zProductId),
-  "quantity": classified("internal", z.union([z.number().int(), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$"))])),
+  "quantity": classified("internal", z.union([z.number().int().min(-2147483648).max(2147483647), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$")).refine((v) => Number(v) >= -2147483648 && Number(v) <= 2147483647)])),
   "status": classified("internal", z.string()),
   "etag": classified("internal", z.string()),
 });
@@ -53,23 +53,23 @@ export const zPageOfProductSummary = z.object({
 export type PageOfProductSummaryClassified = z.output<typeof zPageOfProductSummary>;
 
 export const zPlaceOrderRequest = z.object({
-  "id": classified("internal", z.string()),
-  "productId": classified("internal", z.string()),
-  "quantity": classified("internal", z.union([z.number().int(), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$"))])),
+  "id": classified("internal", z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).regex(new RegExp("^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))),
+  "productId": classified("internal", z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).regex(new RegExp("^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))),
+  "quantity": classified("internal", z.union([z.number().int().min(-2147483648).max(2147483647), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$")).refine((v) => Number(v) >= -2147483648 && Number(v) <= 2147483647)])),
 });
 export type PlaceOrderRequestClassified = z.output<typeof zPlaceOrderRequest>;
 
 export const zProblemDetails = z.object({
   "type": classified("internal", z.string()).nullable().optional(),
   "title": classified("internal", z.string()).nullable().optional(),
-  "status": classified("internal", z.union([z.number().int(), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$"))])).nullable().optional(),
+  "status": classified("internal", z.union([z.number().int().min(-2147483648).max(2147483647), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$")).refine((v) => Number(v) >= -2147483648 && Number(v) <= 2147483647)])).nullable().optional(),
   "detail": classified("internal", z.string()).nullable().optional(),
   "instance": classified("internal", z.string()).nullable().optional(),
 });
 export type ProblemDetailsClassified = z.output<typeof zProblemDetails>;
 
 export const zProductId = z.object({
-  "value": classified("internal", z.string()).optional(),
+  "value": classified("internal", z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).regex(new RegExp("^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))).optional(),
 });
 export type ProductIdClassified = z.output<typeof zProductId>;
 
@@ -77,10 +77,13 @@ export const zProductResponse = z.object({
   "id": z.lazy(() => zProductId),
   "name": classified("public", z.string()),
   "isDiscontinued": classified("public", z.boolean()),
-  "stockOnHand": classified("internal", z.union([z.number().int(), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$"))])),
+  "stockOnHand": classified("internal", z.union([z.number().int().min(-2147483648).max(2147483647), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$")).refine((v) => Number(v) >= -2147483648 && Number(v) <= 2147483647)])),
   "etag": classified("internal", z.string()),
 });
 export type ProductResponseClassified = z.output<typeof zProductResponse>;
+
+export const zProductSort = classified("internal", z.enum(["Name", "StockOnHand"]));
+export type ProductSortClassified = z.output<typeof zProductSort>;
 
 export const zProductSummary = z.object({
   "id": z.lazy(() => zProductId),
@@ -89,7 +92,7 @@ export const zProductSummary = z.object({
 export type ProductSummaryClassified = z.output<typeof zProductSummary>;
 
 export const zReceiveStockRequest = z.object({
-  "quantity": classified("internal", z.union([z.number().int(), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$"))])),
+  "quantity": classified("internal", z.union([z.number().int().min(-2147483648).max(2147483647), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$")).refine((v) => Number(v) >= -2147483648 && Number(v) <= 2147483647)])),
 });
 export type ReceiveStockRequestClassified = z.output<typeof zReceiveStockRequest>;
 
@@ -109,11 +112,11 @@ export const zRenameProductResponse = z.object({
 export type RenameProductResponseClassified = z.output<typeof zRenameProductResponse>;
 
 /** The problem types whose title a user may see; every other problem is shown generically. */
-export const userFacingProblemTypes: ReadonlySet<string> = new Set([]);
+export const userFacingProblemTypes: ReadonlySet<string> = new Set(["/problems/catalog/product-discontinued", "/problems/catalog/product-not-found", "/problems/conflict", "/problems/forbidden", "/problems/not-found", "/problems/ordering/order-already-confirmed", "/problems/ordering/order-not-found", "/problems/precondition-failed", "/problems/rate-limited", "/problems/unauthenticated", "/problems/validation"]);
 
 /** POST /ordering/orders/{id}/cancel: its path parameters. */
 export const zOrderingCancelOrderPath = z.object({
-  "id": classified("internal", z.string()),
+  "id": classified("internal", z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).regex(new RegExp("^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))),
 });
 
 /** POST /ordering/orders/{id}/cancel: its header parameters. */
@@ -123,7 +126,7 @@ export const zOrderingCancelOrderHeader = z.object({
 
 /** GET /ordering/orders/{id}: its path parameters. */
 export const zOrderingGetOrderPath = z.object({
-  "id": classified("internal", z.string()),
+  "id": classified("internal", z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).regex(new RegExp("^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))),
 });
 
 /** POST /catalog/products: its header parameters. */
@@ -134,28 +137,30 @@ export const zCatalogCreateProductHeader = z.object({
 /** GET /catalog/products: its query parameters. */
 export const zCatalogListProductsQuery = z.object({
   "nameStartsWith": classified("public", z.string()).optional(),
-  "pageSize": classified("internal", z.union([z.number().int(), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$"))])).optional(),
+  "sort": z.lazy(() => zProductSort).optional(),
+  "pageSize": classified("internal", z.union([z.number().int().min(1).max(50), z.string().regex(new RegExp("^-?(?:0|[1-9]\\d*)$")).refine((v) => Number(v) >= 1 && Number(v) <= 50)])).optional(),
   "cursor": classified("internal", z.string()).optional(),
 });
 
 /** GET /catalog/products/{id}: its path parameters. */
 export const zCatalogGetProductPath = z.object({
-  "id": classified("internal", z.string()),
+  "id": classified("internal", z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).regex(new RegExp("^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))),
 });
 
 /** POST /catalog/products/{id}/stock-receipts: its path parameters. */
 export const zCatalogReceiveStockPath = z.object({
-  "id": classified("internal", z.string()),
+  "id": classified("internal", z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).regex(new RegExp("^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))),
 });
 
 /** POST /catalog/products/{id}/stock-receipts: its header parameters. */
 export const zCatalogReceiveStockHeader = z.object({
   "If-Match": classified("internal", z.string()).optional(),
+  "Idempotency-Key": classified("internal", z.string()),
 });
 
 /** POST /catalog/products/{id}/rename: its path parameters. */
 export const zCatalogRenameProductPath = z.object({
-  "id": classified("internal", z.string()),
+  "id": classified("internal", z.string().regex(new RegExp("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")).regex(new RegExp("^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"))),
 });
 
 /** POST /catalog/products/{id}/rename: its header parameters. */

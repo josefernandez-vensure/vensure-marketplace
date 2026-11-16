@@ -41,6 +41,7 @@ npm run verify
 | Only the identity module uses the identity library or touches its session store, and only its interceptor attaches the token | `no-restricted-imports`, `no-restricted-syntax` |
 | Tests mock the network with MSW, never the generated client | `no-restricted-syntax` |
 | Every value from the server carries its data class: `npm run generate` writes `src/generated/classes.gen.ts`, a schema per type and parameter whose output is classified from `x-data-class`, unclassified as `restricted` | `scripts/generate-classes.mjs`, `scripts/check.mjs` (`generated`) |
+| A generated schema refuses what the server refuses: every constraint keyword the document carries (a GUID's shape and pattern, an enum, bounds, lengths) is translated, and one the generator can't translate stops generation | `scripts/generate-classes.mjs`, `scripts/check.mjs` (`generated`), `tests/parameters.test.ts` |
 | Only public and internal data reach a URL (links, navigation, search params, history), browser storage (Web Storage, cookies, IndexedDB, the Cache API, a persisted store's `partialize`) or telemetry (the console); unparsed input is unclassified, so it never does | `rancho/classified-at-boundary` |
 | A value takes its class only from a generated schema or the client-state registry (`src/shared/lib/client-state.ts`) | `rancho/no-class-assertion` |
 | A generated response is parsed, never asserted to another type | `rancho/no-response-assertion` |
@@ -58,7 +59,8 @@ The behaviour only a test can prove has its reference test, each written against
 | A query's loading, error and empty states | `src/features/products/components/ProductList.test.tsx` |
 | Sign-out clears the caches and what the application stored, then hands over to the shell's sign-out | `src/shared/lib/sign-out.test.ts` |
 | A problem of a type not marked user-facing shows neither its title nor its detail, but offers the trace id | `src/shared/lib/ProblemMessage.test.tsx` |
-| Every route passes axe (and a route missing from the test fails it); the root error element shows a render failure | `tests/routes.test.tsx` |
+| Every route passes axe (and a route missing from the test fails it); the root error element shows a render failure; an id the parameter schema refuses, such as the nil GUID, is not found without a call | `tests/routes.test.tsx` |
+| Every operation parameter's generated schema refuses exactly what the document's constraints refuse, over a set of candidate values | `tests/parameters.test.ts` |
 
 `python -I templates/check-rancho-react.py`, from the repository root, seeds one violation per check into a copy and proves each is caught; for each behaviour test, it breaks the behaviour and proves the test fails.
 

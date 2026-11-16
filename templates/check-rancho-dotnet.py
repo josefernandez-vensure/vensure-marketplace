@@ -257,6 +257,8 @@ TEST = [
      lambda: write(ORD + "Ordering.Application/ConfirmOrder/OnReserveStock.cs", "using Catalog.Contracts.CommandMessages;\nusing Ordering.Contracts;\nusing Platform.Application.Abstractions;\n\nnamespace Ordering.Application.ConfirmOrder;\n\npublic sealed class OnReserveStock : IReaction<ReserveStockV1, ConfirmOrder>\n{\n    public static ConfirmOrder Map(ReserveStockV1 message) => new(new OrderId(message.ReservationId.Value));\n}\n")),
     ("A_reaction_command_is_keyed_transactional_and_unversioned",
      lambda: edit(CAT + "Catalog.Application/ReleaseStock/ReleaseStock.cs", "IdempotencyMechanism.Key", "IdempotencyMechanism.Natural")),
+    ("Only_the_platforms_bookkeeping_writes_around_the_change_tracker",
+     lambda: write(CAT + "Catalog.Infrastructure/Persistence/Purge.cs", "using Microsoft.EntityFrameworkCore;\n\nnamespace Catalog.Infrastructure.Persistence;\n\ninternal static class Purge\n{\n    public static Task<int> Discontinued(CatalogDbContext db, CancellationToken cancellationToken) =>\n        db.Products.Where(p => p.IsDiscontinued).ExecuteDeleteAsync(cancellationToken);\n}\n")),
 ]
 
 PROGRAM = "src/Api/Program.cs"
@@ -266,6 +268,10 @@ PRODUCT_CONFIG = CAT + "Catalog.Infrastructure/Persistence/ProductConfiguration.
 HTTP = "src/Api/Http/HttpSetup.cs"
 OPENAPI = "src/Api/OpenApi/ContractDocument.cs"
 TRACING = "src/Api/Telemetry/TraceBoundary.cs"
+CACHE = "src/Api/Http/CachePolicy.cs"
+CORS = "src/Api/Http/CrossOrigin.cs"
+PAGING = "src/Platform/Platform.Application/Abstractions/Paging.cs"
+READ_AUDIT = "src/Platform/Platform.Application/Behaviors/ReadAuditBehavior.cs"
 
 # API seeds, each run alone so that one seed cannot make another seed's test fail: (expected failing tests, edits)
 API = [
@@ -317,6 +323,30 @@ API = [
      lambda: write("src/Api/Endpoints/Ordering/ConfirmOrderEndpoint.cs", "using Mediator;\nusing Microsoft.AspNetCore.Http.HttpResults;\nusing Ordering.Application.ConfirmOrder;\nusing Ordering.Contracts;\nusing SharedKernel;\n\nnamespace Api.Endpoints.Ordering;\n\npublic sealed class ConfirmOrderEndpoint : IEndpoint<ConfirmOrder>\n{\n    public static string Method => HttpMethods.Post;\n\n    public static string Pattern => \"/ordering/orders/{id:guid}/confirm\";\n\n    public static Delegate Handler => Handle;\n\n    private static async Task<Results<NoContent, ProblemHttpResult>> Handle([ClassOf<OrderId>] Guid id, ISender sender, CancellationToken cancellationToken) =>\n        (await sender.Send(new ConfirmOrder(new OrderId(id)), cancellationToken)).ToNoContent();\n}\n")),
     (["Every_options_class_the_solution_binds_has_a_validator"],
      lambda: edit(MESSAGING, "            .Validate(o => o.PollInterval > TimeSpan.Zero && o.BatchSize is > 0 and <= 1000, \"Outbox delivery needs a positive poll interval and a batch size of 1 to 1000.\")\n", "")),
+    (["Every_problem_type_the_server_declares_is_listed_with_its_status_title_and_audience"],
+     lambda: edit(OPENAPI, "            options.AddDocumentTransformer<ProblemTypesTransformer>();\n", "")),
+    (["Every_keyed_operation_declares_its_idempotency_key_and_no_other_does"],
+     lambda: edit(OPENAPI, "if (endpoint.Operation.Idempotency == IdempotencyMechanism.Key\n", "if (endpoint.Operation.Idempotency == IdempotencyMechanism.ClientSuppliedId\n")),
+    (["Every_parameter_carries_the_constraints_the_server_holds_it_to"],
+     lambda: edit(OPENAPI, "            options.AddSchemaTransformer<IdTransformer>();\n", "")),
+    (["Every_parameter_carries_the_constraints_the_server_holds_it_to"],
+     lambda: edit(OPENAPI, '            pageSize.Minimum = "1";\n', "")),
+    (["Every_route_sends_cache_control_by_the_class_of_what_it_returns"],
+     lambda: edit(PROGRAM, "app.UseCachePolicy();\n", "")),
+    (["A_response_carrying_confidential_restricted_or_unclassified_data_is_never_stored"],
+     lambda: edit(CACHE, "Class: < DataClass.Confidential } ? Private : NoStore", "Class: not null } ? Private : NoStore")),
+    (["A_listed_origin_may_send_every_request_header_the_contract_uses_and_read_every_response_header"],
+     lambda: edit(CORS, '"If-None-Match", "Idempotency-Key", ', '"If-None-Match", ')),
+    (["A_listed_origin_may_send_every_request_header_the_contract_uses_and_read_every_response_header"],
+     lambda: edit(CORS, ".WithHeaders([.. RequestHeaders])\n                .WithExposedHeaders([.. ResponseHeaders]));", ".WithHeaders([.. RequestHeaders]));")),
+    (["A_listed_origin_may_send_every_request_header_the_contract_uses_and_read_every_response_header"],
+     lambda: edit(PROGRAM, "app.UseCors(CrossOrigin.Policy);\n", "")),
+    (["An_origin_not_listed_is_admitted_to_nothing"],
+     lambda: edit(CORS, ".WithOrigins([.. origins.Value.Origins])", ".WithOrigins([.. origins.Value.Origins, \"https://elsewhere.example.com\"])")),
+    (["A_message_our_code_did_not_write_never_reaches_a_span"],
+     lambda: edit(TRACING, "        ExceptionScrubbing.EnsureStarted();\n", "")),
+    (["Every_query_passes_the_read_audit"],
+     lambda: edit(PROGRAM, "        typeof(ReadAuditBehavior<,>),\n", "")),
     (["A_missing_database_connection_string_stops_startup", "Every_options_class_the_solution_binds_has_a_validator"],
      lambda: edit("src/Platform/Platform.Infrastructure/PlatformPersistence.cs", "            .Validate(options => !string.IsNullOrWhiteSpace(options.ConnectionString), $\"ConnectionStrings:{ConnectionStringName} is missing; every module's schema lives in that one database.\")\n", "")),
 ]
@@ -368,6 +398,14 @@ ISOLATED = [
     (SQL, ["A_query_for_a_missing_record_answers_its_declared_problem"],
      lambda: edit(QH, "return CatalogProblems.ProductNotFound.With();", "return PlatformProblems.NotFound.With();")),
 
+    (SQL, ["A_cursor_replayed_under_another_sort_or_filter_is_refused"],
+     lambda: edit(PAGING, 'return $"{TQuery.Operation.Id}:{parameters.ToJsonString()}";', "return TQuery.Operation.Id;")),
+    (MODEL, ["Only_the_platforms_bookkeeping_writes_around_the_change_tracker"],
+     lambda: write(CAT + "Catalog.Infrastructure/Persistence/Wipe.cs", "using Microsoft.EntityFrameworkCore;\n\nnamespace Catalog.Infrastructure.Persistence;\n\ninternal static class Wipe\n{\n    public static Task<int> All(CatalogDbContext db, CancellationToken cancellationToken) =>\n        db.Database.ExecuteSqlAsync($\"DELETE FROM catalog.Products\", cancellationToken);\n}\n")),
+    (UNIT, ["A_read_of_confidential_data_is_recorded_by_default_down_to_each_item_of_a_page"],
+     lambda: edit(READ_AUDIT, "Class: < DataClass.Confidential }", "Class: < DataClass.Restricted }")),
+    (UNIT, ["A_read_of_restricted_data_is_recorded_with_the_ids_it_named_and_returned", "A_read_of_confidential_data_is_recorded_by_default_down_to_each_item_of_a_page"],
+     lambda: edit("src/Platform/Platform.Application/Behaviors/Audit.cs", "RecordIds(message).Concat(ReturnedIds(returned))", "RecordIds(message)")),
     (SQL, ["Paging_skips_and_repeats_no_row_across_page_boundaries"],
      lambda: edit("src/Platform/Platform.Application/Abstractions/Keyset.cs", "Expression.GreaterThan(Compare(id, idValue), Expression.Constant(0))", "Expression.GreaterThanOrEqual(Compare(id, idValue), Expression.Constant(0))")),
     (SQL, ["A_page_size_above_the_maximum_is_refused_never_clamped", "A_cursor_the_query_did_not_issue_is_refused"],

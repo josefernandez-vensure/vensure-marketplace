@@ -20,6 +20,9 @@ public static class TraceBoundary
         // OpenTelemetry's ASP.NET Core instrumentation extracts the caller's context itself unless its propagator is plain W3C.
         Sdk.SetDefaultTextMapPropagator(new TraceContextPropagator());
 
+        // Before any exception becomes a span event: a message our code didn't write is dropped.
+        ExceptionScrubbing.EnsureStarted();
+
         var telemetry = builder.Services.AddOpenTelemetry()
             .WithTracing(tracing => tracing.AddAspNetCoreInstrumentation().AddSource(DispatchTelemetry.SourceName));
         if (builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] is { Length: > 0 })

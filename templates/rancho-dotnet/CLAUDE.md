@@ -9,7 +9,7 @@ Stack law: /rancho-dotnet:law
 - Versioned write (If-Match): src/Modules/Catalog/Catalog.Application/RenameProduct/ with its endpoint src/Api/Endpoints/Catalog/RenameProductEndpoint.cs
 - Tenant scope: src/Modules/Catalog/Catalog.Infrastructure/Persistence/ProductRepository.cs, and the reads in src/Modules/Catalog/Catalog.Infrastructure/Queries/
 - Query: src/Modules/Catalog/Catalog.Application/GetProduct/ with its handler in src/Modules/Catalog/Catalog.Infrastructure/Queries/GetProduct/
-- Paged query: src/Modules/Catalog/Catalog.Application/ListProducts/ with its handler and keyless read type in src/Modules/Catalog/Catalog.Infrastructure/Queries/ListProducts/
+- Paged query, with a sort parameter and a keyset per sort: src/Modules/Catalog/Catalog.Application/ListProducts/ with its handler and keyless read type in src/Modules/Catalog/Catalog.Infrastructure/Queries/ListProducts/, and its tests in tests/Catalog.IntegrationTests/PagingTests.cs
 - Reaction: src/Modules/Catalog/Catalog.Application/ReserveStock/ (the reaction, its command and its handler), with its policy and registration in src/Modules/Catalog/Catalog.Infrastructure/CatalogModule.cs
 - Command message and integration event: src/Modules/Catalog/Catalog.Contracts/CommandMessages/ and src/Modules/Catalog/Catalog.Contracts/IntegrationEvents/
 - Saga (choreography) and its compensation: src/Modules/Ordering/Ordering.Application/PlaceOrder/ and src/Modules/Ordering/Ordering.Application/ConfirmOrder/, with Catalog's ReserveStock/ and ReleaseStock/

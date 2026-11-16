@@ -36,6 +36,20 @@ public sealed class PersistenceTests
     }
 
     [Fact]
+    public void Only_the_platforms_bookkeeping_writes_around_the_change_tracker()
+    {
+        string[] bulk = ["ExecuteUpdate", "ExecuteUpdateAsync", "ExecuteDelete", "ExecuteDeleteAsync"];
+
+        CallsOf(ArchTypesOf(Kinds.All.Except([Kinds.PlatformInfrastructure]).ToArray()))
+            .Where(c => bulk.Any(b => c.Method.StartsWith(b + "(", StringComparison.Ordinal) || c.Method.StartsWith(b + "<", StringComparison.Ordinal))
+                || c.Method.StartsWith("ExecuteSql", StringComparison.Ordinal))
+            .Select(c => $"{c.Origin.FullName} calls {c.Method}")
+            .ShouldHaveNoViolations(
+                "ExecuteUpdate, ExecuteDelete and ExecuteSql* skip the aggregate, its version, its outbox rows and its audit record. "
+                + "A module changes data only by saving an aggregate through its repository; only the platform's bookkeeping (Platform.Infrastructure) writes around it.");
+    }
+
+    [Fact]
     public void Published_messages_leave_only_through_the_outbox()
     {
         string[] brokers = ["Azure.Messaging", "MassTransit", "RabbitMQ", "Confluent.Kafka", "NServiceBus", "Amazon.SQS", "Amazon.SimpleNotificationService"];

@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using SharedKernel;
 
 namespace Platform.Application.Abstractions;
@@ -26,12 +28,28 @@ public static class Paging
     public const int Ceiling = 100;
 
     public const int DefaultPageSize = 20;
+
+    /// <summary>
+    /// What a cursor is bound to: the query's operation and every parameter but the page size and the cursor, its sort and its filters
+    /// included. A cursor replayed under another sort or filter isn't this query's, so it is refused, never read as another ordering's key.
+    /// </summary>
+    public static string CursorPurpose<TQuery>(TQuery query)
+        where TQuery : IPagedQuery, IDeclaresOperation
+    {
+        var parameters = (JsonObject)JsonSerializer.SerializeToNode(query, query.GetType())!;
+        parameters.Remove(nameof(IPagedQuery.PageSize));
+        parameters.Remove(nameof(IPagedQuery.Cursor));
+        return $"{TQuery.Operation.Id}:{parameters.ToJsonString()}";
+    }
 }
 
 /// <summary>Where a page ended: exactly the sort key and the unique id. Clients only ever see it encrypted.</summary>
 public sealed record PageCursor(string SortKey, Guid Id);
 
-/// <summary>Seals and opens cursors with Data Protection, under a purpose per query, so a cursor works only for the query that issued it.</summary>
+/// <summary>
+/// Seals and opens cursors with Data Protection, under the purpose <see cref="Paging.CursorPurpose{TQuery}"/> names, so a cursor works only for
+/// the query, sort and filters that issued it.
+/// </summary>
 public interface ICursorCodec
 {
     string Seal(PageCursor cursor, string purpose);
