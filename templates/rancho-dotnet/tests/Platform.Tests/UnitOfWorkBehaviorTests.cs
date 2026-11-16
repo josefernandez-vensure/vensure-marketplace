@@ -84,6 +84,28 @@ public sealed class UnitOfWorkBehaviorTests
     }
 
     [Fact]
+    public async Task A_command_that_changes_two_aggregates_fails_the_dispatch()
+    {
+        var unit = new FakeUnitOfWork();
+        var behavior = new UnitOfWorkBehavior<RenameCommand, Result>(new FakeFactory(unit), Context, TimeProvider.System);
+
+        // The handler adds one aggregate and changes another in the same transaction.
+        var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await behavior.Handle(
+                new RenameCommand(Guid.NewGuid()),
+                (_, _) =>
+                {
+                    unit.HasChanges = true;
+                    unit.ChangedAggregates = 2;
+                    return ValueTask.FromResult(Result.Success());
+                },
+                TestContext.Current.CancellationToken));
+
+        thrown.Message.ShouldContain("tests.rename changed 2 aggregates");
+        unit.Committed.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task A_reaction_that_loses_a_race_is_not_recorded_so_its_retry_runs_again()
     {
         // The reaction changes the aggregate it loaded, without If-Match, and someone else commits first.
@@ -158,6 +180,8 @@ public sealed class UnitOfWorkBehaviorTests
 
         public bool ChangesLoadedAggregates { get; set; }
 
+        public int ChangedAggregates { get; set; }
+
         public List<AuditEntry> Audits { get; } = [];
 
         public List<RecordedResult> Attempts { get; } = [];
@@ -190,6 +214,7 @@ public sealed class UnitOfWorkBehaviorTests
             Audits.Clear();
             HasChanges = false;
             ChangesLoadedAggregates = false;
+            ChangedAggregates = 0;
         }
     }
 }

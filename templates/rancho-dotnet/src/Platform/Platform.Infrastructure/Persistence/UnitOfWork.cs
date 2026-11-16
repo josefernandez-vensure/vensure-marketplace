@@ -44,6 +44,9 @@ internal sealed class UnitOfWork(ModuleDbContext db, DispatchContext dispatch, T
     public bool ChangesLoadedAggregates =>
         db.ChangeTracker.Entries<IAggregateRoot>().Any(e => e.State is EntityState.Modified or EntityState.Deleted);
 
+    public int ChangedAggregates =>
+        db.ChangeTracker.Entries<IAggregateRoot>().Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
+
     public async Task<RecordedResult?> FindAttempt(AttemptIdentity attempt, CancellationToken cancellationToken)
     {
         var record = await db.Set<IdempotencyRecord>().AsNoTracking().SingleOrDefaultAsync(

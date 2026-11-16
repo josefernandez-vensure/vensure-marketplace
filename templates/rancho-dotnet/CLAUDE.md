@@ -3,6 +3,7 @@ Stack law: /rancho-dotnet:law
 ## Reference
 
 - Aggregate: src/Modules/Catalog/Catalog.Domain/Products/
+- Value object: src/Modules/Catalog/Catalog.Domain/Products/ProductName.cs; child entity: src/Modules/Catalog/Catalog.Domain/Products/StockReservation.cs
 - Command: src/Modules/Catalog/Catalog.Application/CreateProduct/
 - Command with an outcome: src/Modules/Catalog/Catalog.Application/RenameProduct/
 - Command with an idempotency key: src/Modules/Catalog/Catalog.Application/ReceiveStock/

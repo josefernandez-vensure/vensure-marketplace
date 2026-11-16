@@ -53,6 +53,15 @@ public sealed class UnitOfWorkBehavior<TMessage, TResponse>(IUnitOfWorkFactory u
             throw;
         }
 
+        var changed = unit.ChangedAggregates;
+        if (changed > 1)
+        {
+            unit.Discard();
+            throw new InvalidOperationException(
+                $"{operation.Id} changed {changed} aggregates. A command changes exactly one aggregate in one transaction; " +
+                "another aggregate changes in a transaction of its own, from a reaction to this one's domain event.");
+        }
+
         if (message is IVersionedCommand versioned)
         {
             // The precondition is evaluated before anything is written, whatever the handler decided.

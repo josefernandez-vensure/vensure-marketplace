@@ -370,6 +370,15 @@ ISOLATED = [
     # A slice written as nested types: a query handler in Application that loads the aggregate.
     (MODEL, ["Messages_and_handlers_live_where_they_belong", "A_query_never_loads_an_aggregate"],
      lambda: write(CAT + "Catalog.Application/CountStock/CountStock.cs", "using Catalog.Domain.Products;\nusing Platform.Application.Abstractions;\n\nnamespace Catalog.Application.CountStock;\n\npublic static class CountStock\n{\n    public sealed record Query(Contracts.ProductId ProductId) : IQuery<int>\n    {\n        public static Operation Operation { get; } = Operation.Query(\"catalog.count-stock\", CatalogPolicies.Read);\n    }\n\n    public sealed class Handler(IProductRepository products) : IQueryHandler<Query, int>\n    {\n        public async ValueTask<Result<int>> Handle(Query query, CancellationToken cancellationToken) =>\n            (await products.Find(new ProductId(query.ProductId.Value), cancellationToken))?.StockOnHand ?? 0;\n    }\n}\n")),
+    # A value object that can change after its constructor validated it.
+    (MODEL, ["Value_objects_are_immutable"],
+     lambda: edit(CAT + "Catalog.Domain/Products/ProductName.cs", "    public string Value { get; }", "    public string Value { get; private set; }")),
+    # A value written as a record: equal by value, but `with` copies it past its constructor's validation.
+    (MODEL, ["Every_domain_type_is_a_building_block"],
+     lambda: write(CAT + "Catalog.Domain/Products/Sku.cs", "namespace Catalog.Domain.Products;\n\npublic sealed record Sku(string Value);\n")),
+    # A child entity's state, open to anyone holding a reference to it.
+    (MODEL, ["Aggregate_state_is_private"],
+     lambda: edit(CAT + "Catalog.Domain/Products/StockReservation.cs", "    public int Quantity { get; private set; }", "    public int Quantity { get; set; }")),
     # A write through a form an exact-name match would miss: ExecuteSqlInterpolatedAsync.
     (MODEL, ["A_query_never_writes"],
      lambda: edit(QH, "        var id = query.ProductId.Value;", "        await db.Database.ExecuteSqlInterpolatedAsync($\"DELETE FROM catalog.Products WHERE Id = {query.ProductId.Value}\", cancellationToken);\n        var id = query.ProductId.Value;")),
@@ -390,6 +399,9 @@ ISOLATED = [
     (MODEL, ["Every_model_change_has_its_migration"],
      lambda: edit(CAT + "Catalog.Domain/Products/ProductName.cs", "public const int MaxLength = 200;", "public const int MaxLength = 150;")),
 
+    # A command that saves a second aggregate in its own transaction: the pipeline refuses the dispatch.
+    (SQL, ["A_success_commits_the_change_its_outbox_rows_and_its_audit_record_together"],
+     lambda: edit(HANDLER, "        return command.ProductId;\n    }\n}", "        products.Save(Product.Create(ProductId.New(), new ProductName(command.Name), time.GetUtcNow()));\n        return command.ProductId;\n    }\n}")),
     (SQL, ["A_keyed_command_without_a_key_is_refused"],
      lambda: edit(CAT + "Catalog.Application/ReceiveStock/ReceiveStock.cs", "IdempotencyMechanism.Key", "IdempotencyMechanism.Natural")),
     (SQL, ["A_replay_returns_the_recorded_result_without_running_the_handler_again", "The_same_key_with_a_different_request_is_refused", "Concurrent_duplicates_resolve_as_one_execution_and_replays"],

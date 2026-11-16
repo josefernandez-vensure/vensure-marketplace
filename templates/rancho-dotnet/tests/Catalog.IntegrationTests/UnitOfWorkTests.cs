@@ -64,4 +64,25 @@ public sealed class UnitOfWorkTests(SqlServer sql)
 
         result.Problem?.Type.ShouldBe(PlatformProblems.PreconditionFailed);
     }
+
+    [Fact]
+    public async Task The_unit_of_work_counts_each_aggregate_added_changed_or_deleted_and_none_only_read()
+    {
+        // The pipeline refuses a command that changes more than one; Platform.Tests proves the refusal, this the count.
+        var existing = await CreateProduct(Writer(sql));
+        using var scope = sql.Api.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>().HttpContext =
+            new DefaultHttpContext { User = CatalogApi.Principal("writer", "catalog.write") };
+        var db = scope.ServiceProvider.GetRequiredService<Infrastructure.Persistence.CatalogDbContext>();
+        var unit = scope.ServiceProvider.GetRequiredService<IUnitOfWorkFactory>().For(typeof(RenameProduct));
+
+        var loaded = await db.Products.SingleAsync(p => p.Id == new Domain.Products.ProductId(existing), Cancel);
+        unit.ChangedAggregates.ShouldBe(0);
+
+        db.Products.Add(Domain.Products.Product.Create(Domain.Products.ProductId.New(), new Domain.Products.ProductName("Second"), DateTimeOffset.UtcNow));
+        unit.ChangedAggregates.ShouldBe(1);
+
+        loaded.Rename(new Domain.Products.ProductName("Renamed")).ShouldBe(Domain.Products.RenameOutcome.Renamed);
+        unit.ChangedAggregates.ShouldBe(2);
+    }
 }

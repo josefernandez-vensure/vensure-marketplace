@@ -1,11 +1,9 @@
 namespace SharedKernel;
 
-public abstract class AggregateRoot<TId> : IAggregateRoot
+public abstract class AggregateRoot<TId> : Entity<TId>, IAggregateRoot
     where TId : struct
 {
     private readonly List<IDomainEvent> _domainEvents = [];
-
-    public TId Id { get; protected set; }
 
     public long Version { get; private set; }
 

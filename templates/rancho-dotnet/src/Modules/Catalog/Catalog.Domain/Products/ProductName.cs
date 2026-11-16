@@ -3,7 +3,7 @@ using SharedKernel;
 namespace Catalog.Domain.Products;
 
 [Public]
-public sealed record ProductName
+public sealed class ProductName : ValueObject
 {
     public const int MaxLength = 200;
 
@@ -18,4 +18,9 @@ public sealed record ProductName
     public string Value { get; }
 
     public override string ToString() => Value;
+
+    protected override IEnumerable<object?> GetEqualityComponents()
+    {
+        yield return Value;
+    }
 }

@@ -21,6 +21,9 @@ public interface IUnitOfWork
     /// <summary>Whether the handler changed an aggregate it loaded, rather than only adding new ones.</summary>
     bool ChangesLoadedAggregates { get; }
 
+    /// <summary>How many aggregate roots the handler added, changed or deleted.</summary>
+    int ChangedAggregates { get; }
+
     Task<RecordedResult?> FindAttempt(AttemptIdentity attempt, CancellationToken cancellationToken);
 
     void StageAttempt(AttemptIdentity attempt, RecordedResult result);
