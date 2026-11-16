@@ -33,15 +33,17 @@ public sealed class EveryRuleHasATest
                     missing.Add($"{type.Name}Tests has no test named {method.Name}_…");
                 }
 
-                if (method.ReturnType.IsEnum && method.ReturnType.Name.EndsWith("Outcome", StringComparison.Ordinal))
+                if (OutcomeOf(method.ReturnType) is { } outcomeType)
                 {
-                    missing.AddRange(Enum.GetNames(method.ReturnType)
+                    missing.AddRange(Enum.GetNames(outcomeType)
                         .Where(outcome => !named.Any(n => n.StartsWith($"{method.Name}_Returns{outcome}_", StringComparison.Ordinal)))
                         .Select(outcome => $"{type.Name}Tests has no test named {method.Name}_Returns{outcome}_…"));
                 }
             }
 
-            if (type.GetConstructors().Any(c => c.GetParameters().Length > 0 && !IsPrimaryConstructorOfRecord(type))
+            // A domain service's constructor only takes its dependencies: it holds no invariant of its own.
+            if (!typeof(IDomainService).IsAssignableFrom(type)
+                && type.GetConstructors().Any(c => c.GetParameters().Length > 0 && !IsPrimaryConstructorOfRecord(type))
                 && !named.Any(n => n.StartsWith("New_", StringComparison.Ordinal)))
             {
                 missing.Add($"{type.Name}Tests has no test named New_…");
@@ -59,6 +61,15 @@ public sealed class EveryRuleHasATest
             .SelectMany(a => a.GetExportedTypes())
             .Where(t => t is { IsClass: true, IsAbstract: false } && !t.IsDefined(typeof(CompilerGeneratedAttribute)))
             .Where(t => !typeof(IDomainEvent).IsAssignableFrom(t) && !IsStronglyTypedId(t));
+
+    /// <summary>The outcome enum a method returns, directly or through a task.</summary>
+    private static Type? OutcomeOf(Type returned)
+    {
+        var type = returned.IsGenericType && (returned.GetGenericTypeDefinition() == typeof(Task<>) || returned.GetGenericTypeDefinition() == typeof(ValueTask<>))
+            ? returned.GetGenericArguments()[0]
+            : returned;
+        return type.IsEnum && type.Name.EndsWith("Outcome", StringComparison.Ordinal) ? type : null;
+    }
 
     private static bool IsStronglyTypedId(Type type) =>
         type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) is [{ FieldType: var field }] && field == typeof(Guid);

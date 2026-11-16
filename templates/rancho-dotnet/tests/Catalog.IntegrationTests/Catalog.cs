@@ -43,6 +43,10 @@ internal static class Catalog
         return await client.SendAsync(request, Cancel);
     }
 
+    /// <summary>Renames several products in one request; it carries no If-Match.</summary>
+    public static async Task<HttpResponseMessage> RenameProducts(HttpClient client, params (Guid Id, string Name)[] products) =>
+        await client.PostAsJsonAsync("/catalog/products/rename", new { products = products.Select(p => new { id = p.Id, name = p.Name }) }, Cancel);
+
     /// <summary>Renames sending <paramref name="ifMatch"/> verbatim, or no If-Match at all.</summary>
     public static async Task<HttpResponseMessage> Rename(HttpClient client, Guid product, string name, string? ifMatch)
     {

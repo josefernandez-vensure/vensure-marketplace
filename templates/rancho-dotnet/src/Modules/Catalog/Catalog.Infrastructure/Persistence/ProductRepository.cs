@@ -14,6 +14,11 @@ internal sealed class ProductRepository(CatalogDbContext db, DispatchContext dis
             ? db.Products.SingleOrDefaultAsync(p => p.Id == id && EF.Property<Guid>(p, TenantColumn) == tenant, cancellationToken)
             : Task.FromResult<Product?>(null);
 
+    public async Task<IReadOnlyList<Product>> FindAll(IReadOnlyCollection<ProductId> ids, CancellationToken cancellationToken) =>
+        dispatch.Tenant is { Value: var tenant }
+            ? await db.Products.Where(p => ids.Contains(p.Id) && EF.Property<Guid>(p, TenantColumn) == tenant).ToListAsync(cancellationToken)
+            : [];
+
     public void Save(Product root)
     {
         if (db.Entry(root).State == EntityState.Detached)

@@ -9,6 +9,12 @@ public interface IVersionedCommand
     ExpectedVersion ExpectedVersion { get; }
 }
 
+/// <summary>
+/// A command that changes several aggregates of its module, through a domain service. <c>If-Match</c> names one resource,
+/// so it carries none: each aggregate's version is checked at commit, and a race lost there answers 409 and commits nothing.
+/// </summary>
+public interface IMultiAggregateCommand;
+
 /// <summary>What an <c>If-Match</c> header asks for: a version, nothing usable (missing or <c>*</c>), or a tag that can never match.</summary>
 public readonly record struct ExpectedVersion(long? Version, bool Unmatchable = false)
 {

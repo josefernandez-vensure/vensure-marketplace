@@ -21,11 +21,13 @@ public sealed class DomainTests
     {
         TypesOf(Kinds.Domain)
             .Where(t => !(t.IsInterface || t.IsEnum || t is { IsAbstract: true, IsSealed: true } || IsStronglyTypedId(t)
-                || typeof(IDomainEvent).IsAssignableFrom(t) || typeof(ValueObject).IsAssignableFrom(t) || IsEntity(t)))
+                || typeof(IDomainEvent).IsAssignableFrom(t) || typeof(ValueObject).IsAssignableFrom(t) || IsEntity(t)
+                || typeof(IDomainService).IsAssignableFrom(t)))
             .Select(t => $"{t.FullName} is none of them")
             .ShouldHaveNoViolations(
                 "A domain type is an aggregate root or a child entity (derives Entity<TId>), a value object (derives ValueObject), " +
-                "a domain event, a strongly typed id, an outcome enum, a repository interface, or a static class of domain logic.");
+                "a domain service (implements IDomainService), a domain event, a strongly typed id, an outcome enum, a repository interface, " +
+                "or a static class of domain logic.");
     }
 
     [Fact]

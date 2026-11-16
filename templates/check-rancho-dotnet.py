@@ -172,9 +172,10 @@ TEST = [
      lambda: (write(CAT + "Catalog.Domain/Categories/Category.cs", "using SharedKernel;\n\nnamespace Catalog.Domain.Categories;\n\npublic readonly record struct CategoryId(Guid Value);\n\npublic sealed class Category : AggregateRoot<CategoryId>\n{\n    private Category() { }\n}\n"),
               edit(PRODUCT, "    public bool IsDiscontinued", "    public Categories.Category? Category { get; private set; }\n\n    public bool IsDiscontinued"))),
     ("Repositories_expose_no_IQueryable",
-     lambda: (edit(CAT + "Catalog.Domain/Products/IProductRepository.cs", "public interface IProductRepository : IRepository<Product, ProductId>;",
-                   "public interface IProductRepository : IRepository<Product, ProductId>\n{\n    IQueryable<Product> Query();\n}"),
-              edit(REPO, "    public void Save", "    public IQueryable<Product> Query() => db.Products;\n\n    public void Save"))),
+     lambda: (edit(CAT + "Catalog.Domain/Products/IProductRepository.cs", "public interface IProductRepository : IRepository<Product, ProductId>\n{\n",
+                   "public interface IProductRepository : IRepository<Product, ProductId>\n{\n    IQueryable<Product> Query();\n\n"),
+              edit(REPO, "    public void Save", "    public IQueryable<Product> Query() => db.Products;\n\n    public void Save"),
+              edit("tests/Domain.Tests/Catalog/ProductRenamerTests.cs", "        public void Save", "        public IQueryable<Product> Query() => _held.AsQueryable();\n\n        public void Save"))),
     ("Messages_and_handlers_live_where_they_belong",
      lambda: write(CAT + "Catalog.Application/Ping/Ping.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Application.Ping;\n\npublic sealed record Ping : IQuery<int>\n{\n    public static Operation Operation { get; } = Operation.Query(\"catalog.ping\", CatalogPolicies.Read);\n}\n\npublic sealed class PingHandler : IQueryHandler<Ping, int>\n{\n    public ValueTask<Result<int>> Handle(Ping query, CancellationToken cancellationToken) => ValueTask.FromResult<Result<int>>(1);\n}\n")),
     ("A_query_never_writes",
@@ -376,6 +377,12 @@ ISOLATED = [
     # A value written as a record: equal by value, but `with` copies it past its constructor's validation.
     (MODEL, ["Every_domain_type_is_a_building_block"],
      lambda: write(CAT + "Catalog.Domain/Products/Sku.cs", "namespace Catalog.Domain.Products;\n\npublic sealed record Sku(string Value);\n")),
+    # A domain service that doesn't declare itself one.
+    (MODEL, ["Every_domain_type_is_a_building_block"],
+     lambda: write(CAT + "Catalog.Domain/Products/Restocking.cs", "namespace Catalog.Domain.Products;\n\npublic sealed class Restocking(IProductRepository products)\n{\n    public Task<Product?> Next(ProductId id, CancellationToken cancellationToken) => products.Find(id, cancellationToken);\n}\n")),
+    # A command over several aggregates that also asks for If-Match, which names one resource.
+    (MODEL, ["A_command_over_several_aggregates_is_not_versioned"],
+     lambda: edit(CAT + "Catalog.Application/RenameProducts/RenameProducts.cs", ": ICommand, IMultiAggregateCommand\n{\n", ": ICommand, IMultiAggregateCommand, IVersionedCommand\n{\n    public ExpectedVersion ExpectedVersion => default;\n\n")),
     # A child entity's state, open to anyone holding a reference to it.
     (MODEL, ["Aggregate_state_is_private"],
      lambda: edit(CAT + "Catalog.Domain/Products/StockReservation.cs", "    public int Quantity { get; private set; }", "    public int Quantity { get; set; }")),
@@ -399,9 +406,9 @@ ISOLATED = [
     (MODEL, ["Every_model_change_has_its_migration"],
      lambda: edit(CAT + "Catalog.Domain/Products/ProductName.cs", "public const int MaxLength = 200;", "public const int MaxLength = 150;")),
 
-    # A command that saves a second aggregate in its own transaction: the pipeline refuses the dispatch.
-    (SQL, ["A_success_commits_the_change_its_outbox_rows_and_its_audit_record_together"],
-     lambda: edit(HANDLER, "        return command.ProductId;\n    }\n}", "        products.Save(Product.Create(ProductId.New(), new ProductName(command.Name), time.GetUtcNow()));\n        return command.ProductId;\n    }\n}")),
+    # A command over several loaded aggregates that doesn't say so: without If-Match, the pipeline refuses the write.
+    (SQL, ["RenameProducts_RenamesEveryProduct_InOneCommitWithOneAuditRecord"],
+     lambda: edit(CAT + "Catalog.Application/RenameProducts/RenameProducts.cs", ": ICommand, IMultiAggregateCommand", ": ICommand")),
     (SQL, ["A_keyed_command_without_a_key_is_refused"],
      lambda: edit(CAT + "Catalog.Application/ReceiveStock/ReceiveStock.cs", "IdempotencyMechanism.Key", "IdempotencyMechanism.Natural")),
     (SQL, ["A_replay_returns_the_recorded_result_without_running_the_handler_again", "The_same_key_with_a_different_request_is_refused", "Concurrent_duplicates_resolve_as_one_execution_and_replays"],
@@ -432,7 +439,7 @@ ISOLATED = [
     (UNIT, ["A_read_of_confidential_data_is_recorded_by_default_down_to_each_item_of_a_page"],
      lambda: edit(READ_AUDIT, "Class: < DataClass.Confidential }", "Class: < DataClass.Restricted }")),
     (UNIT, ["A_read_of_restricted_data_is_recorded_with_the_ids_it_named_and_returned", "A_read_of_confidential_data_is_recorded_by_default_down_to_each_item_of_a_page"],
-     lambda: edit("src/Platform/Platform.Application/Behaviors/Audit.cs", "RecordIds(message).Concat(ReturnedIds(returned))", "RecordIds(message)")),
+     lambda: edit("src/Platform/Platform.Application/Behaviors/Audit.cs", ".Concat(returned is null ? [] : IdsIn(returned, isItem: false))", "")),
     (SQL, ["Paging_skips_and_repeats_no_row_across_page_boundaries"],
      lambda: edit("src/Platform/Platform.Application/Abstractions/Keyset.cs", "Expression.GreaterThan(Compare(id, idValue), Expression.Constant(0))", "Expression.GreaterThanOrEqual(Compare(id, idValue), Expression.Constant(0))")),
     (SQL, ["A_page_size_above_the_maximum_is_refused_never_clamped", "A_cursor_the_query_did_not_issue_is_refused"],
@@ -475,7 +482,10 @@ ISOLATED = [
     (SQL, ["Every_step_of_a_command_emits_a_span_nested_in_pipeline_order", "Every_step_of_a_paged_query_emits_a_span_nested_in_pipeline_order"],
      lambda: edit("src/Platform/Platform.Application/Behaviors/AuthorizationBehavior.cs", '        using var activity = DispatchTelemetry.StartStep("authorize", GetType());\n', "")),
     (UNIT, ["A_write_to_a_loaded_aggregate_without_a_precondition_fails_the_dispatch"],
-     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates && context.Causation is null)", "else if (unit.ChangesLoadedAggregates && message is null)")),
+     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates && context.Causation is null && message is not IMultiAggregateCommand)", "else if (unit.ChangesLoadedAggregates && message is null)")),
+    # The guard forgets that a command over several aggregates carries no If-Match.
+    (UNIT, ["A_command_over_several_aggregates_commits_without_If_Match", "A_command_over_several_aggregates_that_loses_a_race_commits_nothing_and_answers_409"],
+     lambda: edit(BEHAVIOR, " && message is not IMultiAggregateCommand)", ")")),
 
     (SQL, ["Delivery_restores_the_writing_transactions_trace_context"],
      lambda: edit(DISPATCHER, "StartActivity(DispatchTelemetry.DeliverSpan, ActivityKind.Consumer, writer)", "StartActivity(DispatchTelemetry.DeliverSpan, ActivityKind.Consumer)")),
@@ -498,7 +508,7 @@ ISOLATED = [
     (SQL, ["An_order_whose_stock_is_reserved_is_confirmed"],
      lambda: edit(UOW, "        TenantId = dispatch.Tenant?.Value,\n", "")),
     (SQL, ["An_order_whose_stock_is_reserved_is_confirmed"],
-     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates && context.Causation is null)", "else if (unit.ChangesLoadedAggregates)")),
+     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates && context.Causation is null && ", "else if (unit.ChangesLoadedAggregates && ")),
     (SQL, ["GetOrder_ReturnsNotFound_WhenTheOrderIsAnotherTenants"],
      lambda: edit(ORD + "Ordering.Infrastructure/Queries/GetOrder/GetOrderHandler.cs", " AND TenantId = {tenant}", "")),
     (SQL, ["CancelOrder_ReturnsNotFound_WhenTheOrderIsAnotherTenants"],

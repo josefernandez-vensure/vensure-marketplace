@@ -14,6 +14,7 @@ public static class CatalogModule
     {
         services.AddModuleDbContext<CatalogDbContext>(CatalogDbContext.SchemaName);
         services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ProductRenamer>();
         services.AddValidatorsFromAssembly(typeof(CatalogPolicies).Assembly, ServiceLifetime.Scoped);
 
         // Claims map to policies here, at the composition root. Application code names only the policy.

@@ -84,25 +84,29 @@ public sealed class UnitOfWorkBehaviorTests
     }
 
     [Fact]
-    public async Task A_command_that_changes_two_aggregates_fails_the_dispatch()
+    public async Task A_command_over_several_aggregates_commits_without_If_Match()
     {
         var unit = new FakeUnitOfWork();
-        var behavior = new UnitOfWorkBehavior<RenameCommand, Result>(new FakeFactory(unit), Context, TimeProvider.System);
+        var behavior = new UnitOfWorkBehavior<RenameAllCommand, Result>(new FakeFactory(unit), Context, TimeProvider.System);
 
-        // The handler adds one aggregate and changes another in the same transaction.
-        var thrown = await Should.ThrowAsync<InvalidOperationException>(async () =>
-            await behavior.Handle(
-                new RenameCommand(Guid.NewGuid()),
-                (_, _) =>
-                {
-                    unit.HasChanges = true;
-                    unit.ChangedAggregates = 2;
-                    return ValueTask.FromResult(Result.Success());
-                },
-                TestContext.Current.CancellationToken));
+        var result = await behavior.Handle(new RenameAllCommand([Guid.NewGuid(), Guid.NewGuid()]), ChangesLoadedAggregates(unit), TestContext.Current.CancellationToken);
 
-        thrown.Message.ShouldContain("tests.rename changed 2 aggregates");
-        unit.Committed.ShouldBe(0);
+        result.IsSuccess.ShouldBeTrue();
+        unit.ChangesAtCommit.ShouldBe([true]);
+        unit.Audits.ShouldHaveSingleItem().RecordIds.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task A_command_over_several_aggregates_that_loses_a_race_commits_nothing_and_answers_409()
+    {
+        var unit = new FakeUnitOfWork { Outcomes = new Queue<CommitOutcome>([CommitOutcome.Conflict]) };
+        var behavior = new UnitOfWorkBehavior<RenameAllCommand, Result>(new FakeFactory(unit), Context, TimeProvider.System);
+
+        var result = await behavior.Handle(new RenameAllCommand([Guid.NewGuid(), Guid.NewGuid()]), ChangesLoadedAggregates(unit), TestContext.Current.CancellationToken);
+
+        result.Problem?.Type.ShouldBe(PlatformProblems.Conflict);
+        unit.ChangesAtCommit.ShouldBe([true, false]);
+        unit.Audits.ShouldHaveSingleItem().Outcome.ShouldBe(AuditOutcome.Failed);
     }
 
     [Fact]
@@ -132,7 +136,27 @@ public sealed class UnitOfWorkBehaviorTests
             a => a.CausationId.ShouldBe(reaction.Causation!.MessageId));
     }
 
+    /// <summary>A handler that changes the aggregates it loaded.</summary>
+    private static Mediator.MessageHandlerDelegate<RenameAllCommand, Result> ChangesLoadedAggregates(FakeUnitOfWork unit) =>
+        (_, _) =>
+        {
+            unit.HasChanges = true;
+            unit.ChangesLoadedAggregates = true;
+            return ValueTask.FromResult(Result.Success());
+        };
+
     public readonly record struct SubjectId(Guid Value);
+
+    public sealed record RenameAllCommand(IReadOnlyList<SubjectId> Subjects) : ICommand, IMultiAggregateCommand
+    {
+        public RenameAllCommand(Guid[] subjects)
+            : this([.. subjects.Select(s => new SubjectId(s))])
+        {
+        }
+
+        public static Operation Operation { get; } =
+            Operation.Command("tests.rename-all", "tests.write", IdempotencyMechanism.Natural);
+    }
 
     public sealed record ReactCommand(SubjectId Subject) : ICommand
     {
@@ -180,8 +204,6 @@ public sealed class UnitOfWorkBehaviorTests
 
         public bool ChangesLoadedAggregates { get; set; }
 
-        public int ChangedAggregates { get; set; }
-
         public List<AuditEntry> Audits { get; } = [];
 
         public List<RecordedResult> Attempts { get; } = [];
@@ -214,7 +236,6 @@ public sealed class UnitOfWorkBehaviorTests
             Audits.Clear();
             HasChanges = false;
             ChangesLoadedAggregates = false;
-            ChangedAggregates = 0;
         }
     }
 }

@@ -67,6 +67,17 @@ public sealed class TenancyTests(SqlServer sql)
     }
 
     [Fact]
+    public async Task RenameProducts_ReturnsNotFound_WhenAProductIsAnotherTenants()
+    {
+        var product = await CreateProduct(Writer(sql), "Original");
+
+        var response = await RenameProducts(Outsider, (product, "Taken"));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await sql.Scalar<string>($"SELECT Name AS Value FROM catalog.Products WHERE Id = {product}")).ShouldBe("Original");
+    }
+
+    [Fact]
     public async Task ReceiveStock_ReturnsNotFound_WhenTheProductIsAnotherTenants()
     {
         var product = await CreateProduct(Writer(sql));

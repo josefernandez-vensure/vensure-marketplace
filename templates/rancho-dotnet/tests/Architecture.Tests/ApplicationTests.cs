@@ -30,6 +30,16 @@ public sealed partial class ApplicationTests
     }
 
     [Fact]
+    public void A_command_over_several_aggregates_is_not_versioned()
+    {
+        TypesOf(Kinds.Application, Kinds.Contracts)
+            .Where(t => typeof(IMultiAggregateCommand).IsAssignableFrom(t) && typeof(IVersionedCommand).IsAssignableFrom(t))
+            .Select(t => $"{t.FullName} is both")
+            .ShouldHaveNoViolations(
+                "If-Match names one resource. A command over several aggregates carries none: their versions are checked at commit, and a lost race answers 409.");
+    }
+
+    [Fact]
     public void A_query_never_writes()
     {
         // Prefixes, so every overload and form counts: ExecuteSqlInterpolatedAsync as much as ExecuteSql.
