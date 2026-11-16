@@ -32,10 +32,11 @@ public sealed partial class ApplicationTests
     [Fact]
     public void A_query_never_writes()
     {
-        string[] writes = ["SaveChanges", "SaveChangesAsync", "ExecuteUpdate", "ExecuteUpdateAsync", "ExecuteDelete", "ExecuteDeleteAsync", "ExecuteSql", "ExecuteSqlAsync"];
+        // Prefixes, so every overload and form counts: ExecuteSqlInterpolatedAsync as much as ExecuteSql.
+        string[] writes = ["SaveChanges", "ExecuteUpdate", "ExecuteDelete", "ExecuteSql"];
 
         CallsOf(QueryHandlers.SelectMany(WithNested))
-            .Where(c => writes.Any(w => c.Method.StartsWith(w + "(", StringComparison.Ordinal)))
+            .Where(c => writes.Any(w => c.Method.StartsWith(w, StringComparison.Ordinal)))
             .Select(c => $"{c.Origin.FullName} calls {c.Method}")
             .ShouldHaveNoViolations("A query never writes.");
     }
