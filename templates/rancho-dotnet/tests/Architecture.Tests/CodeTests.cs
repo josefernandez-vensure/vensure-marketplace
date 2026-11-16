@@ -1,4 +1,3 @@
-using System.CodeDom.Compiler;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using static Architecture.Tests.Solution;
@@ -31,18 +30,5 @@ public sealed class CodeTests
                     .Where(p => p.SetMethod is not null)
                     .Select(p => $"{t.FullName}.{p.Name} is a static property with a setter")))
             .ShouldHaveNoViolations("No static mutable state; state lives in the container or the database.");
-    }
-
-    private static bool IsGeneratedOrInside(Type type)
-    {
-        for (var t = type; t is not null; t = t.DeclaringType)
-        {
-            if (t.IsDefined(typeof(CompilerGeneratedAttribute), false) || t.IsDefined(typeof(GeneratedCodeAttribute), false) || t.Name.StartsWith('<'))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

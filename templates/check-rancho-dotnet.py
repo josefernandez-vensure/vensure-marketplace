@@ -142,7 +142,7 @@ BUILD = [
 
 # Test-time seeds: all applied at once; (test name, edits)
 TEST = [
-    ("Module_application_uses_no_data_access",
+    ("Only_infrastructure_reaches_the_database",
      lambda: write(CAT + "Catalog.Application/CreateProduct/Isolation.cs", "namespace Catalog.Application.CreateProduct;\n\npublic static class Isolation\n{\n    public static System.Data.IsolationLevel Level() => System.Data.IsolationLevel.Serializable;\n}\n")),
     ("Api_names_only_registration_entry_points_of_infrastructure",
      lambda: (write(CAT + "Catalog.Infrastructure/External/Client.cs", "namespace Catalog.Infrastructure.External;\n\npublic sealed class Client\n{\n    public int Value => 1;\n}\n"),
@@ -358,6 +358,12 @@ UNIT = "tests/Platform.Tests"
 DOMAIN_TESTS = "tests/Domain.Tests"
 
 ISOLATED = [
+    # Api takes any package and gets EF Core and SqlClient from Infrastructure; the data-access rule covers it by namespace.
+    (MODEL, ["Only_infrastructure_reaches_the_database"],
+     lambda: write("src/Api/Reports.cs", "namespace Api;\n\ninternal static class Reports\n{\n    public static Microsoft.Data.SqlClient.SqlConnection Open(string connectionString) => new(connectionString);\n}\n")),
+    # A slice written as nested types: a query handler in Application that loads the aggregate.
+    (MODEL, ["Messages_and_handlers_live_where_they_belong", "A_query_never_loads_an_aggregate"],
+     lambda: write(CAT + "Catalog.Application/CountStock/CountStock.cs", "using Catalog.Domain.Products;\nusing Platform.Application.Abstractions;\n\nnamespace Catalog.Application.CountStock;\n\npublic static class CountStock\n{\n    public sealed record Query(Contracts.ProductId ProductId) : IQuery<int>\n    {\n        public static Operation Operation { get; } = Operation.Query(\"catalog.count-stock\", CatalogPolicies.Read);\n    }\n\n    public sealed class Handler(IProductRepository products) : IQueryHandler<Query, int>\n    {\n        public async ValueTask<Result<int>> Handle(Query query, CancellationToken cancellationToken) =>\n            (await products.Find(new ProductId(query.ProductId.Value), cancellationToken))?.StockOnHand ?? 0;\n    }\n}\n")),
     (MODEL, ["Each_module_has_one_context_on_its_own_schema"],
      lambda: edit(PRODUCT_CONFIG, 'builder.ToTable("Products");', 'builder.ToTable("Products", "dbo");')),
     (MODEL, ["Mapped_domain_types_have_no_public_setter_or_parameterless_constructor"],

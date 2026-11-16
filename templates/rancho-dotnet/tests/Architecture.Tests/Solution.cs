@@ -21,9 +21,12 @@ internal static class Solution
     public static IEnumerable<ProductionAssembly> OfKind(params string[] kinds) =>
         Assemblies.Where(a => kinds.Contains(a.Kind));
 
-    /// <summary>Types declared in the given kinds, nested and compiler-generated ones excluded.</summary>
+    /// <summary>
+    /// Types declared in the given kinds, nested ones included: a handler, message, reaction or endpoint nested in a static
+    /// class is held to the same rules. Generated code, and anything nested inside it, is excluded.
+    /// </summary>
     public static IEnumerable<Type> TypesOf(params string[] kinds) =>
-        OfKind(kinds).SelectMany(a => a.Assembly.GetTypes()).Where(t => !t.IsNested && !IsGenerated(t));
+        OfKind(kinds).SelectMany(a => a.Assembly.GetTypes()).Where(t => !IsGeneratedOrInside(t));
 
     public static IEnumerable<IType> ArchTypesOf(params string[] kinds)
     {
@@ -57,6 +60,20 @@ internal static class Solution
         type.IsDefined(typeof(CompilerGeneratedAttribute), false)
         || type.IsDefined(typeof(System.CodeDom.Compiler.GeneratedCodeAttribute), false)
         || type.Name.StartsWith('<');
+
+    /// <summary>The type is generated, or is nested in a generated type.</summary>
+    public static bool IsGeneratedOrInside(Type type)
+    {
+        for (var t = type; t is not null; t = t.DeclaringType)
+        {
+            if (IsGenerated(t))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public static bool Implements(Type type, Type openOrClosedInterface) =>
         type.GetInterfaces().Any(i => i == openOrClosedInterface || (i.IsGenericType && i.GetGenericTypeDefinition() == openOrClosedInterface));
