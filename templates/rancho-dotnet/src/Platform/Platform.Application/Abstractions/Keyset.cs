@@ -26,7 +26,7 @@ public sealed class Keyset<TRow, TKey>
     public IQueryable<TRow> Read<TQuery>(IQueryable<TRow> rows, TQuery query, ICursorCodec cursors)
         where TQuery : IPagedQuery, IDeclaresOperation
     {
-        if (query.Cursor is { } token && cursors.Open(token, TQuery.Operation.Id) is { } after)
+        if (query.Cursor is { } token && cursors.Open(token, Paging.CursorPurpose(query)) is { } after)
         {
             rows = rows.Where(After(after));
         }
@@ -39,7 +39,7 @@ public sealed class Keyset<TRow, TKey>
     {
         var items = rows.Take(query.PageSize).ToList();
         var next = rows.Count > query.PageSize
-            ? cursors.Seal(new PageCursor(JsonSerializer.Serialize(_sortKeyOf(items[^1])), _uniqueIdOf(items[^1])), TQuery.Operation.Id)
+            ? cursors.Seal(new PageCursor(JsonSerializer.Serialize(_sortKeyOf(items[^1])), _uniqueIdOf(items[^1])), Paging.CursorPurpose(query))
             : null;
         return new Page<TItem>(items.Select(map).ToList(), next);
     }

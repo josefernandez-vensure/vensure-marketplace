@@ -38,6 +38,7 @@ CLIENT = "src/shared/lib/api-client.ts"
 QUERY_CLIENT = "src/shared/lib/query-client.ts"
 FORM = PRODUCTS + "components/RenameProductForm.tsx"
 PRODUCT_API = PRODUCTS + "api/product.ts"
+GENERATOR = "scripts/generate-classes.mjs"
 
 
 def work():
@@ -97,6 +98,11 @@ def classify(schema, prop, data_class):
             p.pop("x-data-class", None)
     edit_json("openapi/v1.json", change)
     code, out = node("scripts/generate-classes.mjs")
+    assert code == 0, out
+
+
+def regenerate():
+    code, out = node(GENERATOR)
     assert code == 0, out
 
 
@@ -285,6 +291,17 @@ SEEDS = [
      lambda: edit("src/app/routes/products.tsx", "      <h1>Products</h1>", "      <h1>Products</h1>\n      <input type=\"text\" />")),
     ("The_root_route_shows_its_error_element", "test", "shows the root error element",
      lambda: edit("src/app/routes/root.tsx", "<h1>{status === 404 ? 'Page not found' : 'Something went wrong'}</h1>", "<h1>{status === 404 ? 'Page not found' : 'Oops'}</h1>")),
+    # A generated parameter schema carries the server's constraints.
+    ("A_parameter_schema_keeps_its_pattern", "test", "refuses what the server refuses",
+     lambda: (edit(GENERATOR, "if (schema.pattern) out += regex(schema.pattern);", ""), regenerate())),
+    ("A_parameter_schema_keeps_its_bounds", "test", "refuses what the server refuses",
+     lambda: (edit(GENERATOR, "if (Number.isFinite(low)) out += `.min(${low})`;", ""), regenerate())),
+    ("A_parameter_schema_keeps_its_enum", "test", "refuses what the server refuses",
+     lambda: (edit(GENERATOR, "if (schema.enum) return `z.enum(", "if (schema.enum && false) return `z.enum("), regenerate())),
+    ("A_constraint_the_generator_cannot_carry_stops_it", "check", "is a constraint generate-classes.mjs doesn't carry",
+     lambda: edit_json("openapi/v1.json", lambda d: d["paths"]["/catalog/products"]["get"]["parameters"][2]["schema"].update(multipleOf=5))),
+    ("An_id_the_server_could_never_find_is_not_found", "test", "shows an id the server could never find as not found",
+     lambda: edit("src/app/routes/product.tsx", "{params.success ? <RenameProductForm id={params.data.id} /> : <p role=\"alert\">This product does not exist.</p>}", "<RenameProductForm id={params.success ? params.data.id : '00000000-0000-0000-0000-000000000000'} />")),
     # The template's own tests run.
     ("The_tests_run", "test", "ProductList",
      lambda: edit(LIST, "No products match.", "Nothing here.")),

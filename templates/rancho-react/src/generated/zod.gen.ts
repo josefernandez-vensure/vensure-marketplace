@@ -7,7 +7,7 @@ export const zCancelOrderResponse = z.object({
 });
 
 export const zCreateProductRequest = z.object({
-    id: z.uuid(),
+    id: z.uuid().regex(/^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/),
     name: z.string()
 });
 
@@ -24,12 +24,12 @@ export const zHttpValidationProblemDetails = z.object({
 });
 
 export const zOrderId = z.object({
-    value: z.uuid().optional()
+    value: z.uuid().regex(/^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/).optional()
 });
 
 export const zPlaceOrderRequest = z.object({
-    id: z.uuid(),
-    productId: z.uuid(),
+    id: z.uuid().regex(/^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/),
+    productId: z.uuid().regex(/^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/),
     quantity: z.union([
         z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
         z.string().regex(/^-?(?:0|[1-9]\d*)$/)
@@ -48,7 +48,7 @@ export const zProblemDetails = z.object({
 });
 
 export const zProductId = z.object({
-    value: z.uuid().optional()
+    value: z.uuid().regex(/^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/).optional()
 });
 
 export const zOrderResponse = z.object({
@@ -72,6 +72,8 @@ export const zProductResponse = z.object({
     ]),
     etag: z.string()
 });
+
+export const zProductSort = z.enum(['Name', 'StockOnHand']);
 
 export const zProductSummary = z.object({
     id: zProductId,
@@ -111,7 +113,7 @@ export const zOrderingCancelOrderHeaders = z.object({
 });
 
 export const zOrderingCancelOrderPath = z.object({
-    id: z.uuid()
+    id: z.uuid().regex(/^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
 });
 
 /**
@@ -120,7 +122,7 @@ export const zOrderingCancelOrderPath = z.object({
 export const zOrderingCancelOrderResponse = zCancelOrderResponse;
 
 export const zOrderingGetOrderPath = z.object({
-    id: z.uuid()
+    id: z.uuid().regex(/^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
 });
 
 /**
@@ -132,8 +134,9 @@ export const zOrderingPlaceOrderBody = zPlaceOrderRequest;
 
 export const zCatalogListProductsQuery = z.object({
     nameStartsWith: z.string().optional(),
+    sort: zProductSort.optional().default('Name'),
     pageSize: z.union([
-        z.int().min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' }).max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
+        z.int().gte(1).lte(50),
         z.string().regex(/^-?(?:0|[1-9]\d*)$/)
     ]).optional(),
     cursor: z.string().optional()
@@ -151,7 +154,7 @@ export const zCatalogCreateProductHeaders = z.object({
 });
 
 export const zCatalogGetProductPath = z.object({
-    id: z.uuid()
+    id: z.uuid().regex(/^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
 });
 
 /**
@@ -162,11 +165,12 @@ export const zCatalogGetProductResponse = zProductResponse;
 export const zCatalogReceiveStockBody = zReceiveStockRequest;
 
 export const zCatalogReceiveStockHeaders = z.object({
-    'If-Match': z.string().optional()
+    'If-Match': z.string().optional(),
+    'Idempotency-Key': z.string()
 });
 
 export const zCatalogReceiveStockPath = z.object({
-    id: z.uuid()
+    id: z.uuid().regex(/^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
 });
 
 /**
@@ -181,7 +185,7 @@ export const zCatalogRenameProductHeaders = z.object({
 });
 
 export const zCatalogRenameProductPath = z.object({
-    id: z.uuid()
+    id: z.uuid().regex(/^(?!0{8}-0{4}-0{4}-0{4}-0{12}$)[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
 });
 
 /**

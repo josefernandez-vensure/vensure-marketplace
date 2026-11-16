@@ -27,6 +27,7 @@ builder.Services.AddRedaction(redaction => redaction
     .SetFallbackRedactor<ErasingRedactor>());
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddHttpPlatform();
+builder.Services.AddCrossOrigin();
 builder.Services.AddPlatformPersistence(builder.Configuration.GetConnectionString(PlatformPersistence.ConnectionStringName));
 builder.Services.AddPlatformPaging();
 builder.Services.AddOutboxDelivery(builder.Configuration);
@@ -44,6 +45,7 @@ builder.Services.AddMediator((MediatorOptions options) =>
         typeof(ValidationBehavior<,>),
         typeof(PreconditionBehavior<,>),
         typeof(PagingBehavior<,>),
+        typeof(ReadAuditBehavior<,>),
         typeof(UnitOfWorkBehavior<,>),
         typeof(HandlerSpanBehavior<,>),
     ];
@@ -55,9 +57,13 @@ builder.Services.AddOrderingModule(builder.Configuration);
 var app = builder.Build();
 
 app.UseTraceBoundary();
+app.UseCachePolicy();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseHttpsRedirection();
+
+// Before authentication, so a preflight needs no credentials.
+app.UseCors(CrossOrigin.Policy);
 app.UseAuthentication();
 
 // Before authorization, so a refused request still counts against the caller's limit.

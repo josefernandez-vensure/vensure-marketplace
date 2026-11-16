@@ -43,4 +43,15 @@ describe('the routes', () => {
     renderRoutes([{ path: '/', element: <p>root</p>, errorElement: <RootError />, children: [] }, { path: '/broken', element: <Broken />, errorElement: <RootError /> }], '/broken');
     expect(await screen.findByRole('heading', { name: 'Something went wrong' })).toBeInTheDocument();
   });
+
+  it('shows an id the server could never find as not found, without asking it', async () => {
+    let asked = false;
+    server.use(http.get(`${apiUrl}/catalog/products/:id`, () => {
+      asked = true;
+      return HttpResponse.json(product('Anvil', '"1"'));
+    }));
+    renderRoutes(routes, '/products/00000000-0000-0000-0000-000000000000', undefined, { identity: true });
+    expect(await screen.findByRole('alert')).toHaveTextContent('This product does not exist.');
+    expect(asked).toBe(false);
+  });
 });

@@ -4,7 +4,8 @@ using Platform.Application.Abstractions;
 namespace Platform.Application.Behaviors;
 
 /// <summary>
-/// Paged queries only: a page size outside 1..MaxPageSize, or a cursor this query didn't issue, is refused before the handler runs.
+/// Paged queries only: a page size outside 1..MaxPageSize, or a cursor this query didn't issue under the same sort and filters, is refused
+/// before the handler runs.
 /// A request above the maximum is rejected, never clamped.
 /// </summary>
 public sealed class PagingBehavior<TMessage, TResponse>(ICursorCodec cursors) : IPipelineBehavior<TMessage, TResponse>
@@ -20,9 +21,9 @@ public sealed class PagingBehavior<TMessage, TResponse>(ICursorCodec cursors) : 
             errors["pageSize"] = [$"The page size must be between 1 and {TMessage.MaxPageSize}."];
         }
 
-        if (message.Cursor is { } token && cursors.Open(token, TMessage.Operation.Id) is null)
+        if (message.Cursor is { } token && cursors.Open(token, Paging.CursorPurpose(message)) is null)
         {
-            errors["cursor"] = ["The cursor is not one this query issued. Start again without it."];
+            errors["cursor"] = ["The cursor is not one this query issued with this sort and these filters. Start again without it."];
         }
 
         return errors.Count == 0

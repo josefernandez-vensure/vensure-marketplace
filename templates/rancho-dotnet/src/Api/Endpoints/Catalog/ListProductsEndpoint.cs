@@ -16,12 +16,14 @@ public sealed class ListProductsEndpoint : IEndpoint<ListProducts>
     public static Delegate Handler => Handle;
 
     private static async Task<Results<Ok<Page<ProductSummary>>, ProblemHttpResult>> Handle(
+        ISender sender,
+        CancellationToken cancellationToken,
         [ClassOf<ProductName>] string? nameStartsWith,
-        [Internal] int? pageSize,
-        [Internal] string? cursor,
-        ISender sender, CancellationToken cancellationToken)
+        [Internal] ProductSort sort = ProductSort.Name,
+        [Internal] int? pageSize = null,
+        [Internal] string? cursor = null)
     {
-        var result = await sender.Send(new ListProducts(nameStartsWith, pageSize ?? Paging.DefaultPageSize, cursor), cancellationToken);
+        var result = await sender.Send(new ListProducts(nameStartsWith, sort, pageSize ?? Paging.DefaultPageSize, cursor), cancellationToken);
         return result.ToOk();
     }
 }

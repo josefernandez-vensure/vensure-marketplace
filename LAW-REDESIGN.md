@@ -135,12 +135,14 @@ Measured load:
 | .NET | 14,762, plus annexes | 3,484 |
 | React | 9,088 | 3,472 |
 
-The reviewers proposed no law sentence that passes the admission test. They proposed checks instead:
+The reviewers proposed no law sentence that passes the admission test. They proposed checks instead. Each is now in a template, proven by a seed in `templates/check-rancho-*.py`, except the one whose port the template lacks:
 
-- **A cursor bound to its sort**, so one replayed under another sort is refused.
-- **`IBackgroundDispatch` used only by hosted services.**
-- **`ExecuteUpdate`, `ExecuteDelete` and raw SQL banned** outside the platform's bookkeeping.
-- **A generated parameter schema that carries the server's constraints**, such as the nil GUID.
+- **A cursor bound to its sort** (done). The platform seals a cursor under its query's operation and every parameter but the page size, so one replayed under another sort or filter is refused with `400`. `ListProducts` has two sorts, a keyset each, and its paging walk covers both.
+- **`IBackgroundDispatch` used only by hosted services** (waits). The template has no background-dispatch port, so there is nothing to check. When one lands, its check is an architecture test: only an `IHostedService` and its compiler-generated nested types depend on the port, proven by a seed that injects it into a handler.
+- **`ExecuteUpdate`, `ExecuteDelete` and `ExecuteSql*` banned** outside `Platform.Infrastructure` (done: an architecture test). Reads with SQL stay allowed: a query that reads with SQL is a reference kind.
+- **A generated parameter schema that carries the server's constraints** (done). The .NET document gives every GUID a pattern that refuses the nil GUID, and each page size its bounds. The React generator translates every constraint keyword or stops, and `tests/parameters.test.ts` proves each parameter's schema refuses what the document refuses. The product route shows a nil id as not found, without a call.
+
+None of the four makes a law sentence redundant: each law sentence they touch also binds stacks and trees the templates don't cover.
 
 ### What the re-runs found that phase 8 must settle
 
@@ -163,12 +165,18 @@ The reviewers proposed no law sentence that passes the admission test. They prop
 
 The laws state these, but no check or reference code shows them yet. They come from the phase 1, 3 and 4 triage files, which phase 6 deleted; the PRs that added them (#30 to #33) keep the row-by-row record.
 
-- **.NET OpenAPI document:** it emits no `x-problem-types`, so the React client shows every problem generically. It also doesn't declare `Idempotency-Key` on a keyed operation, so the client sets that header through its `headers` option.
-- **.NET responses:** none sends `Cache-Control: no-store` for `Confidential` or `Restricted` data, or `private` for a representation that depends on the principal. There is no CORS policy, so nothing exposes `ETag` or `Retry-After` to a client on another origin.
-- **.NET effects and audit:** an effect a repeat would duplicate, such as an email, has no outbox delivery mechanism, because a reaction's command must be transactional. The audit trail records commands and denials, but not `Restricted` reads or exports. It is append-only by convention, not by a database permission.
-- **Telemetry:** no processor drops an exception message our code didn't write (core §3). The React template has no telemetry SDK, so its scrubbing test arrives with the first one.
+- **.NET effects and audit:** an effect a repeat would duplicate, such as an email, has no outbox delivery mechanism, because a reaction's command must be transactional. The audit trail is append-only by convention, not by a database permission. The template has no export: an export is a query, so the read audit records it once its response carries its class, but no reference shows one yet.
+- **Background dispatch:** the template has no `IBackgroundDispatch` port, so phase 7's check for it waits for the port (see *Phase 7 result*).
+- **Telemetry:** the React template has no telemetry SDK, so its scrubbing test arrives with the first one.
 - **CI:** `check-migrations.sh` and `check-contracts.sh` are written for CI, but this repository runs none.
 - **The IAM library** imports `react-router-dom`, which React Router 8 no longer publishes. The template installs version 7 for that one import.
+
+Closed after phase 7, each with its checks:
+
+- **.NET OpenAPI document:** it lists every declared problem type in the top-level `x-problem-types` (so `ProblemMessage` shows the titles marked user-facing), declares a required `Idempotency-Key` header on every keyed operation and no other (so the generated client requires it), and carries the constraints on ids and page sizes.
+- **.NET responses:** every route sends `Cache-Control` from the class of what it returns: `private`, since every answer depends on the principal, or `no-store` for `Confidential`, `Restricted` or unresolved data. A CORS policy admits only the origins in `Cors:Origins`, none by default, with every request header the contract uses, and exposes `ETag`, `Retry-After` and `Location`.
+- **.NET audit:** a query whose response carries `Confidential` or `Restricted` data, or data whose class can't be resolved, is audited with the ids it named and returned. The template's own queries return neither, so stand-ins in `Platform.Tests` prove it, and a host test proves every query passes through it.
+- **.NET telemetry:** an exception message our code didn't write is dropped before the exception becomes a span event, and so is every such message in its stack trace. It is a listener's exception recorder, not a span processor, because a processor can't change an event once it is recorded.
 
 ## Open decisions
 

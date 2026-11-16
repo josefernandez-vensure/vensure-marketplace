@@ -9,8 +9,11 @@ namespace Catalog.IntegrationTests;
 /// <summary>Keyset paging against real SQL Server, with page boundaries falling inside runs of equal sort keys.</summary>
 public sealed class PagingTests(SqlServer sql)
 {
-    [Fact]
-    public async Task Paging_skips_and_repeats_no_row_across_page_boundaries()
+    /// <summary>Every sort the query offers is walked: each has a keyset of its own, and a walk over one proves nothing about another.</summary>
+    [Theory]
+    [InlineData("Name")]
+    [InlineData("StockOnHand")]
+    public async Task Paging_skips_and_repeats_no_row_across_page_boundaries(string sort)
     {
         var client = Writer(sql);
         var prefix = $"p{Guid.NewGuid():N}"[..12];
@@ -25,7 +28,7 @@ public sealed class PagingTests(SqlServer sql)
         var pages = 0;
         do
         {
-            var page = await List(client, $"nameStartsWith={prefix}&pageSize=2" + (cursor is null ? "" : $"&cursor={Uri.EscapeDataString(cursor)}"));
+            var page = await List(client, $"nameStartsWith={prefix}&sort={sort}&pageSize=2" + (cursor is null ? "" : $"&cursor={Uri.EscapeDataString(cursor)}"));
             seen.AddRange(page.GetProperty("items").EnumerateArray().Select(i => (i.GetProperty("id").GetProperty("value").GetGuid(), i.GetProperty("name").GetString()!)));
             cursor = page.GetProperty("nextCursor").GetString();
             pages++;
@@ -34,7 +37,11 @@ public sealed class PagingTests(SqlServer sql)
 
         seen.Select(s => s.Id).ShouldBe(created, ignoreOrder: true);
         seen.Select(s => s.Id).Distinct().Count().ShouldBe(seen.Count);
-        seen.Select(s => s.Name).ShouldBeInOrder();
+        if (sort == "Name")
+        {
+            seen.Select(s => s.Name).ShouldBeInOrder();
+        }
+
         pages.ShouldBe(5);
     }
 
@@ -66,6 +73,28 @@ public sealed class PagingTests(SqlServer sql)
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await ProblemType(response)).ShouldBe(PlatformProblems.Validation.Uri);
         (await Body(response)).GetProperty("errors").TryGetProperty("cursor", out _).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task A_cursor_replayed_under_another_sort_or_filter_is_refused()
+    {
+        var client = Writer(sql);
+        var prefix = $"s{Guid.NewGuid():N}"[..12];
+        await CreateProduct(client, prefix + "a");
+        await CreateProduct(client, prefix + "b");
+        var cursor = Uri.EscapeDataString((await List(client, $"nameStartsWith={prefix}&sort=Name&pageSize=1")).GetProperty("nextCursor").GetString()!);
+
+        var sameQuery = await client.GetAsync($"/catalog/products?nameStartsWith={prefix}&sort=Name&pageSize=1&cursor={cursor}", Cancel);
+        var otherSort = await client.GetAsync($"/catalog/products?nameStartsWith={prefix}&sort=StockOnHand&pageSize=1&cursor={cursor}", Cancel);
+        var otherFilter = await client.GetAsync($"/catalog/products?nameStartsWith={prefix}a&sort=Name&pageSize=1&cursor={cursor}", Cancel);
+
+        sameQuery.StatusCode.ShouldBe(HttpStatusCode.OK);
+        foreach (var refused in new[] { otherSort, otherFilter })
+        {
+            refused.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            (await ProblemType(refused)).ShouldBe(PlatformProblems.Validation.Uri);
+            (await Body(refused)).GetProperty("errors").TryGetProperty("cursor", out _).ShouldBeTrue();
+        }
     }
 
     private static async Task<JsonElement> List(HttpClient client, string query)
