@@ -27,13 +27,19 @@ public sealed class ReferenceTests
             .ShouldHaveNoViolations("Only Api uses ASP.NET Core; HttpContext and other transport types stay there.");
     }
 
+    /// <summary>
+    /// The build keeps EF Core out of the inner projects, but Api may take any package and receives EF Core and SqlClient
+    /// transitively from Infrastructure, so this rule covers every kind, Api included, by namespace.
+    /// </summary>
     [Fact]
-    public void Module_application_uses_no_data_access()
+    public void Only_infrastructure_reaches_the_database()
     {
-        DependenciesOf(ArchTypesOf(Kinds.Application))
-            .Where(d => InNamespace(d.Target, "System.Data") || InNamespace(d.Target, "Microsoft.Data") || InNamespace(d.Target, "Microsoft.EntityFrameworkCore"))
+        string[] dataAccess = ["System.Data", "Microsoft.Data", "Microsoft.EntityFrameworkCore", "Dapper"];
+
+        DependenciesOf(ArchTypesOf(Kinds.All.Except([Kinds.Infrastructure, Kinds.PlatformInfrastructure]).ToArray()))
+            .Where(d => dataAccess.Any(ns => InNamespace(d.Target, ns)))
             .Select(d => $"{d.Origin.FullName} uses {d.Target.FullName}")
-            .ShouldHaveNoViolations("A module's Application reads and writes only through ports; data access lives in Infrastructure.");
+            .ShouldHaveNoViolations("Only Infrastructure reaches the database. A command loads and saves through its repository; a query reads in its handler under <Module>.Infrastructure/Queries/; Api dispatches a message.");
     }
 
     [Fact]

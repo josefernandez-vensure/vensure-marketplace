@@ -1,15 +1,15 @@
+using SharedKernel;
+
 namespace Catalog.Domain.Products;
 
 /// <summary>Stock held for a process in flight. Releasing it records that it was released; it is never deleted.</summary>
-public sealed class StockReservation
+public sealed class StockReservation : Entity<ReservationId>
 {
     private StockReservation(ReservationId id, int quantity)
     {
         Id = id;
         Quantity = quantity;
     }
-
-    public ReservationId Id { get; private set; }
 
     public int Quantity { get; private set; }
 

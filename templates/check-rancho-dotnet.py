@@ -136,13 +136,19 @@ BUILD = [
      lambda: write(ORD + "Ordering.Infrastructure/External/Impersonate.cs", "namespace Ordering.Infrastructure.External;\n\ninternal static class Impersonate\n{\n    public static System.Security.Claims.ClaimsIdentity Catalog() => new Platform.Infrastructure.Messaging.ServiceIdentity(\"Catalog\");\n}\n")),
     ("A module enters a dispatch scope", "CS0122",
      lambda: write(ORD + "Ordering.Infrastructure/External/Enter.cs", "namespace Ordering.Infrastructure.External;\n\ninternal static class Enter\n{\n    public static object Scope() => new Platform.Infrastructure.Messaging.DispatchScope();\n}\n")),
+    ("Application calls over HTTP", "RS0030",
+     lambda: write(CAT + "Catalog.Application/CreateProduct/Lookup.cs", "namespace Catalog.Application.CreateProduct;\n\npublic static class Lookup\n{\n    public static Task<string> Get(Uri uri) => new HttpClient().GetStringAsync(uri);\n}\n")),
+    ("Application reads a file", "RS0030",
+     lambda: write(CAT + "Catalog.Application/CreateProduct/Seed.cs", "namespace Catalog.Application.CreateProduct;\n\npublic static class Seed\n{\n    public static string Read() => File.ReadAllText(\"seed.json\");\n}\n")),
+    ("Raw SQL with a constant string", "RS0030",
+     lambda: write(CAT + "Catalog.Infrastructure/Queries/GetProduct/Purge.cs", "using Catalog.Infrastructure.Persistence;\nusing Microsoft.EntityFrameworkCore;\n\nnamespace Catalog.Infrastructure.Queries.GetProduct;\n\ninternal static class Purge\n{\n    public static Task<int> Run(CatalogDbContext db) => db.Database.ExecuteSqlRawAsync(\"DELETE FROM catalog.Products\");\n}\n")),
     ("A scope begun with a template", "RS0030",
      lambda: write("src/Api/Scope.cs", "namespace Api;\n\ninternal static class Scope\n{\n    public static IDisposable? Begin(Microsoft.Extensions.Logging.ILogger logger) => Microsoft.Extensions.Logging.LoggerExtensions.BeginScope(logger, \"Order {Id}\", 1);\n}\n")),
 ]
 
 # Test-time seeds: all applied at once; (test name, edits)
 TEST = [
-    ("Module_application_uses_no_data_access",
+    ("Only_infrastructure_reaches_the_database",
      lambda: write(CAT + "Catalog.Application/CreateProduct/Isolation.cs", "namespace Catalog.Application.CreateProduct;\n\npublic static class Isolation\n{\n    public static System.Data.IsolationLevel Level() => System.Data.IsolationLevel.Serializable;\n}\n")),
     ("Api_names_only_registration_entry_points_of_infrastructure",
      lambda: (write(CAT + "Catalog.Infrastructure/External/Client.cs", "namespace Catalog.Infrastructure.External;\n\npublic sealed class Client\n{\n    public int Value => 1;\n}\n"),
@@ -155,7 +161,7 @@ TEST = [
     ("Aggregate_state_is_private",
      lambda: edit(PRODUCT, "    public bool IsDiscontinued", "    public string Sku { get; set; } = string.Empty;\n\n    public bool IsDiscontinued")),
     ("Domain_does_no_io",
-     lambda: edit(PRODUCT, "    public void Discontinue()", "    public static bool Exists(string path) => System.IO.File.Exists(path);\n\n    public void Discontinue()")),
+     lambda: edit(PRODUCT, "    public void Discontinue()", "    public static System.Data.IsolationLevel Level() => System.Data.IsolationLevel.Serializable;\n\n    public void Discontinue()")),
     ("Domain_events_stay_in_their_module",
      lambda: write("src/Api/OnCreated.cs", "namespace Api;\n\ninternal static class OnCreated\n{\n    public static string Describe(Catalog.Domain.Products.ProductCreated e) => e.ToString();\n}\n")),
     ("Ids_are_strongly_typed",
@@ -166,9 +172,10 @@ TEST = [
      lambda: (write(CAT + "Catalog.Domain/Categories/Category.cs", "using SharedKernel;\n\nnamespace Catalog.Domain.Categories;\n\npublic readonly record struct CategoryId(Guid Value);\n\npublic sealed class Category : AggregateRoot<CategoryId>\n{\n    private Category() { }\n}\n"),
               edit(PRODUCT, "    public bool IsDiscontinued", "    public Categories.Category? Category { get; private set; }\n\n    public bool IsDiscontinued"))),
     ("Repositories_expose_no_IQueryable",
-     lambda: (edit(CAT + "Catalog.Domain/Products/IProductRepository.cs", "public interface IProductRepository : IRepository<Product, ProductId>;",
-                   "public interface IProductRepository : IRepository<Product, ProductId>\n{\n    IQueryable<Product> Query();\n}"),
-              edit(REPO, "    public void Save", "    public IQueryable<Product> Query() => db.Products;\n\n    public void Save"))),
+     lambda: (edit(CAT + "Catalog.Domain/Products/IProductRepository.cs", "public interface IProductRepository : IRepository<Product, ProductId>\n{\n",
+                   "public interface IProductRepository : IRepository<Product, ProductId>\n{\n    IQueryable<Product> Query();\n\n"),
+              edit(REPO, "    public void Save", "    public IQueryable<Product> Query() => db.Products;\n\n    public void Save"),
+              edit("tests/Domain.Tests/Catalog/ProductRenamerTests.cs", "        public void Save", "        public IQueryable<Product> Query() => _held.AsQueryable();\n\n        public void Save"))),
     ("Messages_and_handlers_live_where_they_belong",
      lambda: write(CAT + "Catalog.Application/Ping/Ping.cs", "using Platform.Application.Abstractions;\n\nnamespace Catalog.Application.Ping;\n\npublic sealed record Ping : IQuery<int>\n{\n    public static Operation Operation { get; } = Operation.Query(\"catalog.ping\", CatalogPolicies.Read);\n}\n\npublic sealed class PingHandler : IQueryHandler<Ping, int>\n{\n    public ValueTask<Result<int>> Handle(Ping query, CancellationToken cancellationToken) => ValueTask.FromResult<Result<int>>(1);\n}\n")),
     ("A_query_never_writes",
@@ -358,6 +365,30 @@ UNIT = "tests/Platform.Tests"
 DOMAIN_TESTS = "tests/Domain.Tests"
 
 ISOLATED = [
+    # Api takes any package and gets EF Core and SqlClient from Infrastructure; the data-access rule covers it by namespace.
+    (MODEL, ["Only_infrastructure_reaches_the_database"],
+     lambda: write("src/Api/Reports.cs", "namespace Api;\n\ninternal static class Reports\n{\n    public static Microsoft.Data.SqlClient.SqlConnection Open(string connectionString) => new(connectionString);\n}\n")),
+    # A slice written as nested types: a query handler in Application that loads the aggregate.
+    (MODEL, ["Messages_and_handlers_live_where_they_belong", "A_query_never_loads_an_aggregate"],
+     lambda: write(CAT + "Catalog.Application/CountStock/CountStock.cs", "using Catalog.Domain.Products;\nusing Platform.Application.Abstractions;\n\nnamespace Catalog.Application.CountStock;\n\npublic static class CountStock\n{\n    public sealed record Query(Contracts.ProductId ProductId) : IQuery<int>\n    {\n        public static Operation Operation { get; } = Operation.Query(\"catalog.count-stock\", CatalogPolicies.Read);\n    }\n\n    public sealed class Handler(IProductRepository products) : IQueryHandler<Query, int>\n    {\n        public async ValueTask<Result<int>> Handle(Query query, CancellationToken cancellationToken) =>\n            (await products.Find(new ProductId(query.ProductId.Value), cancellationToken))?.StockOnHand ?? 0;\n    }\n}\n")),
+    # A value object that can change after its constructor validated it.
+    (MODEL, ["Value_objects_are_immutable"],
+     lambda: edit(CAT + "Catalog.Domain/Products/ProductName.cs", "    public string Value { get; }", "    public string Value { get; private set; }")),
+    # A value written as a record: equal by value, but `with` copies it past its constructor's validation.
+    (MODEL, ["Every_domain_type_is_a_building_block"],
+     lambda: write(CAT + "Catalog.Domain/Products/Sku.cs", "namespace Catalog.Domain.Products;\n\npublic sealed record Sku(string Value);\n")),
+    # A domain service that doesn't declare itself one.
+    (MODEL, ["Every_domain_type_is_a_building_block"],
+     lambda: write(CAT + "Catalog.Domain/Products/Restocking.cs", "namespace Catalog.Domain.Products;\n\npublic sealed class Restocking(IProductRepository products)\n{\n    public Task<Product?> Next(ProductId id, CancellationToken cancellationToken) => products.Find(id, cancellationToken);\n}\n")),
+    # A command over several aggregates that also asks for If-Match, which names one resource.
+    (MODEL, ["A_command_over_several_aggregates_is_not_versioned"],
+     lambda: edit(CAT + "Catalog.Application/RenameProducts/RenameProducts.cs", ": ICommand, IMultiAggregateCommand\n{\n", ": ICommand, IMultiAggregateCommand, IVersionedCommand\n{\n    public ExpectedVersion ExpectedVersion => default;\n\n")),
+    # A child entity's state, open to anyone holding a reference to it.
+    (MODEL, ["Aggregate_state_is_private"],
+     lambda: edit(CAT + "Catalog.Domain/Products/StockReservation.cs", "    public int Quantity { get; private set; }", "    public int Quantity { get; set; }")),
+    # A write through a form an exact-name match would miss: ExecuteSqlInterpolatedAsync.
+    (MODEL, ["A_query_never_writes"],
+     lambda: edit(QH, "        var id = query.ProductId.Value;", "        await db.Database.ExecuteSqlInterpolatedAsync($\"DELETE FROM catalog.Products WHERE Id = {query.ProductId.Value}\", cancellationToken);\n        var id = query.ProductId.Value;")),
     (MODEL, ["Each_module_has_one_context_on_its_own_schema"],
      lambda: edit(PRODUCT_CONFIG, 'builder.ToTable("Products");', 'builder.ToTable("Products", "dbo");')),
     (MODEL, ["Mapped_domain_types_have_no_public_setter_or_parameterless_constructor"],
@@ -375,6 +406,9 @@ ISOLATED = [
     (MODEL, ["Every_model_change_has_its_migration"],
      lambda: edit(CAT + "Catalog.Domain/Products/ProductName.cs", "public const int MaxLength = 200;", "public const int MaxLength = 150;")),
 
+    # A command over several loaded aggregates that doesn't say so: without If-Match, the pipeline refuses the write.
+    (SQL, ["RenameProducts_RenamesEveryProduct_InOneCommitWithOneAuditRecord"],
+     lambda: edit(CAT + "Catalog.Application/RenameProducts/RenameProducts.cs", ": ICommand, IMultiAggregateCommand", ": ICommand")),
     (SQL, ["A_keyed_command_without_a_key_is_refused"],
      lambda: edit(CAT + "Catalog.Application/ReceiveStock/ReceiveStock.cs", "IdempotencyMechanism.Key", "IdempotencyMechanism.Natural")),
     (SQL, ["A_replay_returns_the_recorded_result_without_running_the_handler_again", "The_same_key_with_a_different_request_is_refused", "Concurrent_duplicates_resolve_as_one_execution_and_replays"],
@@ -405,7 +439,7 @@ ISOLATED = [
     (UNIT, ["A_read_of_confidential_data_is_recorded_by_default_down_to_each_item_of_a_page"],
      lambda: edit(READ_AUDIT, "Class: < DataClass.Confidential }", "Class: < DataClass.Restricted }")),
     (UNIT, ["A_read_of_restricted_data_is_recorded_with_the_ids_it_named_and_returned", "A_read_of_confidential_data_is_recorded_by_default_down_to_each_item_of_a_page"],
-     lambda: edit("src/Platform/Platform.Application/Behaviors/Audit.cs", "RecordIds(message).Concat(ReturnedIds(returned))", "RecordIds(message)")),
+     lambda: edit("src/Platform/Platform.Application/Behaviors/Audit.cs", ".Concat(returned is null ? [] : IdsIn(returned, isItem: false))", "")),
     (SQL, ["Paging_skips_and_repeats_no_row_across_page_boundaries"],
      lambda: edit("src/Platform/Platform.Application/Abstractions/Keyset.cs", "Expression.GreaterThan(Compare(id, idValue), Expression.Constant(0))", "Expression.GreaterThanOrEqual(Compare(id, idValue), Expression.Constant(0))")),
     (SQL, ["A_page_size_above_the_maximum_is_refused_never_clamped", "A_cursor_the_query_did_not_issue_is_refused"],
@@ -448,7 +482,10 @@ ISOLATED = [
     (SQL, ["Every_step_of_a_command_emits_a_span_nested_in_pipeline_order", "Every_step_of_a_paged_query_emits_a_span_nested_in_pipeline_order"],
      lambda: edit("src/Platform/Platform.Application/Behaviors/AuthorizationBehavior.cs", '        using var activity = DispatchTelemetry.StartStep("authorize", GetType());\n', "")),
     (UNIT, ["A_write_to_a_loaded_aggregate_without_a_precondition_fails_the_dispatch"],
-     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates && context.Causation is null)", "else if (unit.ChangesLoadedAggregates && message is null)")),
+     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates && context.Causation is null && message is not IMultiAggregateCommand)", "else if (unit.ChangesLoadedAggregates && message is null)")),
+    # The guard forgets that a command over several aggregates carries no If-Match.
+    (UNIT, ["A_command_over_several_aggregates_commits_without_If_Match", "A_command_over_several_aggregates_that_loses_a_race_commits_nothing_and_answers_409"],
+     lambda: edit(BEHAVIOR, " && message is not IMultiAggregateCommand)", ")")),
 
     (SQL, ["Delivery_restores_the_writing_transactions_trace_context"],
      lambda: edit(DISPATCHER, "StartActivity(DispatchTelemetry.DeliverSpan, ActivityKind.Consumer, writer)", "StartActivity(DispatchTelemetry.DeliverSpan, ActivityKind.Consumer)")),
@@ -471,7 +508,7 @@ ISOLATED = [
     (SQL, ["An_order_whose_stock_is_reserved_is_confirmed"],
      lambda: edit(UOW, "        TenantId = dispatch.Tenant?.Value,\n", "")),
     (SQL, ["An_order_whose_stock_is_reserved_is_confirmed"],
-     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates && context.Causation is null)", "else if (unit.ChangesLoadedAggregates)")),
+     lambda: edit(BEHAVIOR, "else if (unit.ChangesLoadedAggregates && context.Causation is null && ", "else if (unit.ChangesLoadedAggregates && ")),
     (SQL, ["GetOrder_ReturnsNotFound_WhenTheOrderIsAnotherTenants"],
      lambda: edit(ORD + "Ordering.Infrastructure/Queries/GetOrder/GetOrderHandler.cs", " AND TenantId = {tenant}", "")),
     (SQL, ["CancelOrder_ReturnsNotFound_WhenTheOrderIsAnotherTenants"],

@@ -59,7 +59,8 @@ public sealed class PersistenceTests
             .SelectMany(t => t.GetMethods().Where(m => m.GetParameters().Any(p => Unwrap(p.ParameterType).Any(IsPublishedMessage)))
                 .Select(m => $"{t.FullName}.{m.Name} takes an integration event or a command message"));
 
-        var sdkUses = DependenciesOf(ArchTypesOf(Kinds.Domain, Kinds.Application, Kinds.Contracts, Kinds.Infrastructure, Kinds.PlatformApplication))
+        // Platform.Infrastructure is exempt: its outbox dispatcher is the one sender. Api is not: it may take any package.
+        var sdkUses = DependenciesOf(ArchTypesOf(Kinds.Domain, Kinds.Application, Kinds.Contracts, Kinds.Infrastructure, Kinds.PlatformApplication, Kinds.Api))
             .Where(d => brokers.Any(ns => InNamespace(d.Target, ns)))
             .Select(d => $"{d.Origin.FullName} uses {d.Target.FullName}");
 

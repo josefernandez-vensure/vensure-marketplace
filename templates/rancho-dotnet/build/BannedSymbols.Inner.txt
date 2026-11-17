@@ -24,3 +24,14 @@ T:Microsoft.Extensions.DependencyInjection.ServiceProviderKeyedServiceExtensions
 T:Microsoft.Extensions.DependencyInjection.IKeyedServiceProvider;Take dependencies through the constructor.
 T:Microsoft.Extensions.DependencyInjection.ActivatorUtilities;Take dependencies through the constructor.
 T:Microsoft.Extensions.DependencyInjection.IServiceScopeFactory;Take dependencies through the constructor.
+N:System.Net;Cross a process boundary through a port; its adapter lives in the module's Infrastructure.
+T:System.IO.File;Cross a process boundary through a port; its adapter lives in the module's Infrastructure.
+T:System.IO.FileInfo;Cross a process boundary through a port; its adapter lives in the module's Infrastructure.
+T:System.IO.FileStream;Cross a process boundary through a port; its adapter lives in the module's Infrastructure.
+T:System.IO.Directory;Cross a process boundary through a port; its adapter lives in the module's Infrastructure.
+T:System.IO.DirectoryInfo;Cross a process boundary through a port; its adapter lives in the module's Infrastructure.
+T:System.IO.DriveInfo;Cross a process boundary through a port; its adapter lives in the module's Infrastructure.
+T:System.IO.FileSystemWatcher;Cross a process boundary through a port; its adapter lives in the module's Infrastructure.
+T:System.IO.RandomAccess;Cross a process boundary through a port; its adapter lives in the module's Infrastructure.
+N:System.IO.Pipes;Cross a process boundary through a port; its adapter lives in the module's Infrastructure.
+T:System.Diagnostics.Process;Cross a process boundary through a port; its adapter lives in the module's Infrastructure.

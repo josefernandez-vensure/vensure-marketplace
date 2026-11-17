@@ -12,10 +12,42 @@ public sealed class DomainTests
     private static IEnumerable<Type> AggregateRoots =>
         TypesOf(Kinds.Domain).Where(t => typeof(IAggregateRoot).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
 
+    /// <summary>Aggregate roots and the child entities inside them.</summary>
+    private static IEnumerable<Type> Entities =>
+        TypesOf(Kinds.Domain).Where(t => !t.IsAbstract && IsEntity(t));
+
+    [Fact]
+    public void Every_domain_type_is_a_building_block()
+    {
+        TypesOf(Kinds.Domain)
+            .Where(t => !(t.IsInterface || t.IsEnum || t is { IsAbstract: true, IsSealed: true } || IsStronglyTypedId(t)
+                || typeof(IDomainEvent).IsAssignableFrom(t) || typeof(ValueObject).IsAssignableFrom(t) || IsEntity(t)
+                || typeof(IDomainService).IsAssignableFrom(t)))
+            .Select(t => $"{t.FullName} is none of them")
+            .ShouldHaveNoViolations(
+                "A domain type is an aggregate root or a child entity (derives Entity<TId>), a value object (derives ValueObject), " +
+                "a domain service (implements IDomainService), a domain event, a strongly typed id, an outcome enum, a repository interface, " +
+                "or a static class of domain logic.");
+    }
+
+    [Fact]
+    public void Value_objects_are_immutable()
+    {
+        const BindingFlags all = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly;
+
+        TypesOf(Kinds.Domain)
+            .Where(t => typeof(ValueObject).IsAssignableFrom(t))
+            .SelectMany(value => HierarchyOf(value).TakeWhile(t => t != typeof(ValueObject)).SelectMany(t =>
+                t.GetProperties(all).Where(p => p.SetMethod is not null).Select(p => $"{value.Name}.{p.Name} has a setter")
+                .Concat(t.GetFields(all).Where(f => !f.IsInitOnly).Select(f => $"{value.Name}.{f.Name} is a field that isn't readonly"))))
+            .ShouldHaveNoViolations(
+                "A value object is immutable: its constructor validates and sets its state, and nothing sets it again. A different value is a new instance.");
+    }
+
     [Fact]
     public void Aggregate_state_is_private()
     {
-        AggregateRoots
+        Entities
             .SelectMany(root => HierarchyOf(root).SelectMany(t =>
                 t.GetProperties(Declared)
                     .Where(p => p.SetMethod?.IsPublic == true)
@@ -110,6 +142,8 @@ public sealed class DomainTests
 
     internal static bool IsMessage(Type type) =>
         !type.IsAbstract && type.GetInterfaces().Any(i => i.FullName == "Mediator.IMessage");
+
+    private static bool IsEntity(Type type) => HierarchyOf(type).Contains(typeof(Entity<>));
 
     private static IEnumerable<Type> HierarchyOf(Type type)
     {

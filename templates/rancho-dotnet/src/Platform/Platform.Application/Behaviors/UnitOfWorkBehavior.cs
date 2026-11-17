@@ -61,12 +61,14 @@ public sealed class UnitOfWorkBehavior<TMessage, TResponse>(IUnitOfWorkFactory u
                 result = TResponse.Failure(PlatformProblems.PreconditionFailed.With());
             }
         }
-        else if (unit.ChangesLoadedAggregates && context.Causation is null)
+        else if (unit.ChangesLoadedAggregates && context.Causation is null && message is not IMultiAggregateCommand)
         {
             // A reaction carries no If-Match: it applies the state it loads, and a race it loses at commit is retried.
+            // A command over several aggregates carries none either: their versions are checked at commit.
             unit.Discard();
             throw new InvalidOperationException(
-                $"{operation.Id} changed an aggregate it loaded, but its message is not an IVersionedCommand. A write to an existing resource carries If-Match.");
+                $"{operation.Id} changed an aggregate it loaded, but its message is not an IVersionedCommand. A write to an existing resource carries If-Match; " +
+                "a command that changes several aggregates through a domain service is an IMultiAggregateCommand.");
         }
 
         var lostRace = false;

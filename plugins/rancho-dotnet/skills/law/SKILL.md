@@ -47,7 +47,7 @@ Placement follows dependencies, never the name. `Service`, `Manager`, `Provider`
 
 ### Aggregates and transactions
 
-- A command changes exactly one aggregate, in one transaction. If two aggregates must always change together, they are one aggregate: redraw the boundary, never widen the transaction. Everything else that follows from a change is a reaction, in its own transaction.
+- A command runs in one transaction. A rule over several aggregates, such as a transfer or a bulk correction, is a domain service the handler calls; it loads, changes and saves them, and they commit together. Everything else that follows from a change is a reaction, in its own transaction.
 - Nothing calls an external system inside a transaction. A command whose effect is an external write declares `Transaction: None`, stages no database change, and is idempotent naturally or by a client-supplied id.
 - An effect a repeat would duplicate, such as an email or a payment capture, is never performed inline. A persisting command records the intent, and the effect is performed from the outbox, with a key derived from the message wherever the external system accepts one.
 

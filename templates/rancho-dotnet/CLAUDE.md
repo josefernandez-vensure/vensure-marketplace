@@ -3,8 +3,10 @@ Stack law: /rancho-dotnet:law
 ## Reference
 
 - Aggregate: src/Modules/Catalog/Catalog.Domain/Products/
+- Value object: src/Modules/Catalog/Catalog.Domain/Products/ProductName.cs; child entity: src/Modules/Catalog/Catalog.Domain/Products/StockReservation.cs
 - Command: src/Modules/Catalog/Catalog.Application/CreateProduct/
 - Command with an outcome: src/Modules/Catalog/Catalog.Application/RenameProduct/
+- Command over several aggregates, through a domain service: src/Modules/Catalog/Catalog.Application/RenameProducts/ with src/Modules/Catalog/Catalog.Domain/Products/ProductRenamer.cs
 - Command with an idempotency key: src/Modules/Catalog/Catalog.Application/ReceiveStock/
 - Versioned write (If-Match): src/Modules/Catalog/Catalog.Application/RenameProduct/ with its endpoint src/Api/Endpoints/Catalog/RenameProductEndpoint.cs
 - Tenant scope: src/Modules/Catalog/Catalog.Infrastructure/Persistence/ProductRepository.cs, and the reads in src/Modules/Catalog/Catalog.Infrastructure/Queries/
