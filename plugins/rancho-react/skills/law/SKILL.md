@@ -1,6 +1,6 @@
 ---
 name: law
-description: The React law - a micro-frontend in the PrismOne shell, the codebase as the reference, the checks that enforce the structure, and the decisions they can't show - server and client state, forms and versioned writes, components, routing, the shell's session, errors, data in the browser, and the tests each kind of code needs. Read in full, after the core law, before writing, reviewing, or placing code in a tree whose CLAUDE.md names `Stack law: /rancho-react:law`.
+description: "The React law - a micro-frontend in the PrismOne shell, the codebase as the reference, the checks that enforce the structure, and the decisions they can't show - server and client state, forms and versioned writes, components, routing, the shell's session, errors, data in the browser, and the tests each kind of code needs. Read in full, after the core law, before writing, reviewing, or placing code in a tree whose CLAUDE.md names `Stack law: /rancho-react:law`."
 ---
 
 # React Law

@@ -1,7 +1,7 @@
 {
   "name": "rancho-react",
   "displayName": "Rancho — React Law",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "The React law for micro-frontends in the PrismOne shell: the codebase as the reference, and the decisions the rancho-react template's checks can't show.",
   "license": "MIT",
   "author": {
