@@ -7,7 +7,7 @@ namespace Architecture.Tests;
 
 public sealed partial class OperationTests
 {
-    private static List<Type> Messages => TypesOf(Kinds.Application, Kinds.Contracts).Where(DomainTests.IsMessage).ToList();
+    internal static List<Type> Messages => TypesOf(Kinds.Application, Kinds.Contracts).Where(DomainTests.IsMessage).ToList();
 
     [Fact]
     public void Every_message_declares_a_valid_operation()

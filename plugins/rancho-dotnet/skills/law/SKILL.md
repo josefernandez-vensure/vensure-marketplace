@@ -113,4 +113,4 @@ Caching, calls to AI models (or exposing operations to one as tools), real-time 
 
 ## 11. Verification
 
-`dotnet build` and `dotnet test` pass before a change is done; the integration tests need Docker. On every pull request, CI also runs `build/check-migrations.sh` and `build/check-contracts.sh` against the base branch.
+`dotnet build` and `dotnet test` pass before a change is done; the integration tests need Docker. On every pull request, CI also runs `build/check-migrations.sh` and `build/check-contracts.sh` against the base branch. Then run the `law-reviewer` agent on the change, for the rules above that no check can see.

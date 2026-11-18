@@ -1,0 +1,39 @@
+# The checks are the law: a pull request merges only when the build, every test and both base-branch checks pass.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # The base-branch checks compare against the merge base, so they need the history.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - run: dotnet tool restore
+
+      - run: dotnet build Starter.slnx
+
+      # The integration tests start SQL Server in Docker, which the runner provides.
+      - run: dotnet test --solution Starter.slnx
+
+      - name: No committed migration was edited
+        if: github.event_name == 'pull_request'
+        run: bash build/check-migrations.sh "origin/${{ github.base_ref }}"
+
+      - name: No published contract breaks
+        if: github.event_name == 'pull_request'
+        run: bash build/check-contracts.sh "origin/${{ github.base_ref }}"

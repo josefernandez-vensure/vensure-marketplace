@@ -96,6 +96,33 @@ public sealed class InfrastructureTests
             .ShouldHaveNoViolations("Dependencies come through the constructor; only the composition root resolves services. A hosted service creates a scope through IServiceScopeFactory.");
     }
 
+    [Fact]
+    public void A_module_reaches_its_context_only_from_persistence_and_queries()
+    {
+        DependenciesOf(ArchTypesOf(Kinds.Infrastructure))
+            .Where(d => InNamespace(d.Target, "Microsoft.EntityFrameworkCore"))
+            .Where(d => !d.Origin.FullName.Contains(".Persistence.", StringComparison.Ordinal) && !d.Origin.FullName.Contains(".Queries.", StringComparison.Ordinal))
+            .Where(d => !IsInRegistrationEntryPoint(d.Origin))
+            .Select(d => $"{d.Origin.FullName} uses {d.Target.FullName}")
+            .ShouldHaveNoViolations("In a module's Infrastructure, only Persistence/ (the context, its mappings and repositories) and Queries/ use EF Core; "
+                + "an adapter in External/ or Messaging/ reaches data through the module's ports.");
+    }
+
+    [Fact]
+    public void Every_read_applies_the_principals_tenant()
+    {
+        var ports = TypesOf(Kinds.Domain).Where(t => t.IsInterface && Implements(t, typeof(SharedKernel.IRepository<,>))).ToList();
+        var repositories = TypesOf(Kinds.Infrastructure).Where(t => !t.IsAbstract && ports.Any(p => p.IsAssignableFrom(t)));
+
+        ApplicationTests.QueryHandlers.Where(t => Owner(t)?.Kind == Kinds.Infrastructure)
+            .Concat(repositories)
+            .Where(t => !WithNested(t).SelectMany(n => n.Dependencies.OfType<ArchUnitNET.Domain.Dependencies.MethodCallDependency>())
+                .Any(d => d.TargetMember.Name.StartsWith("get_Tenant(", StringComparison.Ordinal) && d.Target.FullName == typeof(Platform.Application.Abstractions.DispatchContext).FullName))
+            .Select(t => $"{t.FullName} never reads DispatchContext.Tenant")
+            .ShouldHaveNoViolations("Every read applies the principal's tenant in the query itself: each query handler and repository reads "
+                + "DispatchContext.Tenant and filters by it, so a record outside the scope is not found.");
+    }
+
     internal static bool IsMigration(Type type)
     {
         for (var t = type.BaseType; t is not null; t = t.BaseType)
