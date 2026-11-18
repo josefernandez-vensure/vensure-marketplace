@@ -14,9 +14,22 @@ those checks and the tree's reference code can't show.
 ```
 rancho-dotnet/
 ├── .claude-plugin/plugin.json
+├── agents/law-reviewer.md       read-only review against the rules no check can see
+├── hooks/hooks.json             Stop: build and architecture tests before a turn ends
+├── scripts/verify-checks.sh     the Stop hook
 └── skills/law/
     └── SKILL.md                 the .NET law
 ```
+
+Before a turn ends, the Stop hook builds each tree holding `build/ProjectKinds.targets`
+that has uncommitted code changes, and runs its architecture tests. A failure goes
+back to Claude to fix, once per turn; a turn that changed no code costs nothing. The
+integration tests need Docker and minutes, so they stay with `dotnet test` and CI.
+
+The `law-reviewer` agent reviews a change against the judgment rules of the law
+(transactions and sagas, migrations safe for the previous release, egress, the
+tests each operation needs) and ignores what the build already enforces. Run it
+once a change builds and its tests pass.
 
 ## Using it in a project
 
@@ -51,6 +64,19 @@ Stack law: /rancho-dotnet:law
 
 The template's own `CLAUDE.md` is a complete example. A tree that adopts the
 law adopts the template's checks with it.
+
+The template ships as a NuGet template package with the same version as this
+plugin, so a service records which checks it started from. From this
+repository's root:
+
+```bash
+dotnet pack templates/pack -o templates/pack/dist
+dotnet new install templates/pack/dist/Vensure.Rancho.Templates.<version>.nupkg
+dotnet new rancho-dotnet -n MyService
+```
+
+A service made from an earlier version keeps its copy of the checks. Each
+changelog entry says which checks changed, so the service can take them over.
 
 ## Changing it
 

@@ -1,0 +1,74 @@
+# Each template's checks must pass on the template and fail on every seeded violation.
+# The React job installs the org's packages from GitHub Packages: add a repository secret NODE_AUTH_TOKEN,
+# a token with read:packages on the orgs that publish them.
+name: Template proofs
+
+on:
+  pull_request:
+    paths:
+      - "templates/**"
+      - ".github/workflows/templates.yml"
+  push:
+    branches: [main]
+    paths:
+      - "templates/**"
+
+permissions:
+  contents: read
+
+jobs:
+  rancho-dotnet:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: templates/rancho-dotnet/global.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: The template passes its own checks
+        working-directory: templates/rancho-dotnet
+        run: |
+          dotnet tool restore
+          dotnet build Starter.slnx
+          dotnet test --solution Starter.slnx
+
+      - name: The template package packs, versioned with the law
+        run: dotnet pack templates/pack -o templates/pack/dist
+
+      - name: Every check fails on its seeded violation
+        run: python -I templates/check-rancho-dotnet.py
+        env:
+          WORKERS: "4"
+
+  rancho-react:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: The template passes its own checks
+        working-directory: templates/rancho-react
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+        run: |
+          npm ci
+          npm run verify
+
+      - name: Every check fails on its seeded violation
+        run: python -I templates/check-rancho-react.py
+        env:
+          WORKERS: "4"

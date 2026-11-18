@@ -1,0 +1,16 @@
+{
+  "description": "Before a turn ends, builds each rancho-dotnet tree with uncommitted code changes and runs its architecture tests; a failure is handed back to Claude to fix.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/verify-checks.sh\"",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The rancho-dotnet template as a NuGet template package, versioned with the rancho-dotnet law
+    (plugins/rancho-dotnet/.claude-plugin/plugin.json), so a service records which checks it started from
+    and `dotnet new update` brings the newest to the next service. From the repository root:
+
+      dotnet pack templates/pack -o templates/pack/dist
+      dotnet new install templates/pack/dist/Vensure.Rancho.Templates.<version>.nupkg
+  -->
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>Vensure.Rancho.Templates</PackageId>
+    <Version>$([System.Text.RegularExpressions.Regex]::Replace($([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)../../plugins/rancho-dotnet/.claude-plugin/plugin.json')), '(?s)^.*?"version"\s*:\s*"([^"]+)".*$', '$1'))</Version>
+    <Title>Rancho service templates</Title>
+    <Authors>Vensure Engineering</Authors>
+    <Description>The rancho-dotnet modular .NET service, whose build and tests enforce the rancho-dotnet law. Versioned with the law.</Description>
+    <PackageTags>dotnet-new;templates;modular-monolith;ddd</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <TargetFramework>net10.0</TargetFramework>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <!-- A template package carries no assembly. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="../rancho-dotnet/**/*"
+             Exclude="../rancho-dotnet/**/bin/**;../rancho-dotnet/**/obj/**;../rancho-dotnet/**/TestResults/**;../rancho-dotnet/**/.vs/**"
+             PackagePath="content/rancho-dotnet/%(RecursiveDir)%(Filename)%(Extension)" />
+    <None Include="../rancho-dotnet/README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

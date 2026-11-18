@@ -434,8 +434,10 @@ without changing anything.
 vensure-marketplace/
 ├── .claude-plugin/
 │   └── marketplace.json      the catalog — one entry per plugin
+├── .github/workflows/
+│   └── templates.yml         each template passes its checks, and every seed is caught
 ├── plugins/
-│   ├── rancho-dotnet/        stack law: skills/law/
+│   ├── rancho-dotnet/        stack law: skills/law/, a Stop hook, the law-reviewer agent
 │   ├── rancho-react/         stack law: skills/law/
 │   └── rancho/
 │       ├── .claude-plugin/plugin.json
@@ -449,6 +451,7 @@ vensure-marketplace/
 ├── templates/
 │   ├── rancho-dotnet/        the .NET checks and reference code, as a dotnet new template
 │   ├── rancho-react/         the React checks and reference code
+│   ├── pack/                 the .NET template as a NuGet package, versioned with its law
 │   └── check-rancho-*.py     plant a violation, confirm the right check fails
 ├── LAW-REDESIGN.md           the 5.0 redesign plan, until it is finished
 ├── UPGRADE-5.0.md            the one-page upgrade note for consuming projects
