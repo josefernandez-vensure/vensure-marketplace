@@ -1,6 +1,6 @@
 ---
 name: law
-description: The .NET law - modules as services, the codebase as the reference, the checks that enforce the structure, and the decisions they can't show - consistency across aggregates and modules, sagas, persistence, access, egress, and the tests each new operation needs. Read in full, after the core law, before writing, reviewing, or placing code in a tree whose CLAUDE.md names `Stack law: /rancho-dotnet:law`.
+description: "The .NET law - modules as services, the codebase as the reference, the checks that enforce the structure, and the decisions they can't show - consistency across aggregates and modules, sagas, persistence, access, egress, and the tests each new operation needs. Read in full, after the core law, before writing, reviewing, or placing code in a tree whose CLAUDE.md names `Stack law: /rancho-dotnet:law`."
 ---
 
 # .NET Law

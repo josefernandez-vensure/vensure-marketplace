@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.2.1
+
+- **The skill's description loads.** The frontmatter `description` held an
+  unquoted `: ` (in `Stack law: /rancho-dotnet:law`), so YAML failed to parse it and
+  the skill loaded with no description. It is now quoted. No upgrade step.
+
 ## 4.2.0
 
 - **A Stop hook builds before a turn ends.** In a tree holding
