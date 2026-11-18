@@ -14,7 +14,7 @@
   Its identity is now `Vensure.Rancho.Dotnet`.
 - **The template's CI** (`.github/workflows/ci.yml`): build, every test,
   and both base-branch checks on every pull request. This repository runs
-  each template's checks and seed proof on every change to `templates/`.
+  the template's checks and seed proof on every change to `templates/`.
 - **New checks in the template.** A service made from an earlier version
   can take each one over from `tests/Architecture.Tests`:
   - `DiscoveryTests`: every production project is scanned, every set a
