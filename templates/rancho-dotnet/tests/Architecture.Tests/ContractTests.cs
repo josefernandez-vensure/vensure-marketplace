@@ -52,7 +52,7 @@ public sealed class ContractTests
         updated.ShouldHaveNoViolations("A published contract gained a type or an optional property. Its snapshot has been regenerated: review the diff and commit it.");
     }
 
-    private static string SolutionDirectory =>
+    internal static string SolutionDirectory =>
         typeof(ContractTests).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>().Single(a => a.Key == "SolutionDirectory").Value!;
 
     /// <summary>Each published type's schema as the outbox serializes it, keyed by full name.</summary>

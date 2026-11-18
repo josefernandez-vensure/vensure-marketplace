@@ -28,6 +28,12 @@ public sealed class SqlServer : IAsyncLifetime
     /// <summary>A connection string to a server that several runs share, such as the seed proof's; its database name is ignored.</summary>
     public const string SharedServerVariable = "RANCHO_TEST_SQL";
 
+    /// <summary>
+    /// The server image, pinned to a cumulative update so every machine and CI run tests the same build. Match it to production's CU when you
+    /// upgrade; the seed proof (templates/check-rancho-dotnet.py) reads this line.
+    /// </summary>
+    public const string Image = "mcr.microsoft.com/mssql/server:2022-CU28-ubuntu-22.04";
+
     private MsSqlContainer? _container;
     private string? _sharedServer;
 
@@ -40,7 +46,7 @@ public sealed class SqlServer : IAsyncLifetime
         _sharedServer = Environment.GetEnvironmentVariable(SharedServerVariable) is { Length: > 0 } shared ? shared : null;
         if (_sharedServer is null)
         {
-            _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-latest").Build();
+            _container = new MsSqlBuilder(Image).Build();
             await _container.StartAsync();
         }
 

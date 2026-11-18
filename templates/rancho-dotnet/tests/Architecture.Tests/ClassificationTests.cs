@@ -24,13 +24,13 @@ public sealed class ClassificationTests
     private static IEnumerable<Type> Published =>
         TypesOf(Kinds.Contracts).Where(t => !t.IsInterface && !(t.IsAbstract && t.IsSealed) && !typeof(Attribute).IsAssignableFrom(t));
 
-    private static IEnumerable<Type> QueryResponses =>
+    internal static IEnumerable<Type> QueryResponses =>
         TypesOf(Kinds.Application, Kinds.Contracts).Where(DomainTests.IsMessage)
             .SelectMany(m => m.GetInterfaces().Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IQuery<>)))
             .Select(i => i.GetGenericArguments()[0])
             .Distinct();
 
-    private static IEnumerable<MethodInfo> LoggingMethods =>
+    internal static IEnumerable<MethodInfo> LoggingMethods =>
         Assemblies.SelectMany(a => a.Assembly.GetTypes())
             .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly))
             .Where(m => m.IsDefined(typeof(LoggerMessageAttribute)));

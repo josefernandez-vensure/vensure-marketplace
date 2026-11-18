@@ -13,6 +13,7 @@ those seeds; WORKERS=<n> runs that many seeds at once (default 6).
 import concurrent.futures
 import functools
 import os
+import re
 import secrets
 import shutil
 import subprocess
@@ -171,7 +172,7 @@ TEST = [
     ("An_aggregate_holds_other_aggregates_by_id",
      lambda: (write(CAT + "Catalog.Domain/Categories/Category.cs", "using SharedKernel;\n\nnamespace Catalog.Domain.Categories;\n\npublic readonly record struct CategoryId(Guid Value);\n\npublic sealed class Category : AggregateRoot<CategoryId>\n{\n    private Category() { }\n}\n"),
               edit(PRODUCT, "    public bool IsDiscontinued", "    public Categories.Category? Category { get; private set; }\n\n    public bool IsDiscontinued"))),
-    ("Repositories_expose_no_IQueryable",
+    ("Repositories_expose_no_query",
      lambda: (edit(CAT + "Catalog.Domain/Products/IProductRepository.cs", "public interface IProductRepository : IRepository<Product, ProductId>\n{\n",
                    "public interface IProductRepository : IRepository<Product, ProductId>\n{\n    IQueryable<Product> Query();\n\n"),
               edit(REPO, "    public void Save", "    public IQueryable<Product> Query() => db.Products;\n\n    public void Save"),
@@ -365,6 +366,61 @@ UNIT = "tests/Platform.Tests"
 DOMAIN_TESTS = "tests/Domain.Tests"
 
 ISOLATED = [
+    # A project whose assembly carries no ProjectKind metadata drops out of every rule.
+    (MODEL, ["Every_production_project_is_scanned"],
+     lambda: edit(DOMAIN, "<ProjectKind>Domain</ProjectKind>", "<ProjectKind>Domain</ProjectKind>\n    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>")),
+    # A production project outside src/, which Architecture.Tests doesn't reference.
+    (MODEL, ["Every_production_project_is_scanned"],
+     lambda: (write("lib/Extras/Extras.csproj", '<Project Sdk="Microsoft.NET.Sdk">\n  <PropertyGroup>\n    <ProjectKind>SharedKernel</ProjectKind>\n    <TargetFramework>net10.0</TargetFramework>\n  </PropertyGroup>\n</Project>\n'),
+              write("lib/Extras/Extra.cs", "namespace Extras;\n\npublic static class Extra;\n"),
+              edit("Starter.slnx", "</Solution>", '  <Folder Name="/lib/">\n    <Project Path="lib/Extras/Extras.csproj" />\n  </Folder>\n</Solution>'))),
+    # A project on disk that the solution doesn't list.
+    (MODEL, ["Every_production_project_is_scanned"],
+     lambda: (write("src/Shared/Orphan/Orphan.csproj", '<Project Sdk="Microsoft.NET.Sdk">\n  <PropertyGroup>\n    <ProjectKind>SharedKernel</ProjectKind>\n    <TargetFramework>net10.0</TargetFramework>\n  </PropertyGroup>\n</Project>\n'),
+              write("src/Shared/Orphan/Orphan.cs", "namespace Orphan;\n\npublic static class Lost;\n"))),
+    # A repository that takes a predicate: the caller composes the query.
+    (MODEL, ["Repositories_expose_no_query"],
+     lambda: (edit(CAT + "Catalog.Domain/Products/IProductRepository.cs", "public interface IProductRepository : IRepository<Product, ProductId>\n{\n",
+                   "public interface IProductRepository : IRepository<Product, ProductId>\n{\n    Task<IReadOnlyList<Product>> Where(System.Linq.Expressions.Expression<Func<Product, bool>> filter, CancellationToken cancellationToken);\n\n"),
+              edit(REPO, "    public void Save", "    public Task<IReadOnlyList<Product>> Where(System.Linq.Expressions.Expression<Func<Product, bool>> filter, CancellationToken cancellationToken) => throw new NotSupportedException();\n\n    public void Save"))),
+    # A second port for the same root.
+    (MODEL, ["One_repository_per_aggregate_root"],
+     lambda: write(CAT + "Catalog.Domain/Products/IProductReadRepository.cs", "using SharedKernel;\n\nnamespace Catalog.Domain.Products;\n\npublic interface IProductReadRepository : IRepository<Product, ProductId>;\n")),
+    # A port that loads a child entity without its root, and isn't a repository.
+    (MODEL, ["Only_a_repository_loads_an_entity_and_only_its_own_root"],
+     lambda: write(CAT + "Catalog.Domain/Products/IReservationLookup.cs", "namespace Catalog.Domain.Products;\n\npublic interface IReservationLookup\n{\n    Task<StockReservation?> Find(ReservationId id, CancellationToken cancellationToken);\n}\n")),
+    # A repository that hands out a child entity apart from its root.
+    (MODEL, ["Only_a_repository_loads_an_entity_and_only_its_own_root"],
+     lambda: (edit(CAT + "Catalog.Domain/Products/IProductRepository.cs", "public interface IProductRepository : IRepository<Product, ProductId>\n{\n",
+                   "public interface IProductRepository : IRepository<Product, ProductId>\n{\n    Task<StockReservation?> FindReservation(ReservationId id, CancellationToken cancellationToken);\n\n"),
+              edit(REPO, "    public void Save", "    public Task<StockReservation?> FindReservation(ReservationId id, CancellationToken cancellationToken) => Task.FromResult<StockReservation?>(null);\n\n    public void Save"))),
+    # A query's helper that writes: the handler stays clean, the helper beside it doesn't.
+    (MODEL, ["A_query_never_writes"],
+     lambda: write(CAT + "Catalog.Infrastructure/Queries/GetProduct/Touch.cs", "using Catalog.Infrastructure.Persistence;\n\nnamespace Catalog.Infrastructure.Queries.GetProduct;\n\ninternal static class Touch\n{\n    public static Task<int> Save(CatalogDbContext db, CancellationToken cancellationToken) => db.SaveChangesAsync(cancellationToken);\n}\n")),
+    # A query's helper that loads the aggregate.
+    (MODEL, ["A_query_never_loads_an_aggregate"],
+     lambda: write(CAT + "Catalog.Infrastructure/Queries/GetProduct/Load.cs", "using Catalog.Domain.Products;\nusing Catalog.Infrastructure.Persistence;\nusing Microsoft.EntityFrameworkCore;\n\nnamespace Catalog.Infrastructure.Queries.GetProduct;\n\ninternal static class Load\n{\n    public static Task<Product?> Product(CatalogDbContext db, ProductId id, CancellationToken cancellationToken) =>\n        db.Products.FirstOrDefaultAsync(p => p.Id == id, cancellationToken);\n}\n")),
+    # A query that forgets the tenant: it reads every tenant's order.
+    (MODEL, ["Every_read_applies_the_principals_tenant"],
+     lambda: edit(ORD + "Ordering.Infrastructure/Queries/GetOrder/GetOrderHandler.cs", "        var tenant = dispatch.Tenant?.Value;\n", "        _ = dispatch;\n        Guid? tenant = null;\n")),
+    # An aggregate stored with no tenant, which no read can scope.
+    (MODEL, ["Every_aggregate_root_is_stored_with_its_tenant"],
+     lambda: edit(ORD + "Ordering.Infrastructure/Persistence/OrderConfiguration.cs", "        builder.Property<Guid>(OrderRepository.TenantColumn);\n        builder.HasIndex(OrderRepository.TenantColumn);\n", "")),
+    # A domain type shaped for the wire.
+    (MODEL, ["Domain_types_carry_no_mapping_attributes"],
+     lambda: edit(CAT + "Catalog.Domain/Products/ProductName.cs", "    public string Value { get; }", "    [System.Text.Json.Serialization.JsonPropertyName(\"name\")]\n    public string Value { get; }")),
+    # A broker the list didn't name, used from a module's Infrastructure.
+    (MODEL, ["Published_messages_leave_only_through_the_outbox"],
+     lambda: write(CAT + "Catalog.Infrastructure/Messaging/Nats.cs", "// The SDK's namespace, standing in for its package.\n#pragma warning disable IDE0130\nnamespace NATS.Client.Core\n{\n    public sealed class NatsConnection;\n}\n#pragma warning restore IDE0130\n\nnamespace Catalog.Infrastructure.Messaging\n{\n    internal static class Publisher\n    {\n        public static NATS.Client.Core.NatsConnection Connect() => new();\n    }\n}\n")),
+    # An adapter outside Persistence/ and Queries/ that reads the module's tables.
+    (MODEL, ["A_module_reaches_its_context_only_from_persistence_and_queries"],
+     lambda: write(CAT + "Catalog.Infrastructure/External/Exporter.cs", "using Catalog.Domain.Products;\nusing Catalog.Infrastructure.Persistence;\nusing Microsoft.EntityFrameworkCore;\n\nnamespace Catalog.Infrastructure.External;\n\ninternal static class Exporter\n{\n    public static Task<List<Product>> All(CatalogDbContext db, CancellationToken cancellationToken) => db.Products.ToListAsync(cancellationToken);\n}\n")),
+    # Hand-written code that hides from every rule by claiming to be generated.
+    (MODEL, ["Only_a_generator_marks_code_generated"],
+     lambda: write(CAT + "Catalog.Domain/Products/Hidden.cs", "namespace Catalog.Domain.Products;\n\n[System.CodeDom.Compiler.GeneratedCode(\"hand\", \"1.0\")]\npublic sealed class Hidden\n{\n    public string Value { get; set; } = string.Empty;\n}\n")),
+    # Discovery that finds nothing: every rule over the set passes without checking.
+    (MODEL, ["Every_rule_has_something_to_check"],
+     lambda: edit("tests/Architecture.Tests/EndpointTests.cs", 'i.Name == "IEndpoint`1"', 'i.Name == "IEndpoints`1"')),
     # Api takes any package and gets EF Core and SqlClient from Infrastructure; the data-access rule covers it by namespace.
     (MODEL, ["Only_infrastructure_reaches_the_database"],
      lambda: write("src/Api/Reports.cs", "namespace Api;\n\ninternal static class Reports\n{\n    public static Microsoft.Data.SqlClient.SqlConnection Open(string connectionString) => new(connectionString);\n}\n")),
@@ -565,12 +621,16 @@ def project_seed(kind, project, names, seed):
         done()
 
 
+# The image the integration tests pin, so the proof runs them against the same build.
+SQL_IMAGE = re.search(r'public const string Image = "([^"]+)"', (SRC / "tests/Catalog.IntegrationTests/SqlServer.cs").read_text(encoding="utf-8")).group(1)
+
+
 def start_sql_server():
     """One SQL Server for every seed that needs one; each test run makes and drops a database of its own on it."""
     password = "Aa1!" + secrets.token_urlsafe(16)
     container = subprocess.run(
         ["docker", "run", "-d", "-e", "ACCEPT_EULA=Y", "-e", f"MSSQL_SA_PASSWORD={password}", "-p", "127.0.0.1::1433",
-         "mcr.microsoft.com/mssql/server:2022-latest"],
+         SQL_IMAGE],
         capture_output=True, text=True, check=True).stdout.strip()
     port = subprocess.run(["docker", "port", container, "1433"], capture_output=True, text=True, check=True).stdout.split(":")[-1].strip()
     for _ in range(120):

@@ -52,7 +52,8 @@ public sealed class PersistenceTests
     [Fact]
     public void Published_messages_leave_only_through_the_outbox()
     {
-        string[] brokers = ["Azure.Messaging", "MassTransit", "RabbitMQ", "Confluent.Kafka", "NServiceBus", "Amazon.SQS", "Amazon.SimpleNotificationService"];
+        string[] brokers = ["Azure.Messaging", "MassTransit", "RabbitMQ", "Confluent.Kafka", "NServiceBus", "Amazon.SQS", "Amazon.SimpleNotificationService",
+            "Amazon.Kinesis", "Azure.Storage.Queues", "Google.Cloud.PubSub", "NATS", "Rebus", "Wolverine"];
 
         var portMethods = TypesOf(Kinds.Application, Kinds.PlatformApplication)
             .Where(t => t.IsInterface && t != typeof(IOutbox))

@@ -7,9 +7,9 @@ namespace Architecture.Tests;
 
 public sealed partial class ApplicationTests
 {
-    private static IEnumerable<Type> QueryHandlers => TypesOf(Kinds.All).Where(t => !t.IsAbstract && Implements(t, typeof(Mediator.IQueryHandler<,>)));
+    internal static IEnumerable<Type> QueryHandlers => TypesOf(Kinds.All).Where(t => !t.IsAbstract && Implements(t, typeof(Mediator.IQueryHandler<,>)));
 
-    private static IEnumerable<Type> Handlers => TypesOf(Kinds.All).Where(t => !t.IsAbstract && t.GetInterfaces().Any(i =>
+    internal static IEnumerable<Type> Handlers => TypesOf(Kinds.All).Where(t => !t.IsAbstract && t.GetInterfaces().Any(i =>
         i.IsGenericType && i.GetGenericTypeDefinition().FullName is { } name
         && (name.StartsWith("Mediator.ICommandHandler`", StringComparison.Ordinal)
             || name.StartsWith("Mediator.IQueryHandler`", StringComparison.Ordinal)
@@ -39,13 +39,19 @@ public sealed partial class ApplicationTests
                 "If-Match names one resource. A command over several aggregates carries none: their versions are checked at commit, and a lost race answers 409.");
     }
 
+    /// <summary>Every query handler and every type in an Infrastructure Queries/ folder, so a helper a handler calls is held to the same rules.</summary>
+    private static IEnumerable<ArchUnitNET.Domain.IType> QuerySide =>
+        QueryHandlers.SelectMany(WithNested)
+            .Concat(ArchTypesOf(Kinds.Infrastructure).Where(t => t.FullName.Contains(".Queries.", StringComparison.Ordinal)))
+            .Distinct();
+
     [Fact]
     public void A_query_never_writes()
     {
         // Prefixes, so every overload and form counts: ExecuteSqlInterpolatedAsync as much as ExecuteSql.
         string[] writes = ["SaveChanges", "ExecuteUpdate", "ExecuteDelete", "ExecuteSql"];
 
-        CallsOf(QueryHandlers.SelectMany(WithNested))
+        CallsOf(QuerySide)
             .Where(c => writes.Any(w => c.Method.StartsWith(w, StringComparison.Ordinal)))
             .Select(c => $"{c.Origin.FullName} calls {c.Method}")
             .ShouldHaveNoViolations("A query never writes.");
@@ -54,10 +60,10 @@ public sealed partial class ApplicationTests
     [Fact]
     public void A_query_never_loads_an_aggregate()
     {
-        DependenciesOf(QueryHandlers.SelectMany(WithNested))
+        DependenciesOf(QuerySide)
             .Where(d => Owner(d.Target)?.Kind == Kinds.Domain)
             .Select(d => $"{d.Origin.FullName} uses {d.Target.FullName}")
-            .ShouldHaveNoViolations("A query handler projects straight into its Response DTO; it never touches the domain model.");
+            .ShouldHaveNoViolations("A query handler, and every type in Infrastructure's Queries/ it calls, projects straight into its Response DTO; it never touches the domain model.");
     }
 
     [Fact]

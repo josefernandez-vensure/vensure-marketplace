@@ -9,7 +9,7 @@ public sealed class DomainTests
 {
     private static readonly BindingFlags Declared = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
 
-    private static IEnumerable<Type> AggregateRoots =>
+    internal static IEnumerable<Type> AggregateRoots =>
         TypesOf(Kinds.Domain).Where(t => typeof(IAggregateRoot).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
 
     /// <summary>Aggregate roots and the child entities inside them.</summary>
@@ -97,12 +97,14 @@ public sealed class DomainTests
     [Fact]
     public void Domain_types_carry_no_mapping_attributes()
     {
+        string[] mapping = ["System.ComponentModel.DataAnnotations", "System.Text.Json.Serialization", "System.Runtime.Serialization", "Newtonsoft.Json"];
+
         TypesOf(Kinds.Domain)
             .SelectMany(t => new MemberInfo[] { t }.Concat(t.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)))
             .SelectMany(m => m.GetCustomAttributes(false).Select(a => (Member: m, Attribute: a.GetType())))
-            .Where(x => x.Attribute.Namespace?.StartsWith("System.ComponentModel.DataAnnotations", StringComparison.Ordinal) == true)
+            .Where(x => mapping.Any(ns => x.Attribute.Namespace == ns || x.Attribute.Namespace?.StartsWith(ns + ".", StringComparison.Ordinal) == true))
             .Select(x => $"{x.Member.DeclaringType?.Name ?? x.Member.Name}.{x.Member.Name} has [{x.Attribute.Name}]")
-            .ShouldHaveNoViolations("Mapping lives in IEntityTypeConfiguration<T> classes; domain types carry no mapping attributes.");
+            .ShouldHaveNoViolations("Mapping lives in IEntityTypeConfiguration<T> classes, and a wire shape in Contracts; domain types carry no persistence or serialization attributes.");
     }
 
     [Fact]
@@ -120,16 +122,55 @@ public sealed class DomainTests
     }
 
     [Fact]
-    public void Repositories_expose_no_IQueryable()
+    public void Repositories_expose_no_query()
     {
-        TypesOf(Kinds.Domain)
-            .Where(t => t.IsInterface && Implements(t, typeof(IRepository<,>)))
-            .SelectMany(t => t.GetMethods().Concat(t.GetInterfaces().SelectMany(i => i.GetMethods()))
-                .SelectMany(m => m.GetParameters().Select(p => p.ParameterType).Append(m.ReturnType).Select(type => (t, m, type))))
-            .Where(x => Unwrap(x.type).Any(u => typeof(IQueryable).IsAssignableFrom(u)))
-            .Select(x => $"{x.t.Name}.{x.m.Name} exposes {x.type.Name}")
-            .ShouldHaveNoViolations("A repository loads and saves whole aggregates and exposes no IQueryable.");
+        Repositories
+            .SelectMany(r => MethodsOf(r.Port)
+                .SelectMany(m => m.GetParameters().Select(p => p.ParameterType).Append(m.ReturnType).Select(type => (r.Port, m, type))))
+            .Where(x => Unwrap(x.type).Any(IsQuery))
+            .Select(x => $"{x.Port.Name}.{x.m.Name} exposes {x.type.Name}")
+            .ShouldHaveNoViolations("A repository loads and saves whole aggregates. It takes and returns no IQueryable, Expression or IAsyncEnumerable: "
+                + "name the load, such as FindAll(ids), and filter inside it.");
     }
+
+    [Fact]
+    public void One_repository_per_aggregate_root()
+    {
+        Repositories
+            .GroupBy(r => r.Root)
+            .Where(g => g.Count() > 1)
+            .Select(g => $"{g.Key.Name} has {string.Join(" and ", g.Select(r => r.Port.Name).Order())}")
+            .ShouldHaveNoViolations("One repository port per aggregate root: add the load to its port.");
+    }
+
+    [Fact]
+    public void Only_a_repository_loads_an_entity_and_only_its_own_root()
+    {
+        var entities = Entities.ToHashSet();
+        TypesOf(Kinds.Domain)
+            .Where(t => t.IsInterface)
+            .SelectMany(port => MethodsOf(port)
+                .SelectMany(m => Unwrap(m.ReturnType).Where(entities.Contains).Select(entity => (port, m, entity))))
+            .Where(x => RootOf(x.port) != x.entity)
+            .Select(x => RootOf(x.port) is { } root
+                ? $"{x.port.Name}.{x.m.Name} returns {x.entity.Name}, which isn't its root {root.Name}: load {root.Name} and reach the {x.entity.Name} through it"
+                : $"{x.port.Name}.{x.m.Name} returns {x.entity.Name} but isn't a repository: only a port deriving IRepository<TRoot, TId> loads an aggregate")
+            .ShouldHaveNoViolations("Only a repository port loads an entity, and only the whole aggregate of its own root.");
+    }
+
+    /// <summary>Each repository port in Domain, with the root it serves.</summary>
+    private static IEnumerable<(Type Port, Type Root)> Repositories =>
+        TypesOf(Kinds.Domain).Where(t => t.IsInterface && RootOf(t) is not null).Select(t => (t, RootOf(t)!));
+
+    private static Type? RootOf(Type port) =>
+        port.GetInterfaces().FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRepository<,>))?.GetGenericArguments()[0];
+
+    private static IEnumerable<MethodInfo> MethodsOf(Type port) => port.GetMethods().Concat(port.GetInterfaces().SelectMany(i => i.GetMethods()));
+
+    private static bool IsQuery(Type type) =>
+        typeof(IQueryable).IsAssignableFrom(type)
+        || typeof(System.Linq.Expressions.Expression).IsAssignableFrom(type)
+        || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>));
 
     [Fact]
     public void Domain_outcomes_are_enums()

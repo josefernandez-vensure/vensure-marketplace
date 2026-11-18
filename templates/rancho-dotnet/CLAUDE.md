@@ -35,4 +35,10 @@ dotnet build Starter.slnx
 dotnet test --solution Starter.slnx
 ```
 
+While you work, the architecture tests alone take seconds and need no Docker:
+
+```bash
+dotnet test --project tests/Architecture.Tests
+```
+
 The integration tests need Docker running. A failing build or test is the law speaking: fix the code, not the check. The project reference table is `build/ProjectKinds.targets`; every project declares its `<ProjectKind>`.

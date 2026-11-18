@@ -4,7 +4,7 @@ namespace Architecture.Tests;
 
 public sealed class EndpointTests
 {
-    private static IEnumerable<Type> Endpoints => TypesOf(Kinds.Api).Where(t => !t.IsAbstract && t.GetInterfaces().Any(i => i.IsGenericType && i.Name == "IEndpoint`1"));
+    internal static IEnumerable<Type> Endpoints => TypesOf(Kinds.Api).Where(t => !t.IsAbstract && t.GetInterfaces().Any(i => i.IsGenericType && i.Name == "IEndpoint`1"));
 
     [Fact]
     public void Only_the_registrar_maps_a_route_to_a_handler()

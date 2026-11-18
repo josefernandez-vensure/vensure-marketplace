@@ -137,6 +137,16 @@ public sealed class ModelTests
             .ShouldHaveNoViolations("Every schema change is a committed migration.");
     }
 
+    [Fact]
+    public void Every_aggregate_root_is_stored_with_its_tenant()
+    {
+        Contexts.Value
+            .SelectMany(c => c.Model.GetEntityTypes().Select(e => (c.Context, Entity: e)))
+            .Where(x => typeof(IAggregateRoot).IsAssignableFrom(x.Entity.ClrType) && x.Entity.FindProperty("TenantId")?.ClrType != typeof(Guid))
+            .Select(x => $"{x.Context.GetType().Name} maps {x.Entity.ClrType.Name} with no Guid TenantId column; map it as a shadow property its repository sets from the dispatch context")
+            .ShouldHaveNoViolations("Every aggregate root's row carries the tenant it belongs to, so every read can apply the principal's scope.");
+    }
+
     private static List<(ProductionAssembly, ModuleDbContext, IModel)> Build() =>
         OfKind(Kinds.Infrastructure)
             .SelectMany(a => a.Assembly.GetTypes().Where(t => t is { IsAbstract: false } && t.IsSubclassOf(typeof(ModuleDbContext))).Select(t => (a, t)))
