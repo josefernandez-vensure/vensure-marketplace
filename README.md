@@ -434,8 +434,6 @@ without changing anything.
 vensure-marketplace/
 ├── .claude-plugin/
 │   └── marketplace.json      the catalog — one entry per plugin
-├── .github/workflows/
-│   └── templates.yml         the .NET template passes its checks, and every seed is caught
 ├── plugins/
 │   ├── rancho-dotnet/        stack law: skills/law/, a Stop hook, the law-reviewer agent
 │   ├── rancho-react/         stack law: skills/law/
