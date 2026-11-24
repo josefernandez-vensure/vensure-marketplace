@@ -1,5 +1,10 @@
 # Changelog
 
+## 4.3.0
+
+- **A delivery boundary may catch (§4).** One iteration of a hosted service's loop, or the delivery of one message, catches any exception but cancellation, logs it, translates nothing, and leaves the item for the next pass. The template's `OutboxDelivery` and `OutboxDispatcher` already did; §4 now says so. The `law-reviewer` checklist follows. No upgrade step: give such a catch's CA1031 suppression this reason.
+- **A service may declare it has no tenant scope (§9).** A tree whose policies grant every record declares `[assembly: NoTenantScope("<decision>", "<reason>")]` in `Api`. `Every_read_applies_the_principals_tenant` and `Every_aggregate_root_is_stored_with_its_tenant` are then skipped, with the declaration's reason, and §9's tenant test has no subject. The new `Only_the_composition_root_declares_no_tenant_scope_and_names_why` refuses a declaration outside `Api` or without a decision and a reason. **Upgrade:** take `src/Platform/Platform.Application/Abstractions/NoTenantScope.cs`, `Solution.NoTenantScope` and `Solution.SkipWithoutTenantScope` (`tests/Architecture.Tests/Solution.cs`), the new test in `InfrastructureTests`, and the skip at the top of the two tenant tests. A tree with a tenant changes nothing else.
+
 ## 4.2.1
 
 - **The skill's description loads.** The frontmatter `description` held an
