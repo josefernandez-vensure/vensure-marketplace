@@ -42,6 +42,7 @@ Placement follows dependencies, never the name. `Service`, `Manager`, `Provider`
 
 - An expected outcome is a value: a domain rejection is an outcome enum in domain vocabulary, and a handler's answer is a `Result`. A broken invariant throws.
 - Only an adapter catches an exception, and only the one its framework or SDK raises for an expected outcome (a concurrency conflict, a unique-key violation, an unreachable remote service), where it is raised. It translates it into an outcome. Nothing above it catches one, and nothing catches a domain exception to answer `4xx`: add the missing guard instead.
+- The one other catch is a delivery boundary in `Infrastructure`: one iteration of a hosted service's loop, or the delivery of one message. It catches any exception but cancellation, logs it, translates nothing, and leaves the item for the next pass, so one failure stops neither the host nor the items behind it.
 
 ## 5. Consistency
 
@@ -99,7 +100,7 @@ The classes and the egress boundaries are the core law's. The class is declared 
 
 The checks already run over every route and message: a principal without the policy is denied and recorded, spans nest in pipeline order, rate limits answer `429`, the OpenAPI document and the contract snapshots are current, and every domain method and outcome has a test by name. Write these yourself, one each, following the reference integration tests:
 
-- An operation on a record: another tenant's record is never read, listed or changed.
+- An operation on a record: another tenant's record is never read, listed or changed. A tree whose policies grant every record declares `[assembly: NoTenantScope]` in `Api`, naming the decision and its reason, and has no tenant to test.
 - A versioned write: no `If-Match`, or `*`, is `428`; a stale version is `412`.
 - A keyed command: a replay returns the recorded result; the same key with another payload is `422`; no key is `400`; two concurrent attempts are one execution and one replay.
 - A paged query: no row is skipped or repeated across a page boundary, including inside a run of equal sort values.

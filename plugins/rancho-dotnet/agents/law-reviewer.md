@@ -35,7 +35,10 @@ Apply each item only where the change touches it.
    unit tested without doubles.
 2. **Outcomes and exceptions (§4).** An expected rejection is an outcome value, not an exception; a broken
    invariant throws. Only an adapter catches, only the exception its SDK raises for an expected outcome, where it
-   is raised. Nothing catches a domain exception to answer `4xx`.
+   is raised. Nothing catches a domain exception to answer `4xx`. The one other catch is a delivery boundary in
+   `Infrastructure` (one iteration of a hosted service's loop, or one message's delivery): it catches all but
+   cancellation, logs, translates nothing, and leaves the item for the next pass. A catch anywhere else, or one
+   that turns the exception into an outcome, is a finding.
 3. **Transactions (§5).** No external call inside a transaction; a command whose effect is an external write
    declares `Transaction: None` and stages no database change. An effect a repeat would duplicate (an email, a
    payment) goes through the outbox with a key derived from the message.

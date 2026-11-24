@@ -19,6 +19,8 @@ npm install
 npm run verify
 ```
 
+**Syncfusion's licence key.** The template has no grid, so it registers no licence. A project that adds Syncfusion's grid registers its key once, in `src/app/main.tsx`, from a build-time variable such as `VITE_SYNCFUSION_LICENSE_KEY` declared in `src/env.d.ts`. Syncfusion requires the key in the browser, so the law (§8) treats it like a client id: it may be in the bundle, and it is never committed. CI injects it from a secret at build time. Its import, `registerLicense` from `@syncfusion/ej2-base`, is a presentation package to the checks: add `'!@syncfusion/ej2-base'` to `UI_CLASS_PACKAGES` in `eslint.config.js` with it.
+
 ## What enforces what
 
 | Rule | Where |

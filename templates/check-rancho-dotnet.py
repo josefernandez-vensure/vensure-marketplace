@@ -406,6 +406,12 @@ ISOLATED = [
     # An aggregate stored with no tenant, which no read can scope.
     (MODEL, ["Every_aggregate_root_is_stored_with_its_tenant"],
      lambda: edit(ORD + "Ordering.Infrastructure/Persistence/OrderConfiguration.cs", "        builder.Property<Guid>(OrderRepository.TenantColumn);\n        builder.HasIndex(OrderRepository.TenantColumn);\n", "")),
+    # No tenant scope, declared by a module instead of the composition root.
+    (MODEL, ["Only_the_composition_root_declares_no_tenant_scope_and_names_why"],
+     lambda: write(CAT + "Catalog.Infrastructure/Persistence/Global.cs", "[assembly: Platform.Application.Abstractions.NoTenantScope(\"R-1\", \"Every user reads every product.\")]\n")),
+    # No tenant scope, declared on the composition root with no reason.
+    (MODEL, ["Only_the_composition_root_declares_no_tenant_scope_and_names_why"],
+     lambda: edit("src/Api/Program.cs", "using SharedKernel;\n", "using SharedKernel;\n\n[assembly: Platform.Application.Abstractions.NoTenantScope(\"R-1\", \" \")]\n")),
     # A domain type shaped for the wire.
     (MODEL, ["Domain_types_carry_no_mapping_attributes"],
      lambda: edit(CAT + "Catalog.Domain/Products/ProductName.cs", "    public string Value { get; }", "    [System.Text.Json.Serialization.JsonPropertyName(\"name\")]\n    public string Value { get; }")),

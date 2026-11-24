@@ -21,6 +21,14 @@ internal static class Solution
     public static IEnumerable<ProductionAssembly> OfKind(params string[] kinds) =>
         Assemblies.Where(a => kinds.Contains(a.Kind));
 
+    /// <summary>The composition root's declaration that the service has no tenant scope, or null when its reads apply one.</summary>
+    public static Platform.Application.Abstractions.NoTenantScopeAttribute? NoTenantScope =>
+        OfKind(Kinds.Api).Select(a => a.Assembly.GetCustomAttribute<Platform.Application.Abstractions.NoTenantScopeAttribute>()).FirstOrDefault(d => d is not null);
+
+    /// <summary>Skips a tenant check in a service that declares it has no tenant scope.</summary>
+    public static void SkipWithoutTenantScope() =>
+        Assert.SkipWhen(NoTenantScope is not null, $"The service declares no tenant scope ({NoTenantScope?.Decision}): {NoTenantScope?.Reason}");
+
     /// <summary>
     /// Types declared in the given kinds, nested ones included: a handler, message, reaction or endpoint nested in a static
     /// class is held to the same rules. Generated code, and anything nested inside it, is excluded.

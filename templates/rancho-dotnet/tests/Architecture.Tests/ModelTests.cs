@@ -140,6 +140,7 @@ public sealed class ModelTests
     [Fact]
     public void Every_aggregate_root_is_stored_with_its_tenant()
     {
+        SkipWithoutTenantScope();
         Contexts.Value
             .SelectMany(c => c.Model.GetEntityTypes().Select(e => (c.Context, Entity: e)))
             .Where(x => typeof(IAggregateRoot).IsAssignableFrom(x.Entity.ClrType) && x.Entity.FindProperty("TenantId")?.ClrType != typeof(Guid))

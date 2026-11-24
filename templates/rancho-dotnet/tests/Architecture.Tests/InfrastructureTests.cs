@@ -111,6 +111,7 @@ public sealed class InfrastructureTests
     [Fact]
     public void Every_read_applies_the_principals_tenant()
     {
+        SkipWithoutTenantScope();
         var ports = TypesOf(Kinds.Domain).Where(t => t.IsInterface && Implements(t, typeof(SharedKernel.IRepository<,>))).ToList();
         var repositories = TypesOf(Kinds.Infrastructure).Where(t => !t.IsAbstract && ports.Any(p => p.IsAssignableFrom(t)));
 
@@ -121,6 +122,20 @@ public sealed class InfrastructureTests
             .Select(t => $"{t.FullName} never reads DispatchContext.Tenant")
             .ShouldHaveNoViolations("Every read applies the principal's tenant in the query itself: each query handler and repository reads "
                 + "DispatchContext.Tenant and filters by it, so a record outside the scope is not found.");
+    }
+
+    [Fact]
+    public void Only_the_composition_root_declares_no_tenant_scope_and_names_why()
+    {
+        var violations = Assemblies.Where(a => a.Kind != Kinds.Api && a.Assembly.IsDefined(typeof(Platform.Application.Abstractions.NoTenantScopeAttribute), false))
+            .Select(a => $"{a.Name} declares NoTenantScope; only Api does")
+            .ToList();
+        if (NoTenantScope is { } declared && (string.IsNullOrWhiteSpace(declared.Decision) || string.IsNullOrWhiteSpace(declared.Reason)))
+        {
+            violations.Add("NoTenantScope names no decision or no reason");
+        }
+
+        violations.ShouldHaveNoViolations("A service without a tenant scope says so once, on its composition root, naming the decision and its reason.");
     }
 
     internal static bool IsMigration(Type type)
